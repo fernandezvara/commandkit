@@ -227,6 +227,14 @@ func (c *Config) Destroy() {
 	c.secrets.DestroyAll()
 }
 
+// IsSecret checks if a configuration key is defined as a secret
+func (c *Config) IsSecret(key string) bool {
+	if def, exists := c.definitions[key]; exists {
+		return def.secret
+	}
+	return false
+}
+
 // Dump returns a map of all configuration values (secrets masked)
 func (c *Config) Dump() map[string]string {
 	result := make(map[string]string)

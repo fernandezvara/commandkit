@@ -197,27 +197,208 @@ myapp help start           # command help
 
 ## Middleware
 
+CommandKit provides a powerful middleware system for adding cross-cutting functionality to commands like logging, authentication, error handling, and metrics.
+
+### Built-in Middleware
+
+#### Logging Middleware
+
 ```go
-// Logging middleware
-func loggingMiddleware(next commandkit.CommandFunc) commandkit.CommandFunc {
-    return func(ctx *commandkit.CommandContext) error {
-        fmt.Printf("Executing command: %s\n", ctx.Command)
+// Default logging with timing
+cfg.UseMiddleware(commandkit.DefaultLoggingMiddleware())
+
+// Custom logging
+cfg.UseMiddleware(commandkit.LoggingMiddleware(func(ctx *commandkit.CommandContext, duration time.Duration) {
+    log.Printf("Command %s completed in %v", ctx.Command, duration)
+}))
+```
+
+#### Authentication Middleware
+
+```go
+// Token-based authentication
+cfg.UseMiddlewareForCommands([]string{"admin", "shutdown"},
+    commandkit.TokenAuthMiddleware("ADMIN_TOKEN"))
+
+// Custom authentication
+cfg.UseMiddleware(commandkit.AuthMiddleware(func(ctx *commandkit.CommandContext) error {
+    token := ctx.Config.GetString("AUTH_TOKEN")
+    if token != "secret-token" {
+        return fmt.Errorf("invalid token")
+    }
+    return nil
+}))
+```
+
+#### Error Handling Middleware
+
+```go
+// Default error handling with logging
+cfg.UseMiddleware(commandkit.DefaultErrorHandlingMiddleware())
+
+// Custom error handling with monitoring
+cfg.UseMiddleware(commandkit.ErrorHandlingMiddleware(func(err error, ctx *commandkit.CommandContext) {
+    // Send to monitoring system
+    monitor.Error("command_failed", map[string]any{
+        "command": ctx.Command,
+        "error": err.Error(),
+    })
+}))
+```
+
+#### Recovery Middleware
+
+```go
+// Prevent panics from crashing the application
+cfg.UseMiddleware(commandkit.RecoveryMiddleware())
+```
+
+#### Timing Middleware
+
+```go
+// Measure execution time and store in context
+cfg.UseMiddleware(commandkit.TimingMiddleware())
+```
+
+#### Rate Limiting Middleware
+
+```go
+// Limit command execution rate
+cfg.UseMiddlewareForCommands([]string{"api", "status"},
+    commandkit.RateLimitMiddleware(5, time.Minute))
+```
+
+#### Metrics Middleware
+
+```go
+// Collect command metrics
+cfg.UseMiddleware(commandkit.DefaultMetricsMiddleware())
+
+// Custom metrics collection
+cfg.UseMiddleware(commandkit.MetricsMiddleware(func(ctx *commandkit.CommandContext, duration time.Duration, err error) {
+    status := "success"
+    if err != nil {
+        status = "error"
+    }
+    metrics.Counter("command_executions", map[string]string{
+        "command": ctx.Command,
+        "status": status,
+    }).Inc()
+}))
+```
+
+### Middleware Patterns
+
+#### Global Middleware
+
+Applied to all commands:
+
+```go
+cfg.UseMiddleware(commandkit.RecoveryMiddleware())
+cfg.UseMiddleware(commandkit.DefaultLoggingMiddleware())
+cfg.UseMiddleware(commandkit.DefaultErrorHandlingMiddleware())
+```
+
+#### Command-Specific Middleware
+
+Applied only to specific commands:
+
+```go
+cfg.UseMiddlewareForCommands([]string{"admin", "shutdown"},
+    commandkit.TokenAuthMiddleware("ADMIN_TOKEN"))
+```
+
+#### Subcommand-Specific Middleware
+
+Applied only to specific subcommands:
+
+```go
+cfg.UseMiddlewareForSubcommands("admin", []string{"users", "shutdown"},
+    commandkit.AdminOnlyMiddleware("ADMIN_TOKEN"))
+```
+
+#### Command-Level Middleware
+
+Applied to a specific command during definition:
+
+```go
+cfg.Command("deploy").
+    Func(deployCommand).
+    Middleware(commandkit.TimingMiddleware()).
+    Middleware(commandkit.RecoveryMiddleware())
+```
+
+#### Conditional Middleware
+
+Applied based on conditions:
+
+```go
+cfg.UseMiddleware(commandkit.ConditionalMiddleware(
+    func(ctx *commandkit.CommandContext) bool {
+        return ctx.Command == "admin"
+    },
+    commandkit.AuthMiddleware(adminAuthFunc),
+))
+```
+
+### Context Sharing
+
+Middleware can share data through the command context:
+
+```go
+// Authentication middleware stores token
+func TokenAuthMiddleware(tokenKey string) CommandMiddleware {
+    return AuthMiddleware(func(ctx *CommandContext) error {
+        token := ctx.Config.GetString(tokenKey)
+        ctx.Set("auth_token", token) // Store in context
+        return nil
+    })
+}
+
+// Other middleware can access the token
+func LoggingMiddleware(next CommandFunc) CommandFunc {
+    return func(ctx *CommandContext) error {
+        if token, exists := ctx.Get("auth_token"); exists {
+            log.Printf("Command executed with token: %s", token)
+        }
+        return next(ctx)
+    }
+}
+```
+
+### Execution Order
+
+Middleware executes in registration order:
+
+```
+1. Global Middleware (in order of registration)
+2. Command-Specific Middleware (if applicable)
+3. Command Function
+4. Middleware unwinds in reverse order
+```
+
+### Custom Middleware
+
+Create custom middleware by implementing the `CommandMiddleware` type:
+
+```go
+type CommandMiddleware func(next CommandFunc) CommandFunc
+
+// Custom middleware example
+func CustomMiddleware(next CommandFunc) CommandFunc {
+    return func(ctx *CommandContext) error {
+        // Pre-execution logic
+        log.Printf("Starting command: %s", ctx.Command)
+
+        // Execute next in chain
         err := next(ctx)
-        fmt.Printf("Command completed\n")
+
+        // Post-execution logic
+        log.Printf("Command %s completed with error: %v", ctx.Command, err)
+
         return err
     }
 }
-
-// Apply to specific commands
-cfg.Command("start").
-    Func(startCommand).
-    UseMiddleware(loggingMiddleware)
-
-// Apply to all commands
-cfg.UseMiddleware(loggingMiddleware)
-
-// Apply to specific command names
-cfg.UseMiddlewareForCommands([]string{"start", "stop"}, authMiddleware)
 ```
 
 ## Error Output
