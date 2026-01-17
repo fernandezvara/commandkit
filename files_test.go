@@ -476,13 +476,3 @@ func TestLoadFileUnsupportedFormat(t *testing.T) {
 		t.Error("LoadFile should return error for unsupported file format")
 	}
 }
-
-func TestWatchFile(t *testing.T) {
-	cfg := New()
-
-	// WatchFile is a placeholder, currently returns nil
-	err := cfg.WatchFile("config.yaml", func(err error) {})
-	if err != nil {
-		t.Errorf("WatchFile returned unexpected error: %v", err)
-	}
-}

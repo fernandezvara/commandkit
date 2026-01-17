@@ -94,13 +94,6 @@ func (c *Config) SetEnvironmentFromEnv(envVar string) error {
 	return c.SetEnvironment(env)
 }
 
-// WatchFile watches a configuration file for changes and reloads automatically
-func (c *Config) WatchFile(filename string, callback func(error)) error {
-	// For now, this is a placeholder. In a full implementation,
-	// we would use fsnotify or similar to watch for file changes
-	fmt.Printf("File watching not yet implemented for: %s\n", filename)
-	return nil
-}
 
 // mergeFileData merges new config data with existing file data
 func (c *Config) mergeFileData(newData map[string]any) {
