@@ -731,36 +731,33 @@ func formatErrors(errs []ConfigError) string {
 
     var sb strings.Builder
 
-    sb.WriteString("\n")
-    sb.WriteString("╔══════════════════════════════════════════════════════════════════╗\n")
-    sb.WriteString("║                    CONFIGURATION ERRORS                          ║\n")
-    sb.WriteString("╠══════════════════════════════════════════════════════════════════╣\n")
+    sb.WriteString("Configuration errors detected:\n")
+    sb.WriteString(strings.Repeat("=", 50) + "\n")
 
     for i, err := range errs {
         // Key line
-        sb.WriteString(fmt.Sprintf("║  %-64s║\n", fmt.Sprintf("❌ %s", err.Key)))
+        sb.WriteString(fmt.Sprintf("ERROR: %s\n", err.Key))
 
         // Source and value
         if err.Source != "none" {
-            sourceInfo := fmt.Sprintf("   Source: %s", err.Source)
+            sourceInfo := fmt.Sprintf("  Source: %s", err.Source)
             if err.Value != "" {
                 sourceInfo += fmt.Sprintf(" = %s", err.Value)
             }
-            sb.WriteString(fmt.Sprintf("║  %-64s║\n", sourceInfo))
+            sb.WriteString(fmt.Sprintf("%s\n", sourceInfo))
         }
 
         // Error message
-        sb.WriteString(fmt.Sprintf("║  %-64s║\n", fmt.Sprintf("   Error: %s", err.Message)))
+        sb.WriteString(fmt.Sprintf("  Error: %s\n", err.Message))
 
         // Separator between errors
         if i < len(errs)-1 {
-            sb.WriteString("║  ────────────────────────────────────────────────────────────    ║\n")
+            sb.WriteString("--------------------------------------------------\n")
         }
     }
 
-    sb.WriteString("╠══════════════════════════════════════════════════════════════════╣\n")
-    sb.WriteString(fmt.Sprintf("║  %-64s║\n", fmt.Sprintf("Total: %d error(s)", len(errs))))
-    sb.WriteString("╚══════════════════════════════════════════════════════════════════╝\n")
+    sb.WriteString(strings.Repeat("=", 50) + "\n")
+    sb.WriteString(fmt.Sprintf("Total: %d error(s)\n", len(errs)))
 
     return sb.String()
 }
@@ -1438,9 +1435,6 @@ import (
 func main() {
     cfg := configkit.New()
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // SERVER
-    // ═══════════════════════════════════════════════════════════════════════
     cfg.Define("PORT").
         Int64().
         Env("PORT").
@@ -1465,9 +1459,6 @@ func main() {
         OneOf("debug", "info", "warn", "error").
         Description("Logging verbosity")
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // DATABASE
-    // ═══════════════════════════════════════════════════════════════════════
     cfg.Define("DATABASE_URL").
         String().
         Env("DATABASE_URL").
@@ -1476,9 +1467,7 @@ func main() {
         MinLength(10).
         Description("PostgreSQL connection string")
 
-    // ═══════════════════════════════════════════════════════════════════════
     // JWT / SECURITY
-    // ═══════════════════════════════════════════════════════════════════════
     cfg.Define("JWT_SIGNING_KEY").
         String().
         Env("JWT_SIGNING_KEY").
@@ -1639,23 +1628,20 @@ func main() {
 When configuration has errors:
 
 ```
-╔══════════════════════════════════════════════════════════════════╗
-║                    CONFIGURATION ERRORS                          ║
-╠══════════════════════════════════════════════════════════════════╣
-║  ❌ BASE_URL                                                     ║
-║     Source: none                                                 ║
-║     Error: required value not provided (set BASE_URL or --base-url)║
-║  ────────────────────────────────────────────────────────────    ║
-║  ❌ JWT_SIGNING_KEY                                              ║
-║     Source: env = ab****ef                                       ║
-║     Error: value length 8 is less than minimum 32                ║
-║  ────────────────────────────────────────────────────────────    ║
-║  ❌ PORT                                                         ║
-║     Source: env = 99999                                          ║
-║     Error: value 99999 is greater than maximum 65535             ║
-╠══════════════════════════════════════════════════════════════════╣
-║  Total: 3 error(s)                                               ║
-╚══════════════════════════════════════════════════════════════════╝
+Configuration errors detected:
+==================================================
+ERROR: BASE_URL
+  Error: required value not provided (set BASE_URL or --base-url)
+--------------------------------------------------
+ERROR: JWT_SIGNING_KEY
+  Source: env = ab****ef
+  Error: value length 8 is less than minimum 32
+--------------------------------------------------
+ERROR: PORT
+  Source: env = 99999
+  Error: value 99999 is greater than maximum 65535
+==================================================
+Total: 3 error(s)
 ```
 
 ---
@@ -1942,15 +1928,13 @@ Options:
 Configuration errors in commands use the same beautiful formatting as global configuration:
 
 ```
-╔══════════════════════════════════════════════════════════════════╗
-║                    COMMAND CONFIGURATION ERRORS                  ║
-╠══════════════════════════════════════════════════════════════════╣
-║  ❌ PORT                                                         ║
-║     Source: flag = 99999                                         ║
-║     Error: value 99999 is greater than maximum 65535             ║
-╠══════════════════════════════════════════════════════════════════╣
-║  Total: 1 error(s)                                               ║
-╚══════════════════════════════════════════════════════════════════╝
+Configuration errors detected:
+==================================================
+ERROR: PORT
+  Source: flag = 99999
+  Error: value 99999 is greater than maximum 65535
+==================================================
+Total: 1 error(s)
 ```
 
 ## Implementation Structure

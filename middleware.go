@@ -15,9 +15,9 @@ func LoggingMiddleware(logger func(*CommandContext, time.Duration)) CommandMiddl
 			start := time.Now()
 
 			// Log command start
-			log.Printf("🚀 Starting command: %s", ctx.Command)
+			log.Printf("Starting command: %s", ctx.Command)
 			if ctx.SubCommand != "" {
-				log.Printf("📂 Subcommand: %s", ctx.SubCommand)
+				log.Printf("Subcommand: %s", ctx.SubCommand)
 			}
 
 			// Execute next in chain
@@ -35,9 +35,9 @@ func LoggingMiddleware(logger func(*CommandContext, time.Duration)) CommandMiddl
 // DefaultLoggingMiddleware creates a standard logging middleware with sensible defaults
 func DefaultLoggingMiddleware() CommandMiddleware {
 	return LoggingMiddleware(func(ctx *CommandContext, duration time.Duration) {
-		status := "✅ SUCCESS"
+		status := "SUCCESS"
 		if _, hasError := ctx.Get("error"); hasError {
-			status = "❌ FAILED"
+			status = "FAILED"
 		}
 
 		log.Printf("%s Command %s completed in %v", status, ctx.Command, duration)
@@ -51,11 +51,11 @@ func AuthMiddleware(authFunc func(*CommandContext) error) CommandMiddleware {
 		return func(ctx *CommandContext) error {
 			// Check authentication before executing command
 			if err := authFunc(ctx); err != nil {
-				log.Printf("🔒 Authentication failed for command %s: %v", ctx.Command, err)
+				log.Printf("Authentication failed for command %s: %v", ctx.Command, err)
 				return fmt.Errorf("authentication failed: %w", err)
 			}
 
-			log.Printf("🔓 Authentication successful for command %s", ctx.Command)
+			log.Printf("Authentication successful for command %s", ctx.Command)
 
 			// Auth passed, execute command
 			return next(ctx)
@@ -141,7 +141,7 @@ func TimingMiddleware() CommandMiddleware {
 			// Store timing in context for other middleware
 			ctx.Set("duration", duration)
 
-			log.Printf("⏱️ Command %s took %v", ctx.Command, duration)
+			log.Printf("Command %s took %v", ctx.Command, duration)
 
 			return err
 		}
@@ -154,10 +154,10 @@ func ConditionalMiddleware(condition func(*CommandContext) bool, middleware Comm
 	return func(next CommandFunc) CommandFunc {
 		return func(ctx *CommandContext) error {
 			if condition(ctx) {
-				log.Printf("🔧 Applying conditional middleware for command %s", ctx.Command)
+				log.Printf("Applying conditional middleware for command %s", ctx.Command)
 				return middleware(next)(ctx)
 			}
-			log.Printf("⏭️ Skipping conditional middleware for command %s", ctx.Command)
+			log.Printf("Skipping conditional middleware for command %s", ctx.Command)
 			return next(ctx)
 		}
 	}
@@ -194,7 +194,7 @@ func RecoveryMiddleware() CommandMiddleware {
 		return func(ctx *CommandContext) error {
 			defer func() {
 				if r := recover(); r != nil {
-					log.Printf("🚨 Panic recovered in command %s: %v", ctx.Command, r)
+					log.Printf("Panic recovered in command %s: %v", ctx.Command, r)
 
 					// Store panic in context for error handling middleware
 					ctx.Set("panic", r)
@@ -226,7 +226,7 @@ func RateLimitMiddleware(maxExecutions int, window time.Duration) CommandMiddlew
 				return fmt.Errorf("rate limit exceeded: %d executions allowed per %v", maxExecutions, window)
 			}
 
-			log.Printf("📊 Command %s execution count: %d/%d", ctx.Command, count, maxExecutions)
+			log.Printf("Command %s execution count: %d/%d", ctx.Command, count, maxExecutions)
 
 			return next(ctx)
 		}
@@ -258,7 +258,7 @@ func DefaultMetricsMiddleware() CommandMiddleware {
 			status = "error"
 		}
 
-		log.Printf("📈 Metrics: command=%s duration=%v status=%s", ctx.Command, duration, status)
+		log.Printf("Metrics: command=%s duration=%v status=%s", ctx.Command, duration, status)
 
 		// In a real application, you'd send this to a metrics system:
 		// metrics.Counter("command_executions", map[string]string{

@@ -50,7 +50,7 @@ func TestFormatErrors(t *testing.T) {
 	}
 	result = formatErrors(errs)
 
-	if !strings.Contains(result, "CONFIGURATION ERRORS") {
+	if !strings.Contains(result, "Configuration errors detected:") {
 		t.Error("formatErrors should contain header")
 	}
 	if !strings.Contains(result, "PORT") {
@@ -84,9 +84,9 @@ func TestFormatErrors(t *testing.T) {
 		t.Error("formatErrors should contain HOST")
 	}
 
-	// Check box drawing characters
-	if !strings.Contains(result, "╔") || !strings.Contains(result, "╚") {
-		t.Error("formatErrors should use box drawing characters")
+	// Check simple formatting
+	if !strings.Contains(result, "Configuration errors detected:") {
+		t.Error("formatErrors should use simple formatting")
 	}
 }
 

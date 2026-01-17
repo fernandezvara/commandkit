@@ -24,7 +24,7 @@ func (e *ConfigError) Error() string {
 	return fmt.Sprintf("%s (%s): %s", e.Key, e.Source, e.Message)
 }
 
-// formatErrors creates a nicely formatted error output
+// formatErrors formats configuration errors for display
 func formatErrors(errs []ConfigError) string {
 	if len(errs) == 0 {
 		return ""
@@ -32,36 +32,33 @@ func formatErrors(errs []ConfigError) string {
 
 	var sb strings.Builder
 
-	sb.WriteString("\n")
-	sb.WriteString("╔══════════════════════════════════════════════════════════════════╗\n")
-	sb.WriteString("║                    CONFIGURATION ERRORS                          ║\n")
-	sb.WriteString("╠══════════════════════════════════════════════════════════════════╣\n")
+	sb.WriteString("Configuration errors detected:\n")
+	sb.WriteString(strings.Repeat("=", 50) + "\n")
 
 	for i, err := range errs {
 		// Key line
-		sb.WriteString(fmt.Sprintf("║  %-64s║\n", fmt.Sprintf("❌ %s", err.Key)))
+		sb.WriteString(fmt.Sprintf("ERROR: %s\n", err.Key))
 
 		// Source and value
 		if err.Source != "none" {
-			sourceInfo := fmt.Sprintf("   Source: %s", err.Source)
+			sourceInfo := fmt.Sprintf("  Source: %s", err.Source)
 			if err.Value != "" {
 				sourceInfo += fmt.Sprintf(" = %s", err.Value)
 			}
-			sb.WriteString(fmt.Sprintf("║  %-64s║\n", sourceInfo))
+			sb.WriteString(fmt.Sprintf("%s\n", sourceInfo))
 		}
 
 		// Error message
-		sb.WriteString(fmt.Sprintf("║  %-64s║\n", fmt.Sprintf("   Error: %s", err.Message)))
+		sb.WriteString(fmt.Sprintf("  Error: %s\n", err.Message))
 
 		// Separator between errors
 		if i < len(errs)-1 {
-			sb.WriteString("║  ────────────────────────────────────────────────────────────    ║\n")
+			sb.WriteString("\n")
 		}
 	}
 
-	sb.WriteString("╠══════════════════════════════════════════════════════════════════╣\n")
-	sb.WriteString(fmt.Sprintf("║  %-64s║\n", fmt.Sprintf("Total: %d error(s)", len(errs))))
-	sb.WriteString("╚══════════════════════════════════════════════════════════════════╝\n")
+	sb.WriteString(strings.Repeat("=", 50) + "\n")
+	sb.WriteString(fmt.Sprintf("Total: %d error(s)\n", len(errs)))
 
 	return sb.String()
 }

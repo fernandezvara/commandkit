@@ -406,19 +406,16 @@ func CustomMiddleware(next CommandFunc) CommandFunc {
 When configuration has errors, CommandKit displays them clearly:
 
 ```
-╔══════════════════════════════════════════════════════════════════╗
-║                    CONFIGURATION ERRORS                          ║
-╠══════════════════════════════════════════════════════════════════╣
-║  ❌ DATABASE_URL                                                 ║
-║     Source: none                                                 ║
-║     Error: required value not provided (set DATABASE_URL)        ║
-║  ────────────────────────────────────────────────────────────    ║
-║  ❌ PORT                                                         ║
-║     Source: env = 99999                                          ║
-║     Error: value 99999 is greater than maximum 65535             ║
-╠══════════════════════════════════════════════════════════════════╣
-║  Total: 2 error(s)                                               ║
-╚══════════════════════════════════════════════════════════════════╝
+Configuration errors detected:
+==================================================
+ERROR: DATABASE_URL
+  Error: required value not provided (set DATABASE_URL)
+--------------------------------------------------
+ERROR: PORT
+  Source: env = 99999
+  Error: value 99999 is greater than maximum 65535
+==================================================
+Total: 2 error(s)
 ```
 
 ## API Reference

@@ -407,7 +407,7 @@
 - [x] Implement CommandConfig struct
 - [x] Add command-specific definition storage
 - [x] Create config merging logic
-- [ ] Add override warning system
+- [x] Add override warning system
 - [x] Implement priority resolution
 
 #### Story 20: Configuration Priority System
@@ -426,7 +426,7 @@
 **Implementation Tasks:**
 
 - [x] Implement priority resolution algorithm
-- [ ] Add override detection and warnings
+- [x] Add override detection and warnings
 - [x] Document priority rules
 - [x] Test priority scenarios
 - [x] Handle edge cases
@@ -634,7 +634,7 @@
 - [x] Create middleware.go with middleware types (in command.go)
 - [x] Implement UseMiddleware() method
 - [x] Add command-specific middleware support
-- [ ] Create built-in middleware implementations
+- [x] Create built-in middleware implementations
 - [x] Implement middleware execution chain
 
 #### Story 30: Advanced Middleware Features
