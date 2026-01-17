@@ -59,6 +59,7 @@ func (b *CommandBuilder) Config(fn func(*CommandConfig)) *CommandBuilder {
 		flagSet:     b.config.flagSet,
 		flagValues:  make(map[string]*string),
 		fileConfig:  b.config.fileConfig,
+		commands:    b.config.commands,
 		processed:   false,
 	}
 
@@ -68,6 +69,16 @@ func (b *CommandBuilder) Config(fn func(*CommandConfig)) *CommandBuilder {
 	}
 
 	fn(cmdConfig)
+
+	// Check for command overrides and store warnings
+	warnings := b.config.checkCommandOverrides(b.cmd.Name, cmdConfig.Config.definitions)
+	if warnings.HasWarnings() {
+		// Merge with existing warnings
+		for _, warning := range warnings.GetWarnings() {
+			b.config.overrideWarnings.Add(warning)
+		}
+		warnings.LogWarnings()
+	}
 
 	// Store command-specific definitions (merge with global)
 	for k, v := range cmdConfig.Config.definitions {

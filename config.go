@@ -18,6 +18,7 @@ type Config struct {
 	fileConfig       *FileConfig
 	commands         map[string]*Command
 	globalMiddleware []CommandMiddleware
+	overrideWarnings *OverrideWarnings
 	processed        bool
 }
 
@@ -32,6 +33,7 @@ func New() *Config {
 		fileConfig:       nil,
 		commands:         make(map[string]*Command),
 		globalMiddleware: make([]CommandMiddleware, 0),
+		overrideWarnings: NewOverrideWarnings(),
 		processed:        false,
 	}
 }
@@ -153,6 +155,13 @@ func (c *Config) Process() []ConfigError {
 		}
 	}
 
+	// Check for source overrides and store warnings
+	overrideWarnings := c.checkSourceOverrides()
+	if overrideWarnings.HasWarnings() {
+		c.overrideWarnings = overrideWarnings
+		c.overrideWarnings.LogWarnings()
+	}
+
 	return errs
 }
 
@@ -233,6 +242,23 @@ func (c *Config) IsSecret(key string) bool {
 		return def.secret
 	}
 	return false
+}
+
+// GetOverrideWarnings returns all override warnings
+func (c *Config) GetOverrideWarnings() *OverrideWarnings {
+	return c.overrideWarnings
+}
+
+// HasOverrideWarnings returns true if there are override warnings
+func (c *Config) HasOverrideWarnings() bool {
+	return c.overrideWarnings.HasWarnings()
+}
+
+// PrintOverrideWarnings prints override warnings to stderr
+func (c *Config) PrintOverrideWarnings() {
+	if c.overrideWarnings.HasWarnings() {
+		fmt.Fprint(os.Stderr, c.overrideWarnings.FormatWarnings())
+	}
 }
 
 // Dump returns a map of all configuration values (secrets masked)
