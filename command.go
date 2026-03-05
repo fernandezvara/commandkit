@@ -4,6 +4,7 @@ package commandkit
 import (
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -42,6 +43,15 @@ func (cmd *Command) AddSubCommand(name string, subCmd *Command) {
 
 // Execute executes the command with the given context
 func (cmd *Command) Execute(ctx *CommandContext) error {
+	// Check if command has no function but has subcommands
+	if cmd.Func == nil && len(cmd.SubCommands) > 0 {
+		return fmt.Errorf("%s", cmd.GetSubcommandHelp(ctx.Command))
+	}
+
+	if cmd.Func == nil {
+		return fmt.Errorf("command '%s' has no implementation", ctx.Command)
+	}
+
 	// Process command-specific configuration if any
 	if len(cmd.Definitions) > 0 {
 		// Create a temporary config with command-specific definitions
@@ -102,6 +112,34 @@ func (cmd *Command) FindSubCommand(name string) *Command {
 	}
 
 	return nil
+}
+
+// GetSubcommandHelp returns help text for subcommands of this command
+func (cmd *Command) GetSubcommandHelp(commandPath string) string {
+	var sb strings.Builder
+
+	// Get executable name from os.Args[0] or use a default
+	executable := "command"
+	if len(os.Args) > 0 {
+		executable = os.Args[0]
+	}
+
+	sb.WriteString(fmt.Sprintf("Subcommands for %s:\n\n", commandPath))
+
+	// Sort subcommands for consistent display
+	names := make([]string, 0, len(cmd.SubCommands))
+	for name := range cmd.SubCommands {
+		names = append(names, name)
+	}
+
+	for _, name := range names {
+		subCmd := cmd.SubCommands[name]
+		sb.WriteString(fmt.Sprintf("  %-12s %s\n", name, subCmd.ShortHelp))
+	}
+
+	sb.WriteString(fmt.Sprintf("\nUse '%s %s <command> --help' for more information on a specific command.\n", executable, commandPath))
+
+	return sb.String()
 }
 
 // GetHelp returns help text for this command

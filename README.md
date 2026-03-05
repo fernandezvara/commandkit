@@ -9,7 +9,7 @@ A command and type-safe configuration library for Go with support for environmen
 - **Multiple sources**: Config Files → Flags → Environment Variables → Defaults
 - **Rich validation**: Required, ranges, regex, oneOf, URL, min/max length
 - **Secret protection**: Sensitive values protected with memguard
-- **Clear error messages**: Beautiful formatted output for missing/invalid configs
+- **Elegant error handling**: Get functions collect errors and show helpful messages
 - **Command system**: Define commands with subcommands, aliases, and help
 - **Configuration files**: Support for JSON, YAML, TOML
 - **Command middleware**: Add middleware for logging, authentication, and common functionality
@@ -19,6 +19,14 @@ A command and type-safe configuration library for Go with support for environmen
 ```bash
 go get github.com/fernandezvara/commandkit
 ```
+
+### Breaking Changes in v2.0
+
+- **Get functions no longer panic**: All `Get` functions now collect errors and exit gracefully instead of panicking
+- **GetOr behavior changed**: `GetOr[T]()` now also collects errors and exits (no longer a silent fallback)
+- **Consistent error handling**: All Get functions behave the same way with helpful error messages
+
+See the [Error Handling](#error-handling) section for details.
 
 ## Quick Start
 
@@ -147,6 +155,8 @@ cfg.Process()
 secret := cfg.GetSecret("API_KEY")
 keyBytes := secret.Bytes()  // Use the secret
 defer cfg.Destroy()         // Clean up all secrets
+
+// Note: Get functions now collect errors and exit gracefully instead of panicking
 ```
 
 ## Command System
@@ -401,6 +411,53 @@ func CustomMiddleware(next CommandFunc) CommandFunc {
 }
 ```
 
+## Error Handling
+
+CommandKit provides elegant error handling for configuration access:
+
+### Get Function Error Collection
+
+When `Get` functions encounter errors (missing keys, wrong types, secret access), they collect all errors and display helpful messages before exiting:
+
+```go
+// This will collect errors and exit gracefully
+port := commandkit.Get[int64](cfg, "PORT")
+logLevel := commandkit.Get[string](cfg, "LOG_LEVEL")
+```
+
+**Error Output:**
+
+```
+Configuration errors detected:
+
+  MISSING_KEY: key not defined
+  API_KEY: use GetSecret() for secrets
+  PORT: expected string, got int64
+
+Use 'start --help' for more information.
+```
+
+### Consistent Behavior
+
+All `Get` functions behave consistently:
+
+- `Get[T]()` - Collects errors and exits
+- `MustGet[T]()` - Alias for Get, same behavior
+- `GetOr[T]()` - Also collects errors and exits (no longer a silent fallback)
+- Convenience methods (`GetString()`, `GetInt64()`, etc.) - Collect errors and exit
+
+### Secret Access
+
+Secrets must be accessed with `GetSecret()`:
+
+```go
+// ❌ This will collect an error and exit
+apiKey := commandkit.Get[string](cfg, "API_KEY")
+
+// ✅ Correct way to access secrets
+apiKey := cfg.GetSecret("API_KEY")
+```
+
 ## Error Output
 
 When configuration has errors, CommandKit displays them clearly:
@@ -416,6 +473,20 @@ ERROR: PORT
   Error: value 99999 is greater than maximum 65535
 ==================================================
 Total: 2 error(s)
+```
+
+### Get Function Errors
+
+When `Get` functions encounter errors during command execution:
+
+```
+Configuration errors detected:
+
+  MISSING_KEY: key not defined
+  API_KEY: use GetSecret() for secrets
+  PORT: expected string, got int64
+
+Use 'start --help' for more information.
 ```
 
 ## API Reference
@@ -439,9 +510,9 @@ Total: 2 error(s)
 
 | Method                        | Description                             |
 | ----------------------------- | --------------------------------------- |
-| `Get[T](cfg, key)`            | Get value with type T (panics on error) |
-| `GetOr[T](cfg, key, default)` | Get value or return default             |
-| `MustGet[T](cfg, key)`        | Alias for Get                           |
+| `Get[T](cfg, key)`            | Get value with type T (collects errors and exits) |
+| `GetOr[T](cfg, key, default)` | Get value or return default (collects errors and exits) |
+| `MustGet[T](cfg, key)`        | Alias for Get (collects errors and exits) |
 
 ### Convenience Getters
 

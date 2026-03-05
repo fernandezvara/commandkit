@@ -415,3 +415,138 @@ func TestUseMiddlewareForSubcommands(t *testing.T) {
 		t.Errorf("Expected no middleware for 'server', got %v", executedFor)
 	}
 }
+
+func TestCommandWithNilFuncAndSubcommands(t *testing.T) {
+	cfg := New()
+
+	// Define a command with subcommands but no Func
+	cfg.Command("user").
+		ShortHelp("User management commands").
+		SubCommand("create").
+		Func(func(ctx *CommandContext) error { return nil }).
+		ShortHelp("Create a new user").
+		SubCommand("update").
+		Func(func(ctx *CommandContext) error { return nil }).
+		ShortHelp("Update an existing user").
+		SubCommand("list").
+		Func(func(ctx *CommandContext) error { return nil }).
+		ShortHelp("List all users").
+		SubCommand("show").
+		Func(func(ctx *CommandContext) error { return nil }).
+		ShortHelp("Show details of a user").
+		SubCommand("delete").
+		Func(func(ctx *CommandContext) error { return nil }).
+		ShortHelp("Delete a user")
+
+	// Test executing parent command without subcommand - should show help
+	err := cfg.Execute([]string{"app", "user"})
+	if err == nil {
+		t.Fatal("Expected error when executing command with nil Func")
+	}
+
+	// Check that the error contains subcommand help
+	errStr := err.Error()
+	if !strings.Contains(errStr, "Subcommands for user:") {
+		t.Errorf("Expected subcommand help in error, got: %s", errStr)
+	}
+	if !strings.Contains(errStr, "create       Create a new user") {
+		t.Errorf("Expected 'create' subcommand in help, got: %s", errStr)
+	}
+	if !strings.Contains(errStr, "user <command> --help") {
+		t.Errorf("Expected usage hint in help, got: %s", errStr)
+	}
+}
+
+func TestCommandWithNilFuncAndNoSubcommands(t *testing.T) {
+	cfg := New()
+
+	// Define a command with no Func and no subcommands
+	cfg.Command("broken").
+		ShortHelp("This command has no implementation")
+
+	// Test executing command with no Func and no subcommands
+	err := cfg.Execute([]string{"app", "broken"})
+	if err == nil {
+		t.Fatal("Expected error when executing command with nil Func and no subcommands")
+	}
+
+	expectedErr := "command 'broken' has no implementation"
+	if err.Error() != expectedErr {
+		t.Errorf("Expected error '%s', got '%s'", expectedErr, err.Error())
+	}
+}
+
+func TestCommandWithFuncAndSubcommands(t *testing.T) {
+	cfg := New()
+	executed := false
+
+	// Define a command with both Func and subcommands (should work normally)
+	cfg.Command("start").
+		Func(func(ctx *CommandContext) error {
+			executed = true
+			return nil
+		}).
+		ShortHelp("Start the service").
+		SubCommand("server").
+		Func(func(ctx *CommandContext) error { return nil }).
+		ShortHelp("Start server only")
+
+	// Test executing parent command - should execute Func normally
+	err := cfg.Execute([]string{"app", "start"})
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if !executed {
+		t.Error("Expected command Func to be executed")
+	}
+}
+
+func TestGetSubcommandHelp(t *testing.T) {
+	cmd := NewCommand("user")
+	cmd.ShortHelp = "User management commands"
+
+	// Add subcommands
+	cmd.SubCommands["create"] = &Command{
+		Name:      "create",
+		ShortHelp: "Create a new user",
+	}
+	cmd.SubCommands["update"] = &Command{
+		Name:      "update",
+		ShortHelp: "Update an existing user",
+	}
+	cmd.SubCommands["list"] = &Command{
+		Name:      "list",
+		ShortHelp: "List all users",
+	}
+	cmd.SubCommands["show"] = &Command{
+		Name:      "show",
+		ShortHelp: "Show details of a user",
+	}
+	cmd.SubCommands["delete"] = &Command{
+		Name:      "delete",
+		ShortHelp: "Delete a user",
+	}
+
+	help := cmd.GetSubcommandHelp("user")
+
+	// Check help content
+	expectedParts := []string{
+		"Subcommands for user:",
+		"create       Create a new user",
+		"update       Update an existing user",
+		"list         List all users",
+		"show         Show details of a user",
+		"delete       Delete a user",
+		"user <command> --help",
+	}
+
+	for _, part := range expectedParts {
+		if !strings.Contains(help, part) {
+			t.Errorf("Expected '%s' in help, got: %s", part, help)
+		}
+	}
+
+	// Print the actual help output to verify format
+	t.Logf("Actual help output:\n%s", help)
+}
