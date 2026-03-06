@@ -317,7 +317,8 @@ func TestCommandExecutor_Execute_CollectedErrors(t *testing.T) {
 		Name: "collect",
 		Func: func(ctx *CommandContext) error {
 			// Simulate collected errors with proper config reference
-			ctx.execution.CollectErrorWithConfig(ctx.Config, "TEST", "string", "", "test error", false)
+			config := getConfig(ctx)
+			ctx.execution.CollectErrorWithConfig(config, "TEST", "string", "", "test error", false)
 			return nil
 		},
 	}

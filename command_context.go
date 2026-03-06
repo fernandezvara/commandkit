@@ -3,25 +3,27 @@ package commandkit
 
 // CommandContext provides context for command execution
 type CommandContext struct {
-	Args       []string
-	Config     *Config
-	Command    string
-	SubCommand string
-	Flags      map[string]string
-	data       map[string]any    // For middleware data sharing
-	execution  *ExecutionContext // Thread-safe error collection
+	Args          []string
+	GlobalConfig  *Config // Immutable global config
+	CommandConfig *Config // Immutable command-specific config (nil if no command defs)
+	Command       string
+	SubCommand    string
+	Flags         map[string]string
+	data          map[string]any    // For middleware data sharing
+	execution     *ExecutionContext // Thread-safe error collection
 }
 
 // NewCommandContext creates a new command context
 func NewCommandContext(args []string, config *Config, command, subCommand string) *CommandContext {
 	return &CommandContext{
-		Args:       args,
-		Config:     config,
-		Command:    command,
-		SubCommand: subCommand,
-		Flags:      make(map[string]string),
-		data:       make(map[string]any),
-		execution:  NewExecutionContext(command), // Always initialize execution context
+		Args:          args,
+		GlobalConfig:  config,
+		CommandConfig: nil, // Will be set by ConfigProcessor if command has definitions
+		Command:       command,
+		SubCommand:    subCommand,
+		Flags:         make(map[string]string),
+		data:          make(map[string]any),
+		execution:     NewExecutionContext(command), // Always initialize execution context
 	}
 }
 

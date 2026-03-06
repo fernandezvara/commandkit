@@ -142,7 +142,13 @@ Secrets are masked for security.`)
 
 func startCommand(ctx *commandkit.CommandContext) error {
 	// Process command-specific configuration
-	if result := ctx.Config.Process(); result.Error != nil {
+	var config *commandkit.Config
+	if ctx.CommandConfig != nil {
+		config = ctx.CommandConfig
+	} else {
+		config = ctx.GlobalConfig
+	}
+	if result := config.Process(); result.Error != nil {
 		if result.Message != "" {
 			fmt.Fprintln(os.Stderr, result.Message)
 		}
@@ -181,7 +187,7 @@ func startCommand(ctx *commandkit.CommandContext) error {
 	logLevel := commandkit.GetValue[string](logLevelResult)
 
 	// Access secrets safely
-	dbURL := ctx.Config.GetSecret("DATABASE_URL")
+	dbURL := config.GetSecret("DATABASE_URL")
 
 	fmt.Printf("=== Starting Service ===\n")
 	fmt.Printf("Port: %d\n", port)
@@ -200,7 +206,13 @@ func startCommand(ctx *commandkit.CommandContext) error {
 
 func startServerCommand(ctx *commandkit.CommandContext) error {
 	// Process command-specific configuration
-	if result := ctx.Config.Process(); result.Error != nil {
+	var config *commandkit.Config
+	if ctx.CommandConfig != nil {
+		config = ctx.CommandConfig
+	} else {
+		config = ctx.GlobalConfig
+	}
+	if result := config.Process(); result.Error != nil {
 		if result.Message != "" {
 			fmt.Fprintln(os.Stderr, result.Message)
 		}
@@ -228,7 +240,13 @@ func startServerCommand(ctx *commandkit.CommandContext) error {
 
 func startWorkerCommand(ctx *commandkit.CommandContext) error {
 	// Process command-specific configuration
-	if result := ctx.Config.Process(); result.Error != nil {
+	var config *commandkit.Config
+	if ctx.CommandConfig != nil {
+		config = ctx.CommandConfig
+	} else {
+		config = ctx.GlobalConfig
+	}
+	if result := config.Process(); result.Error != nil {
 		if result.Message != "" {
 			fmt.Fprintln(os.Stderr, result.Message)
 		}
@@ -249,7 +267,13 @@ func startWorkerCommand(ctx *commandkit.CommandContext) error {
 
 func stopCommand(ctx *commandkit.CommandContext) error {
 	// Process command-specific configuration
-	if result := ctx.Config.Process(); result.Error != nil {
+	var config *commandkit.Config
+	if ctx.CommandConfig != nil {
+		config = ctx.CommandConfig
+	} else {
+		config = ctx.GlobalConfig
+	}
+	if result := config.Process(); result.Error != nil {
 		if result.Message != "" {
 			fmt.Fprintln(os.Stderr, result.Message)
 		}
@@ -281,7 +305,14 @@ func statusCommand(ctx *commandkit.CommandContext) error {
 func configCommand(ctx *commandkit.CommandContext) error {
 	fmt.Printf("=== Configuration ===\n")
 
-	for k, v := range ctx.Config.Dump() {
+	var config *commandkit.Config
+	if ctx.CommandConfig != nil {
+		config = ctx.CommandConfig
+	} else {
+		config = ctx.GlobalConfig
+	}
+
+	for k, v := range config.Dump() {
 		fmt.Printf("  %s = %s\n", k, v)
 	}
 

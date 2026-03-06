@@ -280,7 +280,7 @@ func TestValidateRequiredFlagsLogsWarning(t *testing.T) {
 	}
 
 	ctx := NewCommandContext(nil, New(), "deploy", "")
-	ctx.Config.flagValues = make(map[string]*string)
+	ctx.GlobalConfig.flagValues = make(map[string]*string)
 
 	logs := captureLogs(t, func() {
 		validateRequiredFlags(cmd, ctx)

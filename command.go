@@ -48,7 +48,13 @@ func validateRequiredFlags(cmd *Command, ctx *CommandContext) {
 
 			// Check flag value
 			if def.flag != "" {
-				if flagVal, ok := ctx.Config.flagValues[key]; ok && flagVal != nil && *flagVal != "" {
+				var flagVal *string
+				if ctx.CommandConfig != nil {
+					flagVal, _ = ctx.CommandConfig.flagValues[key]
+				} else {
+					flagVal, _ = ctx.GlobalConfig.flagValues[key]
+				}
+				if flagVal != nil && *flagVal != "" {
 					hasValue = true
 				}
 			}

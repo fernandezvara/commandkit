@@ -42,8 +42,8 @@ func (cp *configProcessor) ProcessCommandConfig(cmd *Command, ctx *CommandContex
 		secrets:     newSecretStore(),
 		flagSet:     flag.NewFlagSet("", flag.ContinueOnError),
 		flagValues:  make(map[string]*string),
-		fileConfig:  ctx.Config.fileConfig,
-		commands:    ctx.Config.commands,
+		fileConfig:  ctx.GlobalConfig.fileConfig,
+		commands:    ctx.GlobalConfig.commands,
 		processed:   false,
 	}
 
@@ -83,8 +83,8 @@ func (cp *configProcessor) ProcessCommandConfig(cmd *Command, ctx *CommandContex
 		return ConfigErrorResult(result.Message)
 	}
 
-	// Update the context config
-	ctx.Config = tempConfig
+	// Set the command config instead of mutating the context
+	ctx.CommandConfig = tempConfig
 	return Success()
 }
 
@@ -105,7 +105,14 @@ func (cp *configProcessor) ValidateRequiredFlags(cmd *Command, ctx *CommandConte
 
 			// Check flag value
 			if def.flag != "" {
-				if flagVal, ok := ctx.Config.flagValues[key]; ok && flagVal != nil && *flagVal != "" {
+				var flagVal *string
+				if ctx.CommandConfig != nil {
+					flagVal, _ = ctx.CommandConfig.flagValues[key]
+				} else {
+					// Fall back to global config when no command config
+					flagVal, _ = ctx.GlobalConfig.flagValues[key]
+				}
+				if flagVal != nil && *flagVal != "" {
 					hasValue = true
 				}
 			}

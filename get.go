@@ -79,7 +79,20 @@ func getErrorDisplayName(err GetError, c *Config) string {
 // Get retrieves a configuration value and returns a CommandResult for unified error handling
 // This is a breaking change from the previous (T, error) return pattern
 func Get[T any](ctx *CommandContext, key string) *CommandResult {
-	c := ctx.Config
+	// Check command config first (if it exists), then global config
+	var c *Config
+	if ctx.CommandConfig != nil {
+		// Check if the key is defined in command config
+		if _, hasDef := ctx.CommandConfig.definitions[key]; hasDef {
+			c = ctx.CommandConfig
+		} else {
+			// Key not in command config, check global config
+			c = ctx.GlobalConfig
+		}
+	} else {
+		c = ctx.GlobalConfig
+	}
+
 	value, exists := c.values[key]
 	if !exists {
 		// Check if this is required data - if so, return validation error

@@ -7,6 +7,14 @@ import (
 	"time"
 )
 
+// getConfig returns the appropriate config (command or global) for the given context
+func getConfig(ctx *CommandContext) *Config {
+	if ctx.CommandConfig != nil {
+		return ctx.CommandConfig
+	}
+	return ctx.GlobalConfig
+}
+
 // LoggingMiddleware creates middleware that logs command execution with timing
 // The logger function receives the command context and execution duration
 func LoggingMiddleware(logger func(*CommandContext, time.Duration)) CommandMiddleware {
@@ -70,13 +78,13 @@ func TokenAuthMiddleware(tokenKey string) CommandMiddleware {
 		var token string
 
 		// Check if token exists and get it appropriately
-		if !ctx.Config.Has(tokenKey) {
+		if !getConfig(ctx).Has(tokenKey) {
 			return fmt.Errorf("missing authentication token (config key: %s)", tokenKey)
 		}
 
 		// Check if this is defined as a secret
-		if ctx.Config.IsSecret(tokenKey) {
-			secret := ctx.Config.GetSecret(tokenKey)
+		if getConfig(ctx).IsSecret(tokenKey) {
+			secret := getConfig(ctx).GetSecret(tokenKey)
 			if !secret.IsSet() {
 				return fmt.Errorf("missing authentication token (config key: %s)", tokenKey)
 			}

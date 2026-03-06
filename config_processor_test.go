@@ -44,9 +44,16 @@ func TestConfigProcessor_ProcessCommandConfig(t *testing.T) {
 		t.Errorf("ProcessCommandConfig() returned error: %v", result.Error)
 	}
 
-	// Check that config was updated
-	if ctx.Config == baseConfig {
-		t.Error("Config should have been updated with temporary config")
+	// Check that command config was set (not global config)
+	if ctx.CommandConfig == nil {
+		t.Error("CommandConfig should have been set with temporary config")
+	}
+	if ctx.CommandConfig == baseConfig {
+		t.Error("CommandConfig should be different from global config")
+	}
+	// Global config should remain unchanged
+	if ctx.GlobalConfig != baseConfig {
+		t.Error("GlobalConfig should remain unchanged")
 	}
 
 	// Check that flag values were parsed
