@@ -15,6 +15,9 @@ type CommandRouter interface {
 
 	// RouteWithErrorHandling is a convenience method that handles special routing cases
 	RouteWithErrorHandling(args []string, config *Config) (*Command, *CommandContext, error)
+
+	// RouteWithHelpHandling integrates help detection with command routing
+	RouteWithHelpHandling(args []string, config *Config) (*Command, *CommandContext, error)
 }
 
 // commandRouter implements CommandRouter interface
@@ -100,4 +103,109 @@ func (cr *commandRouter) HandleSubcommands(cmd *Command, ctx *CommandContext) (*
 func (cr *commandRouter) RouteWithErrorHandling(args []string, config *Config) (*Command, *CommandContext, error) {
 	cmd, ctx, err := cr.RouteCommand(args, config)
 	return cmd, ctx, err
+}
+
+// RouteWithHelpHandling integrates help detection with command routing
+func (cr *commandRouter) RouteWithHelpHandling(args []string, config *Config) (*Command, *CommandContext, error) {
+	if config == nil {
+		return nil, nil, fmt.Errorf("config cannot be nil")
+	}
+
+	// Handle no command case - show global help
+	if len(args) < 2 {
+		helpIntegration := config.getHelpIntegration()
+		err := helpIntegration.ShowHelp([]string{"--help"}, config.commands)
+		return nil, nil, err // Help shown, no command to execute
+	}
+
+	// Extract command name and remaining args
+	commandName := args[1]
+	remainingArgs := args[2:]
+
+	// Check if the command name is actually a help flag
+	if commandName == "--help" || commandName == "-h" || commandName == "help" {
+		helpIntegration := config.getHelpIntegration()
+		err := helpIntegration.ShowHelp([]string{"--help"}, config.commands)
+		return nil, nil, err // Help shown, no command to execute
+	}
+
+	// Find command
+	cmd, exists := config.commands[commandName]
+	if !exists {
+		suggestions := config.findSuggestions(commandName)
+		return nil, nil, fmt.Errorf("unknown command: %q\nDid you mean: %s?", commandName, suggestions)
+	}
+
+	// Create initial command context
+	ctx := NewCommandContext(remainingArgs, config, commandName, "")
+
+	// Handle subcommands first to get the full command path
+	finalCmd, finalCtx, err := cr.HandleSubcommands(cmd, ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Build command path for help detection
+	var commandPath []string
+	commandPath = append(commandPath, commandName)
+	if finalCtx.SubCommand != "" {
+		commandPath = append(commandPath, finalCtx.SubCommand)
+	}
+
+	// Check for help requests using context-aware detection
+	helpIntegration := config.getHelpIntegration()
+	helpService := helpIntegration.GetHelpService()
+	helpFactory := helpService.GetFactory()
+
+	// Use the remaining args after subcommand routing for help detection
+	helpRequest := helpFactory.DetectHelpRequestWithContext(finalCtx.Args, commandPath)
+
+	if helpRequest.Type != HelpTypeNone {
+		// Show appropriate help based on the detected type
+		switch helpRequest.Type {
+		case HelpTypeGlobal:
+			err := helpIntegration.ShowHelp([]string{"--help"}, config.commands)
+			return nil, nil, err
+		case HelpTypeCommand:
+			err := helpIntegration.ShowHelp([]string{helpRequest.Command, "--help"}, config.commands)
+			return nil, nil, err
+		case HelpTypeSubcommand:
+			err := cr.showSubcommandHelp(helpRequest.Command, helpRequest.Subcommand, config)
+			return nil, nil, err
+		}
+	}
+
+	return finalCmd, finalCtx, nil
+}
+
+// showSubcommandHelp displays help for a specific subcommand
+func (cr *commandRouter) showSubcommandHelp(parentCommand, subcommandName string, config *Config) error {
+	parentCmd, exists := config.commands[parentCommand]
+	if !exists {
+		return fmt.Errorf("parent command %s not found", parentCommand)
+	}
+
+	subCmd := parentCmd.FindSubCommand(subcommandName)
+	if subCmd == nil {
+		return fmt.Errorf("subcommand %s not found in command %s", subcommandName, parentCommand)
+	}
+
+	// Use the help service directly to generate command help for the subcommand
+	helpIntegration := config.getHelpIntegration()
+	helpService := helpIntegration.GetHelpService()
+
+	// Generate command help for the subcommand
+	executable := "example_commands" // This should be dynamic but for now it's ok
+	commandHelp := helpService.GetFactory().CreateCommandHelp(subCmd, executable)
+
+	// Format the help using the command help formatter
+	formatter := helpService.GetFormatter()
+	helpText, err := formatter.FormatCommandHelp(commandHelp)
+	if err != nil {
+		return err
+	}
+
+	// Print the help
+	output := helpService.GetOutput()
+	return output.Print(helpText)
 }

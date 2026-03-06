@@ -245,8 +245,8 @@ func (c *Config) Execute(args []string) error {
 	services := NewCommandServices()
 	router := services.CommandRouter
 
-	// Route command with error handling
-	cmd, ctx, err := router.RouteWithErrorHandling(args, c)
+	// Route command with integrated help handling
+	cmd, ctx, err := router.RouteWithHelpHandling(args, c)
 	if err != nil {
 		return err
 	}
@@ -256,14 +256,8 @@ func (c *Config) Execute(args []string) error {
 		return nil
 	}
 
-	// Handle subcommands
-	finalCmd, finalCtx, err := router.HandleSubcommands(cmd, ctx)
-	if err != nil {
-		return err
-	}
-
 	// Execute command with global middleware
-	return c.executeWithGlobalMiddleware(finalCmd, finalCtx)
+	return c.executeWithGlobalMiddleware(cmd, ctx)
 }
 
 // executeWithGlobalMiddleware wraps command execution with global middleware

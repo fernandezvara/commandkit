@@ -8,12 +8,15 @@ type HelpFactory interface {
 	CreateCommandHelp(cmd *Command, executable string) *CommandHelp
 	CreateSubcommandHelp(parent string, subcommands map[string]*Command) *SubcommandHelp
 	CreateFlagHelp(command string, defs map[string]*Definition) *FlagHelp
-	
+
 	// Help detection and parsing
 	DetectHelpRequest(args []string) *HelpRequest
 	IsHelpRequested(args []string) bool
 	GetHelpType(args []string) HelpType
-	
+
+	// Context-aware help detection methods
+	DetectHelpRequestWithContext(args []string, commandPath []string) *HelpRequest
+
 	// Template management
 	SetTemplate(templateType TemplateType, template string)
 	GetTemplate(templateType TemplateType) string
@@ -43,10 +46,10 @@ func NewHelpFactory() HelpFactory {
 		extractor: NewHelpExtractor(),
 		templates: make(map[TemplateType]string),
 	}
-	
+
 	// Set default templates
 	factory.setDefaultTemplates()
-	
+
 	return factory
 }
 
@@ -65,10 +68,15 @@ func (hf *helpFactory) GetHelpType(args []string) HelpType {
 	return hf.detector.GetHelpType(args)
 }
 
+// DetectHelpRequestWithContext detects and parses a help request with command path context
+func (hf *helpFactory) DetectHelpRequestWithContext(args []string, commandPath []string) *HelpRequest {
+	return hf.detector.DetectHelpWithContext(args, commandPath)
+}
+
 // CreateGlobalHelp creates global help for all commands
 func (hf *helpFactory) CreateGlobalHelp(commands map[string]*Command, executable string) *GlobalHelp {
 	summaries := hf.extractor.ExtractGlobalSummary(commands)
-	
+
 	return &GlobalHelp{
 		Executable: executable,
 		Commands:   summaries,
@@ -79,7 +87,7 @@ func (hf *helpFactory) CreateGlobalHelp(commands map[string]*Command, executable
 // CreateCommandHelp creates detailed help for a specific command
 func (hf *helpFactory) CreateCommandHelp(cmd *Command, executable string) *CommandHelp {
 	commandInfo := hf.extractor.ExtractCommandInfo(cmd, executable)
-	
+
 	return &CommandHelp{
 		Command:     cmd,
 		Usage:       commandInfo.Usage,
@@ -93,7 +101,7 @@ func (hf *helpFactory) CreateCommandHelp(cmd *Command, executable string) *Comma
 // CreateSubcommandHelp creates help for subcommands
 func (hf *helpFactory) CreateSubcommandHelp(parent string, subcommands map[string]*Command) *SubcommandHelp {
 	subcommandInfo := hf.extractor.ExtractSubcommandInfo(subcommands)
-	
+
 	return &SubcommandHelp{
 		Parent:      parent,
 		Subcommands: subcommandInfo,
@@ -104,7 +112,7 @@ func (hf *helpFactory) CreateSubcommandHelp(parent string, subcommands map[strin
 // CreateFlagHelp creates help for flags
 func (hf *helpFactory) CreateFlagHelp(command string, defs map[string]*Definition) *FlagHelp {
 	flagInfo := hf.extractor.ExtractFlagInfo(defs)
-	
+
 	return &FlagHelp{
 		Command:  command,
 		Flags:    flagInfo,

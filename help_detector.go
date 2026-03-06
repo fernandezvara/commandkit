@@ -14,6 +14,10 @@ type HelpDetector interface {
 	ParseHelpRequest(args []string) *HelpRequest
 	GetExecutableName(args []string) string
 	FormatHelpUsage(executable string) string
+
+	// Context-aware help detection methods
+	DetectHelpWithContext(args []string, commandPath []string) *HelpRequest
+	ParseHelpRequestWithContext(args []string, commandPath []string) *HelpRequest
 }
 
 // helpDetector implements HelpDetector
@@ -151,4 +155,91 @@ func (hd *helpDetector) GetExecutableName(args []string) string {
 // FormatHelpUsage formats help usage information
 func (hd *helpDetector) FormatHelpUsage(executable string) string {
 	return fmt.Sprintf("Usage: %s <command> [options]\n\nUse '%s <command> --help' for command-specific help\nUse '%s --help' for global help", executable, executable, executable)
+}
+
+// DetectHelpWithContext detects help requests considering the command path context
+func (hd *helpDetector) DetectHelpWithContext(args []string, commandPath []string) *HelpRequest {
+	return hd.ParseHelpRequestWithContext(args, commandPath)
+}
+
+// ParseHelpRequestWithContext parses a help request with command path context
+func (hd *helpDetector) ParseHelpRequestWithContext(args []string, commandPath []string) *HelpRequest {
+	if !hd.IsHelpRequested(args) {
+		return &HelpRequest{
+			Type:     HelpTypeNone,
+			Args:     args,
+			Original: args,
+		}
+	}
+
+	// Find the position of the help flag
+	helpIndex := -1
+	for i, arg := range args {
+		if hd.isHelpFlag(arg) {
+			helpIndex = i
+			break
+		}
+	}
+
+	if helpIndex == -1 {
+		return &HelpRequest{
+			Type:     HelpTypeNone,
+			Args:     args,
+			Original: args,
+		}
+	}
+
+	request := &HelpRequest{
+		Args:     args,
+		Original: args,
+	}
+
+	// Determine help type based on command path and help position
+	if len(commandPath) == 0 {
+		// No command path - global help
+		request.Type = HelpTypeGlobal
+		request.Command = ""
+	} else if helpIndex == len(args)-1 {
+		// Help flag is at the end - help for the last command in path
+		if len(commandPath) == 1 {
+			// Single command - command help
+			request.Type = HelpTypeCommand
+			request.Command = commandPath[0]
+		} else {
+			// Multiple commands - subcommand help
+			request.Type = HelpTypeSubcommand
+			request.Command = commandPath[0]
+			request.Subcommand = commandPath[len(commandPath)-1]
+		}
+	} else {
+		// Help flag in middle - determine based on position
+		if helpIndex < len(commandPath) {
+			// Help flag within command path - help for command at that position
+			if helpIndex == 0 {
+				request.Type = HelpTypeGlobal
+				request.Command = ""
+			} else if helpIndex == 1 {
+				request.Type = HelpTypeCommand
+				request.Command = commandPath[0]
+			} else {
+				request.Type = HelpTypeSubcommand
+				request.Command = commandPath[0]
+				if helpIndex < len(commandPath) {
+					request.Subcommand = commandPath[helpIndex-1]
+				}
+			}
+		} else {
+			// Help flag after command path - help for last command
+			if len(commandPath) == 1 {
+				request.Type = HelpTypeCommand
+				request.Command = commandPath[0]
+			} else {
+				request.Type = HelpTypeSubcommand
+				request.Command = commandPath[0]
+				request.Subcommand = commandPath[len(commandPath)-1]
+			}
+		}
+	}
+
+	return request
 }

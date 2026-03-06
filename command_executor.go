@@ -36,53 +36,18 @@ func (ce *commandExecutor) Execute(cmd *Command, ctx *CommandContext, services *
 		ctx.execution = NewExecutionContext(ctx.Command)
 	}
 
-	// 1. Handle help requests
-	if err := ce.handleHelp(cmd, ctx, services); err != nil {
-		return err
-	}
-
-	// 2. Validate command state
+	// 1. Validate command state
 	if err := ce.validateCommand(cmd, ctx); err != nil {
 		return err
 	}
 
-	// 3. Process configuration if needed
+	// 2. Process configuration if needed
 	if err := ce.processConfiguration(cmd, ctx, services); err != nil {
 		return err
 	}
 
-	// 4. Apply and execute middleware
+	// 3. Apply and execute middleware
 	return ce.executeWithMiddleware(cmd, ctx, services)
-}
-
-// handleHelp checks for help requests and displays appropriate help using the new help system
-func (ce *commandExecutor) handleHelp(cmd *Command, ctx *CommandContext, services *CommandServices) *CommandResult {
-	// Use the new HelpExecutor to check for and handle help requests
-	helpExecutor := NewHelpExecutor()
-
-	// Get commands from the context's global config
-	var commands map[string]*Command
-	if ctx.GlobalConfig != nil {
-		commands = ctx.GlobalConfig.commands
-	} else if ctx.CommandConfig != nil {
-		commands = ctx.CommandConfig.commands
-	} else {
-		// Fallback: create a minimal commands map with just the current command
-		commands = make(map[string]*Command)
-		if cmd != nil {
-			commands[ctx.Command] = cmd
-		}
-	}
-
-	// Check for help requests before any processing
-	if handled, err := helpExecutor.CheckAndHandleHelp(ctx.Args, commands); handled {
-		if err != nil {
-			return Error(err)
-		}
-		return Success() // Help was shown successfully
-	}
-
-	return nil // Continue with execution
 }
 
 // validateCommand validates the command state and returns appropriate help for subcommands

@@ -325,3 +325,154 @@ func TestCommandRouter_Integration(t *testing.T) {
 		t.Errorf("Expected subcommand 'child', got '%s'", finalCtx.SubCommand)
 	}
 }
+
+func TestCommandRouter_RouteWithHelpHandling_SubcommandHelp(t *testing.T) {
+	router := NewCommandRouter()
+
+	// Create a config with commands and subcommands
+	config := New()
+	parentCmd := config.Command("start").Func(func(ctx *CommandContext) error {
+		return nil
+	}).ShortHelp("Start the service")
+
+	parentCmd.SubCommand("server").Func(func(ctx *CommandContext) error {
+		return nil
+	}).ShortHelp("Start only the server")
+
+	// Test subcommand help - should show server help
+	cmd, ctx, err := router.RouteWithHelpHandling([]string{"app", "start", "server", "--help"}, config)
+
+	// Help should be shown, so cmd should be nil and no error
+	if cmd != nil {
+		t.Error("RouteWithHelpHandling() should return nil command when help is shown")
+	}
+
+	if ctx != nil {
+		t.Error("RouteWithHelpHandling() should return nil context when help is shown")
+	}
+
+	if err != nil {
+		t.Errorf("RouteWithHelpHandling() should not return error when showing help, got: %v", err)
+	}
+}
+
+func TestCommandRouter_RouteWithHelpHandling_CommandHelp(t *testing.T) {
+	router := NewCommandRouter()
+
+	// Create a config with commands
+	config := New()
+	config.Command("start").Func(func(ctx *CommandContext) error {
+		return nil
+	}).ShortHelp("Start the service")
+
+	// Test command help - should show start help
+	cmd, ctx, err := router.RouteWithHelpHandling([]string{"app", "start", "--help"}, config)
+
+	// Help should be shown, so cmd should be nil and no error
+	if cmd != nil {
+		t.Error("RouteWithHelpHandling() should return nil command when help is shown")
+	}
+
+	if ctx != nil {
+		t.Error("RouteWithHelpHandling() should return nil context when help is shown")
+	}
+
+	if err != nil {
+		t.Errorf("RouteWithHelpHandling() should not return error when showing help, got: %v", err)
+	}
+}
+
+func TestCommandRouter_RouteWithHelpHandling_GlobalHelp(t *testing.T) {
+	router := NewCommandRouter()
+
+	// Create a config with commands
+	config := New()
+	config.Command("start").Func(func(ctx *CommandContext) error {
+		return nil
+	}).ShortHelp("Start the service")
+
+	// Test global help
+	cmd, ctx, err := router.RouteWithHelpHandling([]string{"app", "--help"}, config)
+
+	// Help should be shown, so cmd should be nil and no error
+	if cmd != nil {
+		t.Error("RouteWithHelpHandling() should return nil command when help is shown")
+	}
+
+	if ctx != nil {
+		t.Error("RouteWithHelpHandling() should return nil context when help is shown")
+	}
+
+	if err != nil {
+		t.Errorf("RouteWithHelpHandling() should not return error when showing help, got: %v", err)
+	}
+}
+
+func TestCommandRouter_RouteWithHelpHandling_NoHelp(t *testing.T) {
+	router := NewCommandRouter()
+
+	// Create a config with commands and subcommands
+	config := New()
+	parentCmd := config.Command("start").Func(func(ctx *CommandContext) error {
+		return nil
+	}).ShortHelp("Start the service")
+
+	parentCmd.SubCommand("server").Func(func(ctx *CommandContext) error {
+		return nil
+	}).ShortHelp("Start only the server")
+
+	// Test normal execution without help - should route to subcommand
+	cmd, ctx, err := router.RouteWithHelpHandling([]string{"app", "start", "server", "--port", "8080"}, config)
+
+	// Should route normally
+	if err != nil {
+		t.Errorf("RouteWithHelpHandling() should not return error for normal execution, got: %v", err)
+	}
+
+	if cmd == nil {
+		t.Error("RouteWithHelpHandling() should return command for normal execution")
+	}
+
+	if ctx == nil {
+		t.Error("RouteWithHelpHandling() should return context for normal execution")
+	}
+
+	// Check that it routed to the subcommand
+	if cmd.Name != "server" {
+		t.Errorf("Expected subcommand 'server', got '%s'", cmd.Name)
+	}
+
+	if ctx.SubCommand != "server" {
+		t.Errorf("Expected subcommand 'server' in context, got '%s'", ctx.SubCommand)
+	}
+}
+
+func TestCommandRouter_RouteWithHelpHandling_ShortHelpFlag(t *testing.T) {
+	router := NewCommandRouter()
+
+	// Create a config with commands and subcommands
+	config := New()
+	parentCmd := config.Command("start").Func(func(ctx *CommandContext) error {
+		return nil
+	}).ShortHelp("Start the service")
+
+	parentCmd.SubCommand("server").Func(func(ctx *CommandContext) error {
+		return nil
+	}).ShortHelp("Start only the server")
+
+	// Test subcommand help with short flag
+	cmd, ctx, err := router.RouteWithHelpHandling([]string{"app", "start", "server", "-h"}, config)
+
+	// Help should be shown, so cmd should be nil and no error
+	if cmd != nil {
+		t.Error("RouteWithHelpHandling() should return nil command when help is shown")
+	}
+
+	if ctx != nil {
+		t.Error("RouteWithHelpHandling() should return nil context when help is shown")
+	}
+
+	if err != nil {
+		t.Errorf("RouteWithHelpHandling() should not return error when showing help, got: %v", err)
+	}
+}

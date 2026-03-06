@@ -48,7 +48,7 @@ func TestGoTemplateRenderer_Render(t *testing.T) {
 		{
 			name:     "Template with join function",
 			template: "Items: {{join .Items \", \"}}",
-			data:     map[string][]string{"Items": []string{"a", "b", "c"}},
+			data:     map[string][]string{"Items": {"a", "b", "c"}},
 			expected: "Items: a, b, c",
 		},
 		{

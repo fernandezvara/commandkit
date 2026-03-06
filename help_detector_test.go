@@ -205,3 +205,163 @@ func TestHelpDetector_isHelpFlag(t *testing.T) {
 		})
 	}
 }
+
+func TestHelpDetector_DetectHelpWithContext(t *testing.T) {
+	detector := NewHelpDetector()
+
+	tests := []struct {
+		name           string
+		args           []string
+		commandPath    []string
+		expectedType   HelpType
+		expectedCmd    string
+		expectedSubcmd string
+	}{
+		{
+			name:           "No help",
+			args:           []string{"start", "server", "--port"},
+			commandPath:    []string{"start", "server"},
+			expectedType:   HelpTypeNone,
+			expectedCmd:    "",
+			expectedSubcmd: "",
+		},
+		{
+			name:           "Global help with no command path",
+			args:           []string{"--help"},
+			commandPath:    []string{},
+			expectedType:   HelpTypeGlobal,
+			expectedCmd:    "",
+			expectedSubcmd: "",
+		},
+		{
+			name:           "Command help with single command path",
+			args:           []string{"start", "--help"},
+			commandPath:    []string{"start"},
+			expectedType:   HelpTypeCommand,
+			expectedCmd:    "start",
+			expectedSubcmd: "",
+		},
+		{
+			name:           "Subcommand help with command path",
+			args:           []string{"start", "server", "--help"},
+			commandPath:    []string{"start", "server"},
+			expectedType:   HelpTypeSubcommand,
+			expectedCmd:    "start",
+			expectedSubcmd: "server",
+		},
+		{
+			name:           "Subcommand help short flag",
+			args:           []string{"start", "server", "-h"},
+			commandPath:    []string{"start", "server"},
+			expectedType:   HelpTypeSubcommand,
+			expectedCmd:    "start",
+			expectedSubcmd: "server",
+		},
+		{
+			name:           "Help in middle with command path",
+			args:           []string{"start", "--help", "server"},
+			commandPath:    []string{"start"},
+			expectedType:   HelpTypeCommand,
+			expectedCmd:    "start",
+			expectedSubcmd: "",
+		},
+		{
+			name:           "Complex nested subcommand help",
+			args:           []string{"deploy", "app", "production", "--help"},
+			commandPath:    []string{"deploy", "app", "production"},
+			expectedType:   HelpTypeSubcommand,
+			expectedCmd:    "deploy",
+			expectedSubcmd: "production",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			request := detector.DetectHelpWithContext(tt.args, tt.commandPath)
+
+			if request.Type != tt.expectedType {
+				t.Errorf("DetectHelpWithContext(%v, %v) type = %v, expected %v", tt.args, tt.commandPath, request.Type, tt.expectedType)
+			}
+
+			if request.Command != tt.expectedCmd {
+				t.Errorf("DetectHelpWithContext(%v, %v) command = %s, expected %s", tt.args, tt.commandPath, request.Command, tt.expectedCmd)
+			}
+
+			if request.Subcommand != tt.expectedSubcmd {
+				t.Errorf("DetectHelpWithContext(%v, %v) subcommand = %s, expected %s", tt.args, tt.commandPath, request.Subcommand, tt.expectedSubcmd)
+			}
+		})
+	}
+}
+
+func TestHelpDetector_ParseHelpRequestWithContext(t *testing.T) {
+	detector := NewHelpDetector()
+
+	tests := []struct {
+		name           string
+		args           []string
+		commandPath    []string
+		expectedType   HelpType
+		expectedCmd    string
+		expectedSubcmd string
+	}{
+		{
+			name:           "No help requested",
+			args:           []string{"start", "server"},
+			commandPath:    []string{"start", "server"},
+			expectedType:   HelpTypeNone,
+			expectedCmd:    "",
+			expectedSubcmd: "",
+		},
+		{
+			name:           "Help at end with subcommand path",
+			args:           []string{"start", "server", "--help"},
+			commandPath:    []string{"start", "server"},
+			expectedType:   HelpTypeSubcommand,
+			expectedCmd:    "start",
+			expectedSubcmd: "server",
+		},
+		{
+			name:           "Help at end with single command",
+			args:           []string{"start", "--help"},
+			commandPath:    []string{"start"},
+			expectedType:   HelpTypeCommand,
+			expectedCmd:    "start",
+			expectedSubcmd: "",
+		},
+		{
+			name:           "Help in middle with partial path",
+			args:           []string{"start", "--help", "server"},
+			commandPath:    []string{"start"},
+			expectedType:   HelpTypeCommand,
+			expectedCmd:    "start",
+			expectedSubcmd: "",
+		},
+		{
+			name:           "Help with multiple subcommands",
+			args:           []string{"deploy", "app", "production", "--help"},
+			commandPath:    []string{"deploy", "app", "production"},
+			expectedType:   HelpTypeSubcommand,
+			expectedCmd:    "deploy",
+			expectedSubcmd: "production",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			request := detector.ParseHelpRequestWithContext(tt.args, tt.commandPath)
+
+			if request.Type != tt.expectedType {
+				t.Errorf("ParseHelpRequestWithContext(%v, %v) type = %v, expected %v", tt.args, tt.commandPath, request.Type, tt.expectedType)
+			}
+
+			if request.Command != tt.expectedCmd {
+				t.Errorf("ParseHelpRequestWithContext(%v, %v) command = %s, expected %s", tt.args, tt.commandPath, request.Command, tt.expectedCmd)
+			}
+
+			if request.Subcommand != tt.expectedSubcmd {
+				t.Errorf("ParseHelpRequestWithContext(%v, %v) subcommand = %s, expected %s", tt.args, tt.commandPath, request.Subcommand, tt.expectedSubcmd)
+			}
+		})
+	}
+}

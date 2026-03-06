@@ -49,21 +49,23 @@ func TestCommandExecutor_Execute_HelpRequest(t *testing.T) {
 		},
 	}
 
-	// Create context with help request
+	// Create context with help request (but help should be handled before execution)
 	ctx := NewCommandContext([]string{"--help"}, New(), "test", "")
 	services := NewCommandServices()
 
-	// Execute the command
+	// Execute the command - in the new architecture, help is handled at routing level
+	// so the executor should execute the command normally if it reaches this point
 	result := executor.Execute(cmd, ctx, services)
 
-	// Check that execution succeeded (help was shown)
+	// Check that execution succeeded
 	if result.Error != nil {
-		t.Errorf("Execute() with help request returned error: %v", result.Error)
+		t.Errorf("Execute() returned error: %v", result.Error)
 	}
 
-	// Check that command function was NOT executed
-	if _, exists := ctx.GetData("executed"); exists {
-		t.Error("Command function should not have been executed when help was requested")
+	// In the new architecture, help is handled before execution, so if we reach
+	// the executor, the command function should be executed normally
+	if val, exists := ctx.GetData("executed"); !exists || val != true {
+		t.Error("Command function should have been executed (help is handled at routing level)")
 	}
 }
 

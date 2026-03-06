@@ -29,7 +29,7 @@ func main() {
 		Description("Logging level")
 
 	// Start command with subcommands
-	cfg.Command("start").
+	startCmd := cfg.Command("start").
 		Func(startCommand).
 		ShortHelp("Start the service").
 		LongHelp(`Start the service with all components initialized.
@@ -69,8 +69,9 @@ For production use, consider using the --daemon flag.`).
 				Flag("daemon").
 				Default(false).
 				Description("Run in background")
-		}).
-		SubCommand("server").
+		})
+
+	startCmd.SubCommand("server").
 		Func(startServerCommand).
 		ShortHelp("Start only the server").
 		Aliases("srv").
@@ -81,8 +82,9 @@ For production use, consider using the --daemon flag.`).
 				Delimiter(",").
 				Default([]int64{1}).
 				Description("Number of worker processes")
-		}).
-		SubCommand("worker").
+		})
+
+	startCmd.SubCommand("worker").
 		Func(startWorkerCommand).
 		ShortHelp("Start only worker processes").
 		Aliases("wrk").
