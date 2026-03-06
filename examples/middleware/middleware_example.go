@@ -120,12 +120,12 @@ func statusCommand(ctx *commandkit.CommandContext) error {
 	fmt.Printf("Command: %s\n", ctx.Command)
 
 	// Get timing from middleware context
-	if duration, exists := ctx.Get("duration"); exists {
+	if duration, exists := ctx.GetData("duration"); exists {
 		fmt.Printf("Execution time so far: %v\n", duration)
 	}
 
 	// Get verbose flag from command-specific config
-	verbose := ctx.Config.GetBool("VERBOSE")
+	verbose := commandkit.Get[bool](ctx, "VERBOSE")
 	if verbose {
 		fmt.Printf("Verbose mode enabled\n")
 		fmt.Printf("Current time: %s\n", time.Now().Format(time.RFC3339))
@@ -137,12 +137,12 @@ func statusCommand(ctx *commandkit.CommandContext) error {
 }
 
 func apiCommand(ctx *commandkit.CommandContext) error {
-	endpoint := ctx.Config.GetString("ENDPOINT")
+	endpoint := commandkit.Get[string](ctx, "ENDPOINT")
 	fmt.Printf("API Operations\n")
 	fmt.Printf("Endpoint: %s\n", endpoint)
 
 	// Get auth token from middleware context
-	if token, exists := ctx.Get("auth_token"); exists {
+	if token, exists := ctx.GetData("auth_token"); exists {
 		fmt.Printf("Authenticated with token length: %d\n", len(token.(string)))
 	}
 
@@ -154,7 +154,7 @@ func apiStatusCommand(ctx *commandkit.CommandContext) error {
 	fmt.Printf("API Status\n")
 
 	// Get execution count from rate limiting middleware
-	if count, exists := ctx.Get("execution_count"); exists {
+	if count, exists := ctx.GetData("execution_count"); exists {
 		fmt.Printf("Execution count: %d\n", count)
 	}
 
@@ -172,11 +172,11 @@ func adminCommand(ctx *commandkit.CommandContext) error {
 	fmt.Printf("Admin Operations\n")
 
 	// Get auth token from middleware context
-	if _, exists := ctx.Get("auth_token"); exists {
+	if _, exists := ctx.GetData("auth_token"); exists {
 		fmt.Printf("Authenticated as admin\n")
 	}
 
-	force := ctx.Config.GetBool("FORCE")
+	force := commandkit.Get[bool](ctx, "FORCE")
 	if force {
 		fmt.Printf("Force mode enabled\n")
 	}
@@ -199,7 +199,7 @@ func adminUsersCommand(ctx *commandkit.CommandContext) error {
 func adminShutdownCommand(ctx *commandkit.CommandContext) error {
 	fmt.Printf("Shutdown Initiated\n")
 
-	force := ctx.Config.GetBool("FORCE")
+	force := commandkit.Get[bool](ctx, "FORCE")
 	if !force {
 		fmt.Printf("Use --force to confirm shutdown\n")
 		return fmt.Errorf("shutdown requires confirmation")
@@ -213,8 +213,8 @@ func adminShutdownCommand(ctx *commandkit.CommandContext) error {
 }
 
 func deployCommand(ctx *commandkit.CommandContext) error {
-	environment := ctx.Config.GetString("ENVIRONMENT")
-	dryRun := ctx.Config.GetBool("DRY_RUN")
+	environment := commandkit.Get[string](ctx, "ENVIRONMENT")
+	dryRun := commandkit.Get[bool](ctx, "DRY_RUN")
 
 	fmt.Printf("Deployment\n")
 	fmt.Printf("Environment: %s\n", environment)

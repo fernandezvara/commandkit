@@ -23,6 +23,17 @@ func NewCommandContext(args []string, config *Config, command, subCommand string
 	}
 }
 
+// ContextGet retrieves a typed value from the context data using generics
+func ContextGet[T any](ctx *CommandContext, key string) T {
+	if value, exists := ctx.GetData(key); exists {
+		if result, ok := value.(T); ok {
+			return result
+		}
+	}
+	var zero T
+	return zero
+}
+
 // Set stores data in the context for middleware sharing
 func (ctx *CommandContext) Set(key string, value any) {
 	if ctx.data == nil {
@@ -31,41 +42,11 @@ func (ctx *CommandContext) Set(key string, value any) {
 	ctx.data[key] = value
 }
 
-// Get retrieves data from the context
-func (ctx *CommandContext) Get(key string) (any, bool) {
+// GetData retrieves data from the context (renamed from Get to avoid naming conflict)
+func (ctx *CommandContext) GetData(key string) (any, bool) {
 	if ctx.data == nil {
 		return nil, false
 	}
 	value, exists := ctx.data[key]
 	return value, exists
-}
-
-// GetString gets a string value from the context data
-func (ctx *CommandContext) GetString(key string) string {
-	if value, exists := ctx.Get(key); exists {
-		if str, ok := value.(string); ok {
-			return str
-		}
-	}
-	return ""
-}
-
-// GetInt gets an int value from the context data
-func (ctx *CommandContext) GetInt(key string) int {
-	if value, exists := ctx.Get(key); exists {
-		if i, ok := value.(int); ok {
-			return i
-		}
-	}
-	return 0
-}
-
-// GetBool gets a bool value from the context data
-func (ctx *CommandContext) GetBool(key string) bool {
-	if value, exists := ctx.Get(key); exists {
-		if b, ok := value.(bool); ok {
-			return b
-		}
-	}
-	return false
 }

@@ -3,6 +3,7 @@ package commandkit
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -266,6 +267,117 @@ func TestDefinitionBuilderChaining(t *testing.T) {
 	}
 	if len(def.validations) != 3 { // required + minLength + maxLength
 		t.Errorf("Chaining: expected 3 validations, got %d", len(def.validations))
+	}
+}
+
+func TestFormatValidation(t *testing.T) {
+	validations := []Validation{
+		{Name: "required"},
+		{Name: "min(1)"},
+		{Name: "max(65535)"},
+		{Name: "oneOf(debug,info,warn,error)"},
+		{Name: "minLength(3)"},
+		{Name: "regexp(^[a-z]+$)"},
+		{Name: "custom-check"},
+	}
+
+	formatted := formatValidation(validations)
+	joined := strings.Join(formatted, " | ")
+
+	if strings.Contains(joined, "required") {
+		t.Fatalf("required validation should be omitted, got: %v", formatted)
+	}
+	if !strings.Contains(joined, "valid: 1-65535") {
+		t.Fatalf("expected range formatting, got: %v", formatted)
+	}
+	if !strings.Contains(joined, "oneOf: ['debug', 'info', 'warn', 'error']") {
+		t.Fatalf("expected oneOf formatting, got: %v", formatted)
+	}
+	if !strings.Contains(joined, "minLength: 3") {
+		t.Fatalf("expected minLength formatting, got: %v", formatted)
+	}
+	if !strings.Contains(joined, "pattern: ^[a-z]+$") {
+		t.Fatalf("expected regexp formatting, got: %v", formatted)
+	}
+	if !strings.Contains(joined, "custom-check") {
+		t.Fatalf("expected passthrough validation name, got: %v", formatted)
+	}
+}
+
+func TestExtractValue(t *testing.T) {
+	if got := extractValue("min(8080)", "min("); got != "8080" {
+		t.Fatalf("expected 8080, got %q", got)
+	}
+	if got := extractValue("regexp(^[a-z]+$)", "regexp("); got != "^[a-z]+$" {
+		t.Fatalf("expected regexp body, got %q", got)
+	}
+	if got := extractValue("other(1)", "min("); got != "" {
+		t.Fatalf("expected empty string for missing prefix, got %q", got)
+	}
+	if got := extractValue("min(123", "min("); got != "123" {
+		t.Fatalf("expected unterminated extraction fallback, got %q", got)
+	}
+}
+
+func TestExtractOneOfValues(t *testing.T) {
+	if got := extractOneOfValues("oneOf(debug,info,warn,error)"); got != "['debug', 'info', 'warn', 'error']" {
+		t.Fatalf("unexpected oneOf comma formatting: %q", got)
+	}
+	if got := extractOneOfValues("oneOf([debug info warn error])"); got != "['debug', 'info', 'warn', 'error']" {
+		t.Fatalf("unexpected oneOf array formatting: %q", got)
+	}
+	if got := extractOneOfValues("missing"); got != "" {
+		t.Fatalf("expected empty string for invalid format, got %q", got)
+	}
+}
+
+func TestFormatFlagHelp(t *testing.T) {
+	def := &Definition{
+		key:          "LOG_LEVEL",
+		valueType:    TypeString,
+		envVar:       "LOG_LEVEL",
+		flag:         "log-level",
+		defaultValue: "info",
+		required:     true,
+		validations: []Validation{
+			{Name: "oneOf(debug,info,warn,error)"},
+		},
+		description: "Logging level",
+	}
+
+	help := formatFlagHelp(def)
+	expectedParts := []string{
+		"Logging level",
+		"env: LOG_LEVEL",
+		"required",
+		"default: 'info'",
+		"oneOf: ['debug', 'info', 'warn', 'error']",
+	}
+
+	for _, part := range expectedParts {
+		if !strings.Contains(help, part) {
+			t.Fatalf("expected %q in help, got: %s", part, help)
+		}
+	}
+}
+
+func TestFormatFlagHelpSecretDefault(t *testing.T) {
+	def := &Definition{
+		key:          "DATABASE_URL",
+		valueType:    TypeString,
+		envVar:       "DATABASE_URL",
+		defaultValue: "postgres://secret",
+		required:     true,
+		secret:       true,
+		description:  "Database connection string",
+	}
+
+	help := formatFlagHelp(def)
+	if !strings.Contains(help, "default: '[hidden]'") {
+		t.Fatalf("expected hidden default, got: %s", help)
+	}
+	if !strings.Contains(help, "secret") {
+		t.Fatalf("expected secret indicator, got: %s", help)
 	}
 }
 

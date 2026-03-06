@@ -20,6 +20,135 @@ A command and type-safe configuration library for Go with support for environmen
 go get github.com/fernandezvara/commandkit
 ```
 
+### Breaking Changes in v0.2.0
+
+- **Removed convenience methods**: `GetString()`, `GetInt64()`, `GetFloat64()`, `GetBool()`, `GetDuration()`, `GetStringSlice()`, `GetInt64Slice()` have been removed from Config
+- **Removed CommandContext convenience methods**: `GetString()`, `GetInt()`, `GetBool()` have been removed from CommandContext
+- **Simplified API**: Use `commandkit.Get[T](ctx, key)` for configuration and `ctx.GetData(key)` for middleware data
+- **Enhanced error display**: Errors now show flag and environment variable names, sorted alphabetically
+- **Batch error collection**: All Get errors are collected and displayed together instead of exiting on first error
+- **Get functions return nil for required data**: `Get[T]()` returns nil/zero values for missing required data (designer responsibility to check)
+
+**Migration Guide:**
+```go
+// Current API (v0.2.0+)
+
+// Configuration access (type-safe)
+port := commandkit.Get[int64](ctx, "PORT")
+baseURL := commandkit.Get[string](ctx, "BASE_URL")
+daemon := commandkit.Get[bool](ctx, "DAEMON")
+timeout := commandkit.Get[time.Duration](ctx, "TIMEOUT")
+
+// Middleware data access (cross-middleware communication)
+if token, exists := ctx.GetData("auth_token"); exists {
+    // Handle authentication token from previous middleware
+}
+
+if count, exists := ctx.GetData("execution_count"); exists {
+    // Handle rate limiting data
+}
+
+// Typed middleware data access
+userID := commandkit.ContextGet[string](ctx, "user_id")
+
+// Designer must check for missing required configuration
+if port == 0 {
+    // Handle missing required port
+}
+```
+
+### Configuration vs Middleware Data Access
+
+CommandKit distinguishes between **configuration values** and **middleware data**:
+
+#### Configuration Access (`commandkit.Get[T]`)
+Use for application configuration defined with `cfg.Define()`:
+- Command-line flags (`--port`, `--verbose`)
+- Environment variables (`PORT=8080`)
+- Configuration files (JSON/YAML/TOML)
+- Default values with validation
+
+```go
+func deployCommand(ctx *commandkit.CommandContext) error {
+    environment := commandkit.Get[string](ctx, "ENVIRONMENT")  // --env flag
+    dryRun := commandkit.Get[bool](ctx, "DRY_RUN")              // --dry-run flag
+    timeout := commandkit.Get[time.Duration](ctx, "TIMEOUT")    // --timeout flag
+    
+    return deploy(environment, dryRun, timeout)
+}
+```
+
+#### Middleware Data Access (`ctx.GetData` / `commandkit.ContextGet`)
+Use for runtime data shared between middleware:
+- Authentication tokens
+- Request timing information
+- Rate limiting counters
+- User context
+
+```go
+// Middleware sets data
+func AuthMiddleware(next CommandFunc) CommandFunc {
+    return func(ctx *CommandContext) error {
+        token := commandkit.Get[string](ctx, "AUTH_TOKEN")  // Config
+        if isValidToken(token) {
+            ctx.Set("user_id", getUserID(token))            // Middleware data
+        }
+        return next(ctx)
+    }
+}
+
+// Command reads middleware data
+func adminCommand(ctx *CommandContext) error {
+    if userID, exists := ctx.GetData("user_id"); exists {
+        fmt.Printf("Admin operation by user: %s\n", userID)
+    }
+    // ...
+}
+```
+
+**Key Benefits:**
+- **Type Safety**: Generic configuration access with compile-time checking
+- **Clear Separation**: Configuration vs runtime data
+- **Implementation Hiding**: `commandkit.Get[T](ctx, key)` hides internal structure
+- **Middleware Communication**: Easy data sharing between middleware
+- **Validation**: Built-in configuration validation and error collection
+
+### Enhanced Flag Help (v0.2.0+)
+
+CommandKit now provides enhanced flag help that shows:
+
+- **Required flags**: `(required)` indicator
+- **Default values**: `(default: value)` or `(default: 'value')` for strings
+- **Environment variables**: `(env: VAR_NAME)` context
+- **Validations**: `(valid: 1-65535)` or `(oneOf: ['debug', 'info', 'warn', 'error'])`
+- **Secret configurations**: `(secret)` indicator with masked defaults
+- **Environment-only**: `(no flag)` for configs without flags
+
+**Example Help Output:**
+```bash
+$ go run myapp start --help
+Usage of start:
+  -base-url string (required)
+        Public base URL of the service
+  
+  -log-level string (env: LOG_LEVEL, required, default: 'info', oneOf: ['debug', 'info', 'warn', 'error'])
+        Logging level
+  
+  -daemon bool (default: false)
+        Run in background
+
+  (no flag) string (env: DATABASE_URL, required, secret)
+        Database connection string
+```
+
+**Key Features:**
+- **Early exit**: `--help` exits with code 0 without running command functions
+- **Context-aware**: Shows both flag and environment variable context
+- **Validation display**: Shows validation rules in human-readable format
+- **Consistent ordering**: env, required, default, validation, secret
+- **Environment-only configs**: Shows `(no flag)` for environment-only configurations
+- **Designer warnings**: Logs warnings for missing required configurations
+
 ### Breaking Changes in v2.0
 
 - **Get functions no longer panic**: All `Get` functions now collect errors and exit gracefully instead of panicking
@@ -190,7 +319,7 @@ if err := cfg.Execute(os.Args); err != nil {
 }
 
 func startCommand(ctx *commandkit.CommandContext) error {
-    port := commandkit.Get[int64](ctx.Config, "PORT")
+    port := commandkit.Get[int64](ctx, "PORT")
     fmt.Printf("Starting on port %d\n", port)
     return nil
 }
@@ -232,7 +361,7 @@ cfg.UseMiddlewareForCommands([]string{"admin", "shutdown"},
 
 // Custom authentication
 cfg.UseMiddleware(commandkit.AuthMiddleware(func(ctx *commandkit.CommandContext) error {
-    token := ctx.Config.GetString("AUTH_TOKEN")
+    token := commandkit.Get[string](ctx, "AUTH_TOKEN")
     if token != "secret-token" {
         return fmt.Errorf("invalid token")
     }
@@ -359,7 +488,7 @@ Middleware can share data through the command context:
 // Authentication middleware stores token
 func TokenAuthMiddleware(tokenKey string) CommandMiddleware {
     return AuthMiddleware(func(ctx *CommandContext) error {
-        token := ctx.Config.GetString(tokenKey)
+        token := commandkit.Get[string](ctx, tokenKey)
         ctx.Set("auth_token", token) // Store in context
         return nil
     })
@@ -368,7 +497,7 @@ func TokenAuthMiddleware(tokenKey string) CommandMiddleware {
 // Other middleware can access the token
 func LoggingMiddleware(next CommandFunc) CommandFunc {
     return func(ctx *CommandContext) error {
-        if token, exists := ctx.Get("auth_token"); exists {
+        if token, exists := ctx.GetData("auth_token"); exists {
             log.Printf("Command executed with token: %s", token)
         }
         return next(ctx)
@@ -513,18 +642,6 @@ Use 'start --help' for more information.
 | `Get[T](cfg, key)`            | Get value with type T (collects errors and exits) |
 | `GetOr[T](cfg, key, default)` | Get value or return default (collects errors and exits) |
 | `MustGet[T](cfg, key)`        | Alias for Get (collects errors and exits) |
-
-### Convenience Getters
-
-| Method                    | Description            |
-| ------------------------- | ---------------------- |
-| `cfg.GetString(key)`      | Get string value       |
-| `cfg.GetInt64(key)`       | Get int64 value        |
-| `cfg.GetFloat64(key)`     | Get float64 value      |
-| `cfg.GetBool(key)`        | Get bool value         |
-| `cfg.GetDuration(key)`    | Get duration value     |
-| `cfg.GetStringSlice(key)` | Get string slice value |
-| `cfg.GetInt64Slice(key)`  | Get int64 slice value  |
 
 ### Definition Builder Methods
 

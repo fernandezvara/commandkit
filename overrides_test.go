@@ -105,7 +105,7 @@ func TestSourceOverrideDetection(t *testing.T) {
 		t.Error("Expected at least one override warning")
 	}
 
-	// Should have flag overriding env and default
+	// Should have flag overriding env (default overrides are now silent)
 	foundFlagOverride := false
 	overrideCount := 0
 	for _, warning := range warnings.GetWarnings() {
@@ -113,9 +113,9 @@ func TestSourceOverrideDetection(t *testing.T) {
 			foundFlagOverride = true
 			overrideCount++
 
-			// Check that it's overriding either env or default
-			if warning.Source != "environment" && warning.Source != "default" {
-				t.Errorf("Expected flag to override env or default, got %s", warning.Source)
+			// Check that it's overriding environment (default overrides are silent)
+			if warning.Source != "environment" {
+				t.Errorf("Expected flag to override env, got %s", warning.Source)
 			}
 		}
 	}
@@ -124,8 +124,9 @@ func TestSourceOverrideDetection(t *testing.T) {
 		t.Error("Expected to find flag override warning")
 	}
 
-	if overrideCount < 2 {
-		t.Errorf("Expected flag to override both env and default, got %d overrides", overrideCount)
+	// Should only have 1 override now (flag→env), default overrides are silent
+	if overrideCount != 1 {
+		t.Errorf("Expected flag to override env only, got %d overrides", overrideCount)
 	}
 }
 

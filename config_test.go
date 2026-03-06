@@ -88,25 +88,25 @@ func TestBasicConfigurationDefinition(t *testing.T) {
 		t.Errorf("Expected CORS_ORIGINS=[http://localhost:3000], got %v", corsOrigins)
 	}
 
-	// Test convenience methods
-	if cfg.GetString("BASE_URL") != baseURL {
-		t.Error("GetString() method failed")
+	// Test generic Get methods
+	if Get[string](cfg, "BASE_URL") != baseURL {
+		t.Error("Get[string]() method failed")
 	}
 
-	if cfg.GetInt64("PORT") != port {
-		t.Error("GetInt64() method failed")
+	if Get[int64](cfg, "PORT") != port {
+		t.Error("Get[int64]() method failed")
 	}
 
-	if cfg.GetBool("DEBUG") != debug {
-		t.Error("GetBool() method failed")
+	if Get[bool](cfg, "DEBUG") != debug {
+		t.Error("Get[bool]() method failed")
 	}
 
-	if cfg.GetDuration("TIMEOUT") != timeout {
-		t.Error("GetDuration() method failed")
+	if Get[time.Duration](cfg, "TIMEOUT") != timeout {
+		t.Error("Get[time.Duration]() method failed")
 	}
 
-	if cfg.GetStringSlice("CORS_ORIGINS")[0] != corsOrigins[0] {
-		t.Error("GetStringSlice() method failed")
+	if Get[[]string](cfg, "CORS_ORIGINS")[0] != corsOrigins[0] {
+		t.Error("Get[[]string]() method failed")
 	}
 
 	// Test Has method
@@ -235,7 +235,7 @@ func TestSecretHandling(t *testing.T) {
 	// by simulating what would happen when Get is called on a secret
 
 	// Simulate the error collection that would happen in Get function
-	collectGetError("DATABASE_URL", "secret", "", "use GetSecret() instead", true)
+	collectGetError(cfg, "DATABASE_URL", "secret", "", "use GetSecret() instead", true)
 
 	// Check that error was collected
 	collected := GetCollectedErrors()

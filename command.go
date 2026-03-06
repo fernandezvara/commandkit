@@ -41,8 +41,110 @@ func (cmd *Command) AddSubCommand(name string, subCmd *Command) {
 	cmd.SubCommands[name] = subCmd
 }
 
+// validateRequiredFlags checks if all required flags have values and logs warnings for missing ones
+func validateRequiredFlags(cmd *Command, ctx *CommandContext) {
+	for key, def := range cmd.Definitions {
+		if def.required {
+			// Check if value is provided in any source (flag, env, or default)
+			hasValue := false
+
+			// Check flag value
+			if def.flag != "" {
+				if flagVal, ok := ctx.Config.flagValues[key]; ok && flagVal != nil && *flagVal != "" {
+					hasValue = true
+				}
+			}
+
+			// Check environment variable
+			if !hasValue && def.envVar != "" {
+				if envVal := os.Getenv(def.envVar); envVal != "" {
+					hasValue = true
+				}
+			}
+
+			// Check default value
+			if !hasValue && def.defaultValue != nil {
+				hasValue = true
+			}
+
+			// Log warning if required flag is missing
+			if !hasValue {
+				var displayName string
+				if def.flag != "" && def.envVar != "" {
+					displayName = fmt.Sprintf("--%s (env: %s)", def.flag, def.envVar)
+				} else if def.flag != "" {
+					displayName = fmt.Sprintf("--%s", def.flag)
+				} else if def.envVar != "" {
+					displayName = fmt.Sprintf("env: %s", def.envVar)
+				} else {
+					displayName = key
+				}
+
+				logWarningForDesigner(fmt.Sprintf("Required configuration '%s' is not provided", displayName))
+			}
+		}
+	}
+}
+
 // Execute executes the command with the given context
 func (cmd *Command) Execute(ctx *CommandContext) error {
+	// isHelpRequested checks if --help or -h is in the arguments
+	isHelpRequested := func(args []string) bool {
+		for _, arg := range args {
+			if arg == "--help" || arg == "-h" {
+				return true
+			}
+		}
+		return false
+	}
+
+	// showEnhancedHelp displays comprehensive help including flag help and environment-only configurations
+	showEnhancedHelp := func(cmd *Command) {
+		// Create a temporary config to properly set up flags for help display
+		tempConfig := &Config{
+			flagSet:    flag.NewFlagSet("", flag.ContinueOnError),
+			flagValues: make(map[string]*string),
+		}
+
+		// Register flags to show proper help with enhanced descriptions
+		for key, def := range cmd.Definitions {
+			if def.flag != "" {
+				enhancedDescription := formatFlagHelp(def)
+				tempConfig.flagValues[key] = tempConfig.flagSet.String(def.flag, "", enhancedDescription)
+			}
+		}
+
+		// Show flag help using the flag package's built-in help
+		tempConfig.flagSet.PrintDefaults()
+
+		// Show environment-only configurations (no flag)
+		var envOnlyConfigs []*Definition
+		for _, def := range cmd.Definitions {
+			if def.flag == "" && def.envVar != "" {
+				envOnlyConfigs = append(envOnlyConfigs, def)
+			}
+		}
+
+		// Print environment-only configurations if any exist
+		if len(envOnlyConfigs) > 0 {
+			fmt.Println()
+			for _, def := range envOnlyConfigs {
+				enhancedDescription := formatFlagHelp(def)
+				fmt.Printf("  (no flag) string %s\n", enhancedDescription)
+				fmt.Printf("        %s\n", def.description)
+			}
+		}
+	}
+
+	// Check for help request before any processing
+	if isHelpRequested(ctx.Args) {
+		showEnhancedHelp(cmd)
+		os.Exit(0)
+	}
+
+	// Clear any previous Get errors at the start of command execution
+	ClearGetErrors()
+
 	// Check if command has no function but has subcommands
 	if cmd.Func == nil && len(cmd.SubCommands) > 0 {
 		return fmt.Errorf("%s", cmd.GetSubcommandHelp(ctx.Command))
@@ -78,12 +180,31 @@ func (cmd *Command) Execute(ctx *CommandContext) error {
 
 		// Process the command-specific configuration
 		if errs := tempConfig.Process(); len(errs) > 0 {
-			return fmt.Errorf("command configuration errors: %v", errs)
+			// Convert ConfigError to GetError for consistent display
+			for _, configErr := range errs {
+				// Detect validation errors vs missing values
+				errorType := "not found"
+				if strings.Contains(configErr.Message, "validation") ||
+					strings.Contains(configErr.Message, "greater than") ||
+					strings.Contains(configErr.Message, "less than") ||
+					strings.Contains(configErr.Message, "oneOf") ||
+					strings.Contains(configErr.Message, "required") && configErr.Source != "none" {
+					errorType = "validation"
+				}
+				collectGetError(tempConfig, configErr.Key, errorType, "", configErr.Message, false)
+			}
+
+			// Display errors using our enhanced format and exit
+			displayGetErrorsAndExit()
+			return nil // This won't be reached due to exit
 		}
 
 		// Update the context with the processed config
 		ctx.Config = tempConfig
 	}
+
+	// Validate required flags and log warnings for designers
+	validateRequiredFlags(cmd, ctx)
 
 	// Apply middleware in reverse order (last added wraps first)
 	var finalFunc CommandFunc = cmd.Func
@@ -92,7 +213,15 @@ func (cmd *Command) Execute(ctx *CommandContext) error {
 		finalFunc = cmd.Middleware[i](finalFunc)
 	}
 
-	return finalFunc(ctx)
+	// Execute the command function
+	err := finalFunc(ctx)
+
+	// Check for collected Get errors after command execution
+	if hasCollectedGetErrors() {
+		displayGetErrorsAndExit()
+	}
+
+	return err
 }
 
 // FindSubCommand finds a subcommand by name or alias
@@ -124,7 +253,7 @@ func (cmd *Command) GetSubcommandHelp(commandPath string) string {
 		executable = os.Args[0]
 	}
 
-	sb.WriteString(fmt.Sprintf("Subcommands for %s:\n\n", commandPath))
+	fmt.Fprintf(&sb, "Subcommands for %s:\n\n", commandPath)
 
 	// Sort subcommands for consistent display
 	names := make([]string, 0, len(cmd.SubCommands))
@@ -134,10 +263,10 @@ func (cmd *Command) GetSubcommandHelp(commandPath string) string {
 
 	for _, name := range names {
 		subCmd := cmd.SubCommands[name]
-		sb.WriteString(fmt.Sprintf("  %-12s %s\n", name, subCmd.ShortHelp))
+		fmt.Fprintf(&sb, "  %-12s %s\n", name, subCmd.ShortHelp)
 	}
 
-	sb.WriteString(fmt.Sprintf("\nUse '%s %s <command> --help' for more information on a specific command.\n", executable, commandPath))
+	fmt.Fprintf(&sb, "\nUse '%s %s <command> --help' for more information on a specific command.\n", executable, commandPath)
 
 	return sb.String()
 }
@@ -175,7 +304,7 @@ func (cmd *Command) GetHelp() string {
 				defaultValue = " (default: [hidden])"
 			}
 
-			sb.WriteString(fmt.Sprintf("  %-20s %s%s%s\n", flag, def.description, required, defaultValue))
+			fmt.Fprintf(&sb, "  %-20s %s%s%s\n", flag, def.description, required, defaultValue)
 		}
 		sb.WriteString("\n")
 	}
@@ -188,7 +317,7 @@ func (cmd *Command) GetHelp() string {
 			if len(subCmd.Aliases) > 0 {
 				aliases = fmt.Sprintf(" (aliases: %s)", strings.Join(subCmd.Aliases, ", "))
 			}
-			sb.WriteString(fmt.Sprintf("  %-12s %s%s\n", name, subCmd.ShortHelp, aliases))
+			fmt.Fprintf(&sb, "  %-12s %s%s\n", name, subCmd.ShortHelp, aliases)
 		}
 	}
 

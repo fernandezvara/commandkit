@@ -2,6 +2,7 @@ package commandkit
 
 import (
 	"errors"
+	"strings"
 	"testing"
 	"time"
 )
@@ -117,7 +118,7 @@ func TestTokenAuthMiddleware(t *testing.T) {
 
 	next := func(ctx *CommandContext) error {
 		// Check that token is stored in context
-		if token, exists := ctx.Get("auth_token"); !exists || token.(string) != "valid-token" {
+		if token, exists := ctx.GetData("auth_token"); !exists || token.(string) != "valid-token" {
 			t.Error("Expected auth token to be stored in context")
 		}
 		return nil
@@ -188,8 +189,97 @@ func TestErrorHandlingMiddleware(t *testing.T) {
 	}
 
 	// Check that error is stored in context
-	if storedErr, exists := ctx.Get("error"); !exists || storedErr != handledErr {
+	if storedErr, exists := ctx.GetData("error"); !exists || storedErr != handledErr {
 		t.Error("Expected error to be stored in context")
+	}
+}
+
+func TestDefaultErrorHandlingMiddleware(t *testing.T) {
+	middleware := DefaultErrorHandlingMiddleware()
+	ctx := NewCommandContext([]string{}, New(), "deploy", "")
+	testErr := errors.New("boom")
+
+	logs := captureLogs(t, func() {
+		err := middleware(func(ctx *CommandContext) error {
+			return testErr
+		})(ctx)
+
+		if !errors.Is(err, testErr) {
+			t.Fatalf("expected original error to be returned, got %v", err)
+		}
+	})
+
+	if !strings.Contains(logs, "💥 Error in command deploy: boom") {
+		t.Fatalf("expected default error log, got: %s", logs)
+	}
+	if storedErr, exists := ctx.GetData("error"); !exists || !errors.Is(storedErr.(error), testErr) {
+		t.Fatalf("expected error stored in context, got: %v exists=%v", storedErr, exists)
+	}
+}
+
+func TestAdminOnlyMiddlewareAllowsAuthorizedAdmin(t *testing.T) {
+	cfg := New()
+	cfg.Define("ADMIN_TOKEN").String().Default("admin-secret")
+	if errs := cfg.Process(); len(errs) > 0 {
+		t.Fatalf("unexpected process errors: %v", errs)
+	}
+
+	ctx := NewCommandContext([]string{}, cfg, "admin-users", "")
+	called := false
+
+	err := AdminOnlyMiddleware("ADMIN_TOKEN")(func(ctx *CommandContext) error {
+		called = true
+		return nil
+	})(ctx)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !called {
+		t.Fatal("expected admin command to execute")
+	}
+}
+
+func TestAdminOnlyMiddlewareRejectsInvalidToken(t *testing.T) {
+	cfg := New()
+	cfg.Define("ADMIN_TOKEN").String().Default("wrong-token")
+	if errs := cfg.Process(); len(errs) > 0 {
+		t.Fatalf("unexpected process errors: %v", errs)
+	}
+
+	ctx := NewCommandContext([]string{}, cfg, "admin-users", "")
+	called := false
+
+	err := AdminOnlyMiddleware("ADMIN_TOKEN")(func(ctx *CommandContext) error {
+		called = true
+		return nil
+	})(ctx)
+
+	if err == nil {
+		t.Fatal("expected invalid token error")
+	}
+	if err.Error() != "authentication failed: invalid admin token" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if called {
+		t.Fatal("did not expect next command to execute")
+	}
+}
+
+func TestAdminOnlyMiddlewareSkipsNonAdminCommands(t *testing.T) {
+	ctx := NewCommandContext([]string{}, New(), "status", "")
+	called := false
+
+	err := AdminOnlyMiddleware("ADMIN_TOKEN")(func(ctx *CommandContext) error {
+		called = true
+		return nil
+	})(ctx)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !called {
+		t.Fatal("expected non-admin command to bypass auth and execute")
 	}
 }
 
@@ -210,7 +300,7 @@ func TestTimingMiddleware(t *testing.T) {
 	}
 
 	// Check that duration is stored in context
-	if duration, exists := ctx.Get("duration"); !exists {
+	if duration, exists := ctx.GetData("duration"); !exists {
 		t.Error("Expected duration to be stored in context")
 	} else if duration.(time.Duration) < 10*time.Millisecond {
 		t.Errorf("Expected duration >= 10ms, got %v", duration)
@@ -274,7 +364,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 	err := middleware(next)(ctx)
 
 	// Check that panic is stored in context
-	if panic, exists := ctx.Get("panic"); !exists || panic != "test panic" {
+	if panic, exists := ctx.GetData("panic"); !exists || panic != "test panic" {
 		t.Error("Expected panic to be stored in context")
 	}
 

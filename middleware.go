@@ -36,7 +36,7 @@ func LoggingMiddleware(logger func(*CommandContext, time.Duration)) CommandMiddl
 func DefaultLoggingMiddleware() CommandMiddleware {
 	return LoggingMiddleware(func(ctx *CommandContext, duration time.Duration) {
 		status := "SUCCESS"
-		if _, hasError := ctx.Get("error"); hasError {
+		if _, hasError := ctx.GetData("error"); hasError {
 			status = "FAILED"
 		}
 
@@ -82,7 +82,7 @@ func TokenAuthMiddleware(tokenKey string) CommandMiddleware {
 			}
 			token = secret.String()
 		} else {
-			token = ctx.Config.GetString(tokenKey)
+			token = Get[string](ctx.Config, tokenKey)
 		}
 
 		if token == "" {
@@ -172,7 +172,7 @@ func AdminOnlyMiddleware(adminTokenKey string) CommandMiddleware {
 			return len(ctx.Command) > 6 && ctx.Command[:6] == "admin-"
 		},
 		AuthMiddleware(func(ctx *CommandContext) error {
-			token := ctx.Config.GetString(adminTokenKey)
+			token := Get[string](ctx.Config, adminTokenKey)
 			if token == "" {
 				return fmt.Errorf("admin commands require authentication token (config key: %s)", adminTokenKey)
 			}
@@ -215,7 +215,7 @@ func RateLimitMiddleware(maxExecutions int, window time.Duration) CommandMiddlew
 
 			// Get current execution count
 			var count int
-			if c, exists := ctx.Get("execution_count"); exists {
+			if c, exists := ctx.GetData("execution_count"); exists {
 				count = c.(int)
 			}
 

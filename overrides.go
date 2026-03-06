@@ -217,8 +217,8 @@ func (c *Config) checkSourceOverrides() *OverrideWarnings {
 
 // checkSourceOverridesForKey checks overrides for a specific configuration key
 func (c *Config) checkSourceOverridesForKey(key string, def *Definition, warnings *OverrideWarnings) {
-	var flagValue, envValue, defaultValue string
-	var hasFlag, hasEnv, hasDefault bool
+	var flagValue, envValue string
+	var hasFlag, hasEnv bool
 
 	// Check each source
 	// 1. Command flags (highest priority)
@@ -237,14 +237,8 @@ func (c *Config) checkSourceOverridesForKey(key string, def *Definition, warning
 		}
 	}
 
-	// 3. Default values
-	if def.defaultValue != nil {
-		defaultValue = fmt.Sprintf("%v", def.defaultValue)
-		hasDefault = true
-	}
-
 	// Check for overrides
-	// Flag overrides env
+	// Flag overrides env (keep warning - this might be unexpected)
 	if hasFlag && hasEnv {
 		warnings.Add(OverrideWarning{
 			Key:        key,
@@ -256,42 +250,13 @@ func (c *Config) checkSourceOverridesForKey(key string, def *Definition, warning
 		})
 	}
 
-	// Flag overrides default
-	if hasFlag && hasDefault {
-		warnings.Add(OverrideWarning{
-			Key:        key,
-			Source:     "default",
-			OverrideBy: "flag",
-			OldValue:   c.maskValueIfNeeded(key, defaultValue),
-			NewValue:   c.maskValueIfNeeded(key, flagValue),
-			Message:    "Command-line flag overrides default value",
-		})
-	}
-
-	// Env overrides default (only if no flag)
-	if hasEnv && hasDefault && !hasFlag {
-		warnings.Add(OverrideWarning{
-			Key:        key,
-			Source:     "default",
-			OverrideBy: "environment",
-			OldValue:   c.maskValueIfNeeded(key, defaultValue),
-			NewValue:   c.maskValueIfNeeded(key, envValue),
-			Message:    "Environment variable overrides default value",
-		})
-	}
+	// Flag overrides default (remove warning - this is expected behavior)
+	// Env overrides default (remove warning - this is expected behavior)
 }
 
 // getValueFromEnv gets value from environment variable
 func (c *Config) getValueFromEnv(envVar string) string {
 	return os.Getenv(envVar)
-}
-
-// getDefaultValue gets the default value for a key
-func (c *Config) getDefaultValue(key string) string {
-	if def, exists := c.definitions[key]; exists && def.defaultValue != nil {
-		return fmt.Sprintf("%v", def.defaultValue)
-	}
-	return ""
 }
 
 // maskValueIfNeeded masks a value if it's a secret

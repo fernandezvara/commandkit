@@ -154,6 +154,143 @@ func TestCommandHelp(t *testing.T) {
 	}
 }
 
+func TestShowGlobalHelp(t *testing.T) {
+	cfg := New()
+	cfg.Command("start").Func(startCommand).ShortHelp("Start the service").Aliases("run")
+	cfg.Command("stop").Func(stopCommand).ShortHelp("Stop the service")
+
+	output := captureStdout(t, func() {
+		if err := cfg.ShowGlobalHelp(); err != nil {
+			t.Fatalf("ShowGlobalHelp failed: %v", err)
+		}
+	})
+
+	if !strings.Contains(output, "Usage:") {
+		t.Fatalf("expected usage in output, got: %s", output)
+	}
+	if !strings.Contains(output, "Available commands:") {
+		t.Fatalf("expected commands heading in output, got: %s", output)
+	}
+	if !strings.Contains(output, "start") || !strings.Contains(output, "Start the service") {
+		t.Fatalf("expected start command in output, got: %s", output)
+	}
+	if !strings.Contains(output, "aliases: run") {
+		t.Fatalf("expected aliases in output, got: %s", output)
+	}
+	if !strings.Contains(output, "<command> --help") {
+		t.Fatalf("expected command help hint in output, got: %s", output)
+	}
+}
+
+func TestShowCommandHelp(t *testing.T) {
+	cfg := New()
+	cfg.Command("deploy").
+		Func(testCommand).
+		ShortHelp("Deploy the service").
+		LongHelp("Deploys the current release.").
+		Config(func(cc *CommandConfig) {
+			cc.Define("ENV").String().Flag("env").Required().Description("Target environment")
+			cc.Define("FORCE").Bool().Flag("force").Default(false).Description("Force deployment")
+		})
+
+	output := captureStdout(t, func() {
+		if err := cfg.ShowCommandHelp("deploy"); err != nil {
+			t.Fatalf("ShowCommandHelp failed: %v", err)
+		}
+	})
+
+	if !strings.Contains(output, "Usage:") || !strings.Contains(output, "deploy [options]") {
+		t.Fatalf("expected deploy usage in output, got: %s", output)
+	}
+	if !strings.Contains(output, "Deploys the current release.") {
+		t.Fatalf("expected long help in output, got: %s", output)
+	}
+	if !strings.Contains(output, "--env") || !strings.Contains(output, "Target environment") {
+		t.Fatalf("expected env option in output, got: %s", output)
+	}
+	if !strings.Contains(output, "--force") || !strings.Contains(output, "Force deployment") {
+		t.Fatalf("expected force option in output, got: %s", output)
+	}
+}
+
+func TestShowCommandHelpUnknownCommand(t *testing.T) {
+	cfg := New()
+
+	err := cfg.ShowCommandHelp("missing")
+	if err == nil {
+		t.Fatal("expected error for unknown command")
+	}
+	if err.Error() != "unknown command: missing" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestConfigExecuteHelpPaths(t *testing.T) {
+	cfg := New()
+	cfg.Command("deploy").Func(testCommand).ShortHelp("Deploy service")
+
+	globalOutput := captureStdout(t, func() {
+		if err := cfg.Execute([]string{"app"}); err != nil {
+			t.Fatalf("Execute without command failed: %v", err)
+		}
+	})
+
+	if !strings.Contains(globalOutput, "Available commands:") || !strings.Contains(globalOutput, "deploy") {
+		t.Fatalf("expected global help output, got: %s", globalOutput)
+	}
+
+	commandOutput := captureStdout(t, func() {
+		if err := cfg.Execute([]string{"app", "help", "deploy"}); err != nil {
+			t.Fatalf("Execute help deploy failed: %v", err)
+		}
+	})
+
+	if !strings.Contains(commandOutput, "Deploy service") || !strings.Contains(commandOutput, "Usage:") {
+		t.Fatalf("expected command help output, got: %s", commandOutput)
+	}
+}
+
+func TestConfigExecuteUnknownCommand(t *testing.T) {
+	cfg := New()
+	cfg.Command("start").Func(startCommand).ShortHelp("Start")
+
+	err := cfg.Execute([]string{"app", "stat"})
+	if err == nil {
+		t.Fatal("expected unknown command error")
+	}
+	if !strings.Contains(err.Error(), `unknown command: "stat"`) {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(err.Error(), "Did you mean: start?") {
+		t.Fatalf("expected suggestion in error: %v", err)
+	}
+}
+
+func TestValidateRequiredFlagsLogsWarning(t *testing.T) {
+	cmd := NewCommand("deploy")
+	cmd.Definitions["BASE_URL"] = &Definition{
+		key:       "BASE_URL",
+		valueType: TypeString,
+		envVar:    "BASE_URL",
+		flag:      "base-url",
+		required:  true,
+	}
+
+	ctx := NewCommandContext(nil, New(), "deploy", "")
+	ctx.Config.flagValues = make(map[string]*string)
+
+	logs := captureLogs(t, func() {
+		validateRequiredFlags(cmd, ctx)
+	})
+
+	if !strings.Contains(logs, "[CONFIG WARNING]") {
+		t.Fatalf("expected config warning log, got: %s", logs)
+	}
+	if !strings.Contains(logs, "--base-url (env: BASE_URL)") {
+		t.Fatalf("expected display name in warning, got: %s", logs)
+	}
+}
+
 func TestCommandSuggestions(t *testing.T) {
 	cfg := New()
 

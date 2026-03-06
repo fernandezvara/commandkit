@@ -94,7 +94,6 @@ func (c *Config) SetEnvironmentFromEnv(envVar string) error {
 	return c.SetEnvironment(env)
 }
 
-
 // mergeFileData merges new config data with existing file data
 func (c *Config) mergeFileData(newData map[string]any) {
 	if c.fileConfig == nil {
@@ -107,15 +106,6 @@ func (c *Config) mergeFileData(newData map[string]any) {
 	for key, value := range newData {
 		c.fileConfig.data[key] = value
 	}
-}
-
-// getKeys returns all keys in a map (for debugging)
-func getKeys(m map[string]any) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	return keys
 }
 
 // getFileValue gets a value from file configuration with environment support

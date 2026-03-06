@@ -165,67 +165,6 @@ func (c *Config) Process() []ConfigError {
 	return errs
 }
 
-// resolveValue determines the value from flags, env, or default
-func (c *Config) resolveValue(key string, def *Definition) (any, string, error) {
-	var rawValue string
-	var source string
-
-	// Priority 1: Command line flags
-	if def.flag != "" {
-		if flagVal, ok := c.flagValues[key]; ok && flagVal != nil && *flagVal != "" {
-			rawValue = *flagVal
-			source = "flag"
-		}
-	}
-
-	// Priority 2: Environment variables
-	if rawValue == "" && def.envVar != "" {
-		if envVal := os.Getenv(def.envVar); envVal != "" {
-			rawValue = envVal
-			source = "env"
-		}
-	}
-
-	// Priority 3: Default value
-	if rawValue == "" && def.defaultValue != nil {
-		source = "default"
-		// Default is already the correct type, validate and return
-		for _, v := range def.validations {
-			if v.Name == "required" {
-				continue // Skip required check for defaults
-			}
-			if err := v.Check(def.defaultValue); err != nil {
-				return def.defaultValue, source, err
-			}
-		}
-		return def.defaultValue, source, nil
-	}
-
-	// No value found
-	if rawValue == "" {
-		source = "none"
-		if def.required {
-			return nil, source, fmt.Errorf("required value not provided (set %s or --%s)", def.envVar, def.flag)
-		}
-		return nil, source, nil
-	}
-
-	// Parse the raw string value into the expected type
-	parsedValue, err := parseValue(rawValue, def.valueType, def.delimiter)
-	if err != nil {
-		return rawValue, source, err
-	}
-
-	// Run validations
-	for _, validation := range def.validations {
-		if err := validation.Check(parsedValue); err != nil {
-			return parsedValue, source, err
-		}
-	}
-
-	return parsedValue, source, nil
-}
-
 // PrintErrors prints formatted error messages to stderr
 func (c *Config) PrintErrors(errs []ConfigError) {
 	fmt.Fprint(os.Stderr, formatErrors(errs))

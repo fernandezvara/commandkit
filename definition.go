@@ -2,6 +2,8 @@
 package commandkit
 
 import (
+	"fmt"
+	"strings"
 	"time"
 )
 
@@ -23,6 +25,146 @@ type Definition struct {
 type DefinitionBuilder struct {
 	def    *Definition
 	config *Config
+}
+
+// formatValidation formats validation rules for help display
+func formatValidation(validations []Validation) []string {
+	var result []string
+	var minVal, maxVal string
+
+	for _, validation := range validations {
+		switch {
+		case validation.Name == "required":
+			// Skip required as it's handled separately
+			continue
+		case strings.HasPrefix(validation.Name, "min("):
+			minVal = extractValue(validation.Name, "min(")
+		case strings.HasPrefix(validation.Name, "max("):
+			maxVal = extractValue(validation.Name, "max(")
+		case strings.HasPrefix(validation.Name, "oneOf("):
+			// Extract values from oneOf(format)
+			values := extractOneOfValues(validation.Name)
+			result = append(result, fmt.Sprintf("oneOf: %s", values))
+		case strings.HasPrefix(validation.Name, "minLength("):
+			min := extractValue(validation.Name, "minLength(")
+			result = append(result, fmt.Sprintf("minLength: %s", min))
+		case strings.HasPrefix(validation.Name, "maxLength("):
+			max := extractValue(validation.Name, "maxLength(")
+			result = append(result, fmt.Sprintf("maxLength: %s", max))
+		case strings.HasPrefix(validation.Name, "regexp("):
+			pattern := extractValue(validation.Name, "regexp(")
+			result = append(result, fmt.Sprintf("pattern: %s", pattern))
+		default:
+			// For other validations, use the name as-is
+			result = append(result, validation.Name)
+		}
+	}
+
+	// Handle min/max range
+	if minVal != "" && maxVal != "" {
+		result = append([]string{fmt.Sprintf("valid: %s-%s", minVal, maxVal)}, result...)
+	} else if minVal != "" {
+		result = append([]string{fmt.Sprintf("min: %s", minVal)}, result...)
+	} else if maxVal != "" {
+		result = append([]string{fmt.Sprintf("max: %s", maxVal)}, result...)
+	}
+
+	return result
+}
+
+// extractValue extracts numeric value from validation name like "min(8080)"
+func extractValue(name, prefix string) string {
+	start := strings.Index(name, prefix)
+	if start == -1 {
+		return ""
+	}
+	start += len(prefix)
+	end := strings.Index(name[start:], ")")
+	if end == -1 {
+		return name[start:]
+	}
+	return name[start : start+end]
+}
+
+// extractOneOfValues extracts values from oneOf(['a', 'b', 'c']) format
+func extractOneOfValues(name string) string {
+	start := strings.Index(name, "oneOf(")
+	if start == -1 {
+		return ""
+	}
+	start += len("oneOf(")
+	end := strings.Index(name[start:], ")")
+	if end == -1 {
+		return name[start:]
+	}
+	values := name[start : start+end]
+
+	// Handle array format oneOf([debug info warn error])
+	if strings.HasPrefix(values, "[") && strings.HasSuffix(values, "]") {
+		// Remove brackets and clean up
+		content := values[1 : len(values)-1]
+		// Split by space and filter empty strings
+		parts := strings.Fields(content)
+		var quotedParts []string
+		for _, part := range parts {
+			if part != "" {
+				quotedParts = append(quotedParts, fmt.Sprintf("'%s'", part))
+			}
+		}
+		return "[" + strings.Join(quotedParts, ", ") + "]"
+	}
+
+	// Handle simple format oneOf(a,b,c)
+	parts := strings.Split(values, ",")
+	var quotedParts []string
+	for _, part := range parts {
+		if strings.TrimSpace(part) != "" {
+			quotedParts = append(quotedParts, fmt.Sprintf("'%s'", strings.TrimSpace(part)))
+		}
+	}
+	return "[" + strings.Join(quotedParts, ", ") + "]"
+}
+
+// formatFlagHelp generates enhanced help text with required/default indicators and validations
+func formatFlagHelp(def *Definition) string {
+	var indicators []string
+
+	// 1. Environment variable context
+	if def.envVar != "" {
+		indicators = append(indicators, fmt.Sprintf("env: %s", def.envVar))
+	}
+
+	// 2. Required indicator
+	if def.required {
+		indicators = append(indicators, "required")
+	}
+
+	// 3. Default value (masked for secrets)
+	if def.defaultValue != nil {
+		if def.secret {
+			indicators = append(indicators, "default: '[hidden]'")
+		} else if def.valueType == TypeString {
+			indicators = append(indicators, fmt.Sprintf("default: '%v'", def.defaultValue))
+		} else {
+			indicators = append(indicators, fmt.Sprintf("default: %v", def.defaultValue))
+		}
+	}
+
+	// 4. Validations
+	validations := formatValidation(def.validations)
+	indicators = append(indicators, validations...)
+
+	// 5. Secret indicator
+	if def.secret {
+		indicators = append(indicators, "secret")
+	}
+
+	// Combine description with indicators
+	if len(indicators) > 0 {
+		return fmt.Sprintf("%s (%s)", def.description, strings.Join(indicators, ", "))
+	}
+
+	return def.description
 }
 
 // newDefinitionBuilder creates a new builder

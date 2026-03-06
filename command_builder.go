@@ -102,11 +102,6 @@ func (b *CommandBuilder) Middleware(middleware CommandMiddleware) *CommandBuilde
 	return b
 }
 
-// Build finalizes the command and adds it to the config
-func (b *CommandBuilder) build() *Command {
-	return b.cmd
-}
-
 // CommandConfig wraps Config for command-specific configuration
 type CommandConfig struct {
 	*Config

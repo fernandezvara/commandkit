@@ -148,11 +148,11 @@ func startCommand(ctx *commandkit.CommandContext) error {
 	}
 
 	// Get configuration values
-	port := commandkit.Get[int64](ctx.Config, "PORT")
-	baseURL := commandkit.Get[string](ctx.Config, "BASE_URL")
-	daemon := commandkit.Get[bool](ctx.Config, "DAEMON")
-	verbose := commandkit.Get[bool](ctx.Config, "VERBOSE")
-	logLevel := commandkit.Get[string](ctx.Config, "LOG_LEVEL")
+	port := commandkit.Get[int64](ctx, "PORT")
+	baseURL := commandkit.Get[string](ctx, "BASE_URL")
+	daemon := commandkit.Get[bool](ctx, "DAEMON")
+	verbose := commandkit.Get[bool](ctx, "VERBOSE")
+	logLevel := commandkit.Get[string](ctx, "LOG_LEVEL")
 
 	// Access secrets safely
 	dbURL := ctx.Config.GetSecret("DATABASE_URL")
@@ -179,8 +179,8 @@ func startServerCommand(ctx *commandkit.CommandContext) error {
 		return fmt.Errorf("configuration errors")
 	}
 
-	workers := commandkit.Get[[]int64](ctx.Config, "WORKERS")
-	port := commandkit.Get[int64](ctx.Config, "PORT")
+	workers := commandkit.Get[[]int64](ctx, "WORKERS")
+	port := commandkit.Get[int64](ctx, "PORT")
 
 	fmt.Printf("=== Starting Server ===\n")
 	fmt.Printf("Port: %d\n", port)
@@ -196,7 +196,7 @@ func startWorkerCommand(ctx *commandkit.CommandContext) error {
 		return fmt.Errorf("configuration errors")
 	}
 
-	count := commandkit.Get[int64](ctx.Config, "COUNT")
+	count := commandkit.Get[int64](ctx, "COUNT")
 
 	fmt.Printf("=== Starting Workers ===\n")
 	fmt.Printf("Worker count: %d\n", count)
@@ -211,7 +211,7 @@ func stopCommand(ctx *commandkit.CommandContext) error {
 		return fmt.Errorf("configuration errors")
 	}
 
-	timeout := commandkit.Get[time.Duration](ctx.Config, "TIMEOUT")
+	timeout := commandkit.Get[time.Duration](ctx, "TIMEOUT")
 
 	fmt.Printf("=== Stopping Service ===\n")
 	fmt.Printf("Graceful shutdown timeout: %v\n", timeout)
