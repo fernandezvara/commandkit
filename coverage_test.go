@@ -197,30 +197,29 @@ func TestConfigPrintOverrideWarnings(t *testing.T) {
 	}
 }
 
-// TestConfigGenerateHelp tests the GenerateHelp functionality
+// TestConfigGenerateHelp tests the GenerateHelp functionality with new help system
 func TestConfigGenerateHelp(t *testing.T) {
 	cfg := New()
+
+	// Add a command to test command help generation
+	cfg.Command("start").Func(func(ctx *CommandContext) error {
+		return nil
+	}).ShortHelp("Start the service")
 
 	// Add some configuration
 	cfg.Define("PORT").Int64().Default(8080).Description("Server port")
 	cfg.Define("HOST").String().Default("localhost").Description("Server host")
 	cfg.Process()
 
-	// Generate help
+	// Generate help (now shows command help instead of config help)
 	help := cfg.GenerateHelp()
 
-	// Verify help content
-	if !strings.Contains(help, "PORT") {
-		t.Error("Help should contain PORT")
+	// Verify help content shows command help format
+	if !strings.Contains(help, "Available commands") {
+		t.Error("Help should contain 'Available commands'")
 	}
-	if !strings.Contains(help, "HOST") {
-		t.Error("Help should contain HOST")
-	}
-	if !strings.Contains(help, "Server port") {
-		t.Error("Help should contain PORT description")
-	}
-	if !strings.Contains(help, "Server host") {
-		t.Error("Help should contain HOST description")
+	if !strings.Contains(help, "start") {
+		t.Error("Help should contain 'start' command")
 	}
 }
 

@@ -45,20 +45,16 @@ func TestCommandRouter_RouteCommand_NoCommand(t *testing.T) {
 
 	config := New()
 
-	// Route with no command
+	// Route with no command - should show help and return nil
 	cmd, _, err := router.RouteCommand([]string{"app"}, config)
 
-	// Check that routing returned special help case
-	if err == nil {
-		t.Error("RouteCommand() should have returned error for no command")
-	}
-
-	if err.Error() != "show global help" {
-		t.Errorf("Expected 'show global help' error, got %v", err)
+	// With new help system, help should be shown directly and no error should be returned
+	if err != nil {
+		t.Errorf("RouteCommand() should not return error for no command, got %v", err)
 	}
 
 	if cmd != nil {
-		t.Error("RouteCommand() should return nil command for help case")
+		t.Error("RouteCommand() should return nil command for no command")
 	}
 }
 
@@ -76,13 +72,10 @@ func TestCommandRouter_RouteCommand_HelpCommand(t *testing.T) {
 	for _, helpCmd := range helpCommands {
 		cmd, _, err := router.RouteCommand([]string{"app", helpCmd}, config)
 
-		// Check that routing returned special help case
-		if err == nil {
-			t.Errorf("RouteCommand() should have returned error for help command '%s'", helpCmd)
-		}
-
-		if err.Error() != "show global help" {
-			t.Errorf("Expected 'show global help' error for '%s', got %v", helpCmd, err)
+		// With new help system, help should be shown directly and no error should be returned
+		// The help system handles the display and returns nil for both cmd and err
+		if err != nil {
+			t.Errorf("RouteCommand() should not return error for help command '%s', got %v", helpCmd, err)
 		}
 
 		if cmd != nil {

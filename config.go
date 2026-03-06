@@ -20,6 +20,7 @@ type Config struct {
 	globalMiddleware []CommandMiddleware
 	overrideWarnings *OverrideWarnings
 	processed        bool
+	helpIntegration  *HelpIntegration
 }
 
 // New creates a new Config instance
@@ -224,52 +225,18 @@ func (c *Config) Dump() map[string]string {
 	return result
 }
 
-// GenerateHelp creates a help message with all configuration options
+// GenerateHelp creates a help message using the new template-based help system
 func (c *Config) GenerateHelp() string {
-	var sb strings.Builder
+	text, _ := c.getHelpIntegration().GenerateHelp([]string{"--help"}, c.commands)
+	return text
+}
 
-	sb.WriteString("Configuration Options:\n\n")
-
-	for key, def := range c.definitions {
-		sb.WriteString(fmt.Sprintf("  %s\n", key))
-		sb.WriteString(fmt.Sprintf("    Type: %s\n", def.valueType))
-
-		if def.envVar != "" {
-			sb.WriteString(fmt.Sprintf("    Env:  %s\n", def.envVar))
-		}
-		if def.flag != "" {
-			sb.WriteString(fmt.Sprintf("    Flag: --%s\n", def.flag))
-		}
-		if def.required {
-			sb.WriteString("    Required: yes\n")
-		}
-		if def.secret {
-			sb.WriteString("    Secret: yes (protected in memory)\n")
-		}
-		if def.defaultValue != nil {
-			if def.secret {
-				sb.WriteString("    Default: [hidden]\n")
-			} else {
-				sb.WriteString(fmt.Sprintf("    Default: %v\n", def.defaultValue))
-			}
-		}
-		if def.description != "" {
-			sb.WriteString(fmt.Sprintf("    Description: %s\n", def.description))
-		}
-
-		// List validations
-		if len(def.validations) > 0 {
-			var valNames []string
-			for _, v := range def.validations {
-				valNames = append(valNames, v.Name)
-			}
-			sb.WriteString(fmt.Sprintf("    Validations: %s\n", strings.Join(valNames, ", ")))
-		}
-
-		sb.WriteString("\n")
+// getHelpIntegration returns the help integration instance, creating it if needed
+func (c *Config) getHelpIntegration() *HelpIntegration {
+	if c.helpIntegration == nil {
+		c.helpIntegration = NewHelpIntegration()
 	}
-
-	return sb.String()
+	return c.helpIntegration
 }
 
 // Execute parses command line arguments and executes the appropriate command
@@ -326,37 +293,14 @@ func (c *Config) executeWithGlobalMiddleware(cmd *Command, ctx *CommandContext) 
 	return finalFunc(ctx)
 }
 
-// ShowGlobalHelp displays help for all commands
+// ShowGlobalHelp displays help for all commands using the new template-based help system
 func (c *Config) ShowGlobalHelp() error {
-	fmt.Printf("Usage: %s <command> [options]\n\n", os.Args[0])
-	fmt.Printf("Available commands:\n\n")
-
-	for name, cmd := range c.commands {
-		aliases := ""
-		if len(cmd.Aliases) > 0 {
-			aliases = fmt.Sprintf(" (aliases: %s)", strings.Join(cmd.Aliases, ", "))
-		}
-		fmt.Printf("  %-12s %s%s\n", name, cmd.ShortHelp, aliases)
-	}
-
-	fmt.Printf("\nUse '%s <command> --help' for command-specific help\n", os.Args[0])
-	return nil
+	return c.getHelpIntegration().ShowHelp([]string{"--help"}, c.commands)
 }
 
-// ShowCommandHelp displays help for a specific command
+// ShowCommandHelp displays help for a specific command using the new template-based help system
 func (c *Config) ShowCommandHelp(commandName string) error {
-	cmd, exists := c.commands[commandName]
-	if !exists {
-		return fmt.Errorf("unknown command: %s", commandName)
-	}
-
-	fmt.Printf("Usage: %s %s [options]\n\n", os.Args[0], commandName)
-
-	// Use HelpHandler service to get command help
-	services := NewCommandServices()
-	helpText := services.HelpHandler.GetCommandHelp(cmd)
-	fmt.Printf("%s\n", helpText)
-	return nil
+	return c.getHelpIntegration().ShowHelp([]string{commandName, "--help"}, c.commands)
 }
 
 // findSuggestions finds similar command names for suggestions

@@ -3,8 +3,6 @@ package commandkit
 
 import (
 	"fmt"
-	"os"
-	"strings"
 )
 
 // CommandRouter routes commands and handles subcommands
@@ -33,33 +31,27 @@ func (cr *commandRouter) RouteCommand(args []string, config *Config) (*Command, 
 		return nil, nil, fmt.Errorf("config cannot be nil")
 	}
 
-	// Create execution context at entry point
-	execCtx := NewExecutionContext("")
-
-	// Handle no command case
-	if len(args) < 2 {
-		execCtx.SetCommand("help")
-		if result := config.Process(); result.Error != nil {
-			if result.Message != "" {
-				fmt.Fprintln(os.Stderr, result.Message)
-			}
-			return nil, nil, fmt.Errorf("global configuration errors")
-		}
-		return nil, nil, fmt.Errorf("show global help") // Special case for help
+	// Check for help requests first using the new help system
+	// Pass args without program name to help system
+	var helpArgs []string
+	if len(args) > 0 {
+		helpArgs = args[1:] // Skip program name
 	}
 
-	// Handle help commands
-	if isHelpCommand(args[1]) {
-		execCtx.SetCommand("help")
-		if len(args) > 2 {
-			return nil, nil, fmt.Errorf("show command help: %s", args[2])
-		}
-		return nil, nil, fmt.Errorf("show global help") // Special case for help
+	helpIntegration := config.getHelpIntegration()
+	if helpIntegration.GetHelpService().IsHelpRequested(helpArgs) {
+		err := helpIntegration.ShowHelp(helpArgs, config.commands)
+		return nil, nil, err // Help shown, no command to execute
+	}
+
+	// Handle no command case - show global help
+	if len(args) < 2 {
+		err := helpIntegration.ShowHelp([]string{"--help"}, config.commands)
+		return nil, nil, err // Help shown, no command to execute
 	}
 
 	commandName := args[1]
 	remainingArgs := args[2:]
-	execCtx.SetCommand(commandName)
 
 	// Find command
 	cmd, exists := config.commands[commandName]
@@ -68,9 +60,8 @@ func (cr *commandRouter) RouteCommand(args []string, config *Config) (*Command, 
 		return nil, nil, fmt.Errorf("unknown command: %q\nDid you mean: %s?", commandName, suggestions)
 	}
 
-	// Create command context with execution context
+	// Create command context
 	ctx := NewCommandContext(remainingArgs, config, commandName, "")
-	ctx.execution = execCtx
 
 	return cmd, ctx, nil
 }
@@ -105,35 +96,8 @@ func (cr *commandRouter) HandleSubcommands(cmd *Command, ctx *CommandContext) (*
 	return cmd, ctx, nil
 }
 
-// isHelpCommand checks if the argument is a help command
-func isHelpCommand(arg string) bool {
-	return arg == "help" || arg == "--help" || arg == "-h"
-}
-
-// RouteWithErrorHandling is a convenience method that handles special routing cases
+// RouteWithErrorHandling is a convenience method that routes commands with error handling
 func (cr *commandRouter) RouteWithErrorHandling(args []string, config *Config) (*Command, *CommandContext, error) {
 	cmd, ctx, err := cr.RouteCommand(args, config)
-
-	// Handle special routing cases
-	if err != nil {
-		if err.Error() == "show global help" {
-			if execErr := config.ShowGlobalHelp(); execErr != nil {
-				return nil, nil, execErr
-			}
-			return nil, nil, nil // Success, but no command to execute
-		}
-
-		if strings.HasPrefix(err.Error(), "show command help:") {
-			commandName := strings.TrimPrefix(err.Error(), "show command help: ")
-			if execErr := config.ShowCommandHelp(commandName); execErr != nil {
-				return nil, nil, execErr
-			}
-			return nil, nil, nil // Success, but no command to execute
-		}
-
-		// Return actual error
-		return nil, nil, err
-	}
-
-	return cmd, ctx, nil
+	return cmd, ctx, err
 }

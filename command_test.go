@@ -133,11 +133,12 @@ func TestCommandHelp(t *testing.T) {
 			cc.Define("DAEMON").Bool().Flag("daemon").Default(false).Description("Run in background")
 		})
 
-	cmd := cfg.commands["start"]
-
-	// Use HelpHandler service to get command help
-	services := NewCommandServices()
-	help := services.HelpHandler.GetCommandHelp(cmd)
+	// Use new help system to get command help
+	helpIntegration := NewHelpIntegration()
+	help, err := helpIntegration.GenerateHelp([]string{"start", "--help"}, cfg.commands)
+	if err != nil {
+		t.Fatalf("Failed to generate help: %v", err)
+	}
 
 	// Check that help contains expected content
 	if !contains(help, "This is a detailed help text") {
@@ -578,23 +579,14 @@ func TestCommandWithNilFuncAndSubcommands(t *testing.T) {
 		Func(func(ctx *CommandContext) error { return nil }).
 		ShortHelp("Delete a user")
 
-	// Test executing parent command without subcommand - should show help
+	// Test executing parent command without subcommand - should show help and succeed
 	err := cfg.Execute([]string{"app", "user"})
-	if err == nil {
-		t.Fatal("Expected error when executing command with nil Func")
+	if err != nil {
+		t.Fatalf("Expected no error when executing command with subcommands (help should be shown), got %v", err)
 	}
 
-	// Check that the error contains subcommand help
-	errStr := err.Error()
-	if !strings.Contains(errStr, "Subcommands for user:") {
-		t.Errorf("Expected subcommand help in error, got: %s", errStr)
-	}
-	if !strings.Contains(errStr, "create       Create a new user") {
-		t.Errorf("Expected 'create' subcommand in help, got: %s", errStr)
-	}
-	if !strings.Contains(errStr, "user <command> --help") {
-		t.Errorf("Expected usage hint in help, got: %s", errStr)
-	}
+	// With new help system, help is shown directly and no error is returned
+	// The test passes if we get here without an error
 }
 
 func TestCommandWithNilFuncAndNoSubcommands(t *testing.T) {
@@ -668,19 +660,24 @@ func TestGetSubcommandHelp(t *testing.T) {
 		ShortHelp: "Delete a user",
 	}
 
-	// Use HelpHandler service to get subcommand help
-	services := NewCommandServices()
-	help := services.HelpHandler.ShowSubcommandHelp("user", cmd.SubCommands, NewCommandContext([]string{}, New(), "user", ""))
+	// Use new help system to get subcommand help
+	helpIntegration := NewHelpIntegration()
+	commands := map[string]*Command{"user": cmd}
+	help, err := helpIntegration.GenerateHelp([]string{"user", "--help"}, commands)
+	if err != nil {
+		t.Fatalf("Failed to generate help: %v", err)
+	}
 
-	// Check help content
+	// Check help content - updated for new help system format
 	expectedParts := []string{
-		"Subcommands for user:",
+		"Usage: user [options]",
+		"User management commands",
+		"Subcommands:",
 		"create       Create a new user",
 		"update       Update an existing user",
 		"list         List all users",
 		"show         Show details of a user",
 		"delete       Delete a user",
-		"user <command> --help",
 	}
 
 	for _, part := range expectedParts {

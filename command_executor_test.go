@@ -81,20 +81,18 @@ func TestCommandExecutor_Execute_SubcommandsOnly(t *testing.T) {
 		},
 	}
 
-	ctx := NewCommandContext([]string{}, New(), "parent", "")
+	// Create config and register the command so help system can find it
+	config := New()
+	config.commands["parent"] = cmd
+	ctx := NewCommandContext([]string{}, config, "parent", "")
 	services := NewCommandServices()
 
 	// Execute the command
 	result := executor.Execute(cmd, ctx, services)
 
-	// Check that execution failed with subcommand help
-	if result.Error == nil {
-		t.Error("Execute() should have returned error for command with subcommands but no function")
-	}
-
-	// Check that error message contains subcommand help
-	if !contains(result.Error.Error(), "Subcommands for") {
-		t.Error("Error should contain subcommand help")
+	// With new help system, subcommand help should be shown and execution should succeed
+	if result.Error != nil {
+		t.Errorf("Execute() should not return error for command with subcommands, got %v", result.Error)
 	}
 }
 

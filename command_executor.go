@@ -22,15 +22,15 @@ func (ce *commandExecutor) Execute(cmd *Command, ctx *CommandContext, services *
 	if cmd == nil {
 		return Error(fmt.Errorf("command cannot be nil"))
 	}
-	
+
 	if ctx == nil {
 		return Error(fmt.Errorf("context cannot be nil"))
 	}
-	
+
 	if services == nil {
 		return Error(fmt.Errorf("services cannot be nil"))
 	}
-	
+
 	// Ensure execution context exists
 	if ctx.execution == nil {
 		ctx.execution = NewExecutionContext(ctx.Command)
@@ -55,13 +55,30 @@ func (ce *commandExecutor) Execute(cmd *Command, ctx *CommandContext, services *
 	return ce.executeWithMiddleware(cmd, ctx, services)
 }
 
-// handleHelp checks for help requests and displays appropriate help
+// handleHelp checks for help requests and displays appropriate help using the new help system
 func (ce *commandExecutor) handleHelp(cmd *Command, ctx *CommandContext, services *CommandServices) *CommandResult {
-	helpHandler := services.HelpHandler
+	// Use the new HelpExecutor to check for and handle help requests
+	helpExecutor := NewHelpExecutor()
 
-	// Check for help request before any processing
-	if helpHandler.IsHelpRequested(ctx.Args) {
-		helpHandler.ShowCommandHelp(cmd, ctx)
+	// Get commands from the context's global config
+	var commands map[string]*Command
+	if ctx.GlobalConfig != nil {
+		commands = ctx.GlobalConfig.commands
+	} else if ctx.CommandConfig != nil {
+		commands = ctx.CommandConfig.commands
+	} else {
+		// Fallback: create a minimal commands map with just the current command
+		commands = make(map[string]*Command)
+		if cmd != nil {
+			commands[ctx.Command] = cmd
+		}
+	}
+
+	// Check for help requests before any processing
+	if handled, err := helpExecutor.CheckAndHandleHelp(ctx.Args, commands); handled {
+		if err != nil {
+			return Error(err)
+		}
 		return Success() // Help was shown successfully
 	}
 
@@ -72,9 +89,30 @@ func (ce *commandExecutor) handleHelp(cmd *Command, ctx *CommandContext, service
 func (ce *commandExecutor) validateCommand(cmd *Command, ctx *CommandContext) *CommandResult {
 	// Check if command has no function but has subcommands
 	if cmd.Func == nil && len(cmd.SubCommands) > 0 {
-		services := NewCommandServices()
-		helpText := services.HelpHandler.ShowSubcommandHelp(ctx.Command, cmd.SubCommands, ctx)
-		return Error(fmt.Errorf("%s", helpText))
+		// Use the new help system to show subcommand help
+		helpExecutor := NewHelpExecutor()
+
+		// Get commands from the context's global config
+		var commands map[string]*Command
+		if ctx.GlobalConfig != nil {
+			commands = ctx.GlobalConfig.commands
+		} else if ctx.CommandConfig != nil {
+			commands = ctx.CommandConfig.commands
+		} else {
+			// Fallback: create a minimal commands map with just the current command
+			commands = make(map[string]*Command)
+			if cmd != nil {
+				commands[ctx.Command] = cmd
+			}
+		}
+
+		// Show subcommand help
+		args := []string{ctx.Command, "--help"}
+		err := helpExecutor.ExecuteHelp(args, commands)
+		if err != nil {
+			return Error(err)
+		}
+		return Success() // Help was shown successfully
 	}
 
 	if cmd.Func == nil {
@@ -89,12 +127,12 @@ func (ce *commandExecutor) processConfiguration(cmd *Command, ctx *CommandContex
 	// Process command-specific configuration if any
 	if len(cmd.Definitions) > 0 {
 		configProcessor := services.ConfigProcessor
-		
+
 		// Process configuration
 		if result := configProcessor.ProcessCommandConfig(cmd, ctx); result.Error != nil {
 			return result // Errors already collected in ctx.execution
 		}
-		
+
 		// Validate required flags and log warnings for designers
 		if result := configProcessor.ValidateRequiredFlags(cmd, ctx); result.Error != nil {
 			return result // Should not error for validation, but check anyway
@@ -107,7 +145,7 @@ func (ce *commandExecutor) processConfiguration(cmd *Command, ctx *CommandContex
 // executeWithMiddleware applies middleware and executes the command
 func (ce *commandExecutor) executeWithMiddleware(cmd *Command, ctx *CommandContext, services *CommandServices) *CommandResult {
 	middlewareChain := services.MiddlewareChain
-	
+
 	// Apply middleware using MiddlewareChain service
 	finalFunc := middlewareChain.ApplyCommandOnly(cmd, cmd.Func)
 
