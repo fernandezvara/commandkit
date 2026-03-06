@@ -12,9 +12,9 @@ func TestGetOr(t *testing.T) {
 	cfg.Define("PORT").Int64().Default(int64(8080))
 	cfg.Define("HOST").String() // No default, not required
 
-	errs := cfg.Process()
-	if len(errs) > 0 {
-		t.Fatalf("Unexpected errors: %v", errs)
+	result := cfg.Process()
+	if result.Error != nil {
+		t.Fatalf("Unexpected errors: %v", result.Error)
 	}
 
 	// Create context for new API
@@ -54,9 +54,9 @@ func TestMustGet(t *testing.T) {
 	cfg.Define("PORT").Int64().Default(int64(8080))
 	cfg.Define("HOST").String() // No default, not required
 
-	errs := cfg.Process()
-	if len(errs) > 0 {
-		t.Fatalf("Unexpected errors: %v", errs)
+	result := cfg.Process()
+	if result.Error != nil {
+		t.Fatalf("Unexpected errors: %v", result.Error)
 	}
 
 	// Create context for new API
@@ -83,17 +83,17 @@ func TestGetWithMissingKey(t *testing.T) {
 
 	cfg.Define("MISSING_KEY").String()
 
-	errs := cfg.Process()
-	if len(errs) > 0 {
-		t.Fatalf("Unexpected errors: %v", errs)
+	result := cfg.Process()
+	if result.Error != nil {
+		t.Fatalf("Unexpected errors: %v", result.Error)
 	}
 
 	// Create context for new API
 	ctx := NewCommandContext([]string{}, cfg, "test", "")
 
 	// Test Get with missing key
-	_, err := Get[string](ctx, "MISSING_KEY")
-	if err == nil {
+	getResult := Get[string](ctx, "MISSING_KEY")
+	if getResult.Error == nil {
 		t.Error("Expected error for missing key")
 	}
 
@@ -117,17 +117,17 @@ func TestGetWithTypeMismatch(t *testing.T) {
 
 	cfg.Define("PORT").String().Default("8080") // String but we'll try to get as int64
 
-	errs := cfg.Process()
-	if len(errs) > 0 {
-		t.Fatalf("Unexpected errors: %v", errs)
+	result := cfg.Process()
+	if result.Error != nil {
+		t.Fatalf("Unexpected errors: %v", result.Error)
 	}
 
 	// Create context for new API
 	ctx := NewCommandContext([]string{}, cfg, "test", "")
 
 	// Test Get with type mismatch
-	_, err := Get[int64](ctx, "PORT")
-	if err == nil {
+	typeResult := Get[int64](ctx, "PORT")
+	if typeResult.Error == nil {
 		t.Error("Expected error for type mismatch")
 	}
 
@@ -159,22 +159,22 @@ func TestGetWithSecret(t *testing.T) {
 
 	cfg.Define("API_KEY").String().Secret()
 
-	errs := cfg.Process()
-	if len(errs) > 0 {
-		t.Fatalf("Unexpected errors: %v", errs)
+	result := cfg.Process()
+	if result.Error != nil {
+		t.Fatalf("Unexpected errors: %v", result.Error)
 	}
 
 	// Create context for new API
 	ctx := NewCommandContext([]string{}, cfg, "test", "")
 
 	// Test Get with secret (should return error)
-	_, err := Get[string](ctx, "API_KEY")
-	if err == nil {
+	secretResult := Get[string](ctx, "API_KEY")
+	if secretResult.Error == nil {
 		t.Error("Expected error for secret access")
 	}
 
-	if err.Error() != "configuration 'API_KEY' is secret, use GetSecret()" {
-		t.Errorf("Expected secret access error, got: %v", err)
+	if secretResult.Error.Error() != "configuration 'API_KEY' is secret, use GetSecret()" {
+		t.Errorf("Expected secret access error, got: %v", secretResult.Error)
 	}
 
 	// Verify error was collected

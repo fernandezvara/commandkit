@@ -73,9 +73,9 @@ func TestCommandExecution(t *testing.T) {
 	cfg.flagSet.Parse([]string{"--uppercase=false"})
 	ctx.Flags["uppercase"] = "false"
 
-	err := cfg.commands["echo"].Execute(ctx)
-	if err != nil {
-		t.Fatalf("Command execution failed: %v", err)
+	result := cfg.commands["echo"].Execute(ctx)
+	if result.Error != nil {
+		t.Fatalf("Command execution failed: %v", result.Error)
 	}
 }
 

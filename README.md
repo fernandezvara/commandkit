@@ -20,6 +20,35 @@ A command and type-safe configuration library for Go with support for environmen
 go get github.com/fernandezvara/commandkit
 ```
 
+### Breaking Changes in v0.3.0
+
+- **Unified Error Handling**: `Get[T]()` now returns `*CommandResult` instead of `(T, error)`
+- **Breaking Change**: No backward compatibility - clean API without compatibility shims
+- **Better Error Messages**: Configuration errors now show detailed, actionable messages
+- **Consistent Error Display**: All errors use the same `CommandResult` pattern
+
+**Migration Guide:**
+```go
+// Old API (v0.2.x)
+port, err := commandkit.Get[int64](ctx, "PORT")
+if err != nil {
+    return fmt.Errorf("failed to get PORT: %w", err)
+}
+
+// New API (v0.3.0+)
+portResult := commandkit.Get[int64](ctx, "PORT")
+if portResult.Error != nil {
+    return fmt.Errorf("failed to get PORT: %w", portResult.Error)
+}
+port := commandkit.GetValue[int64](portResult)
+```
+
+**Benefits:**
+- ✅ Detailed error messages with guidance
+- ✅ Unified error handling across all components
+- ✅ Better error categorization and context
+- ✅ Consistent API patterns
+
 ### Breaking Changes in v0.2.0
 
 - **Removed convenience methods**: `GetString()`, `GetInt64()`, `GetFloat64()`, `GetBool()`, `GetDuration()`, `GetStringSlice()`, `GetInt64Slice()` have been removed from Config
@@ -33,11 +62,30 @@ go get github.com/fernandezvara/commandkit
 ```go
 // Current API (v0.2.0+)
 
-// Configuration access (type-safe)
-port := commandkit.Get[int64](ctx, "PORT")
-baseURL := commandkit.Get[string](ctx, "BASE_URL")
-daemon := commandkit.Get[bool](ctx, "DAEMON")
-timeout := commandkit.Get[time.Duration](ctx, "TIMEOUT")
+// Configuration access (type-safe with unified error handling)
+portResult := commandkit.Get[int64](ctx, "PORT")
+if portResult.Error != nil {
+    return fmt.Errorf("failed to get PORT: %w", portResult.Error)
+}
+port := commandkit.GetValue[int64](portResult)
+
+baseURLResult := commandkit.Get[string](ctx, "BASE_URL")
+if baseURLResult.Error != nil {
+    return fmt.Errorf("failed to get BASE_URL: %w", baseURLResult.Error)
+}
+baseURL := commandkit.GetValue[string](baseURLResult)
+
+daemonResult := commandkit.Get[bool](ctx, "DAEMON")
+if daemonResult.Error != nil {
+    return fmt.Errorf("failed to get DAEMON: %w", daemonResult.Error)
+}
+daemon := commandkit.GetValue[bool](daemonResult)
+
+timeoutResult := commandkit.Get[time.Duration](ctx, "TIMEOUT")
+if timeoutResult.Error != nil {
+    return fmt.Errorf("failed to get TIMEOUT: %w", timeoutResult.Error)
+}
+timeout := commandkit.GetValue[time.Duration](timeoutResult)
 
 // Middleware data access (cross-middleware communication)
 if token, exists := ctx.GetData("auth_token"); exists {

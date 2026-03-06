@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"sync"
 )
 
@@ -83,6 +84,34 @@ func (ctx *ExecutionContext) GetErrors() []GetError {
 	errs := make([]GetError, len(ctx.errors))
 	copy(errs, ctx.errors)
 	return errs
+}
+
+// GetFormattedErrors returns all collected errors as a formatted string
+func (ctx *ExecutionContext) GetFormattedErrors() string {
+	errs := ctx.GetErrors()
+	if len(errs) == 0 {
+		return ""
+	}
+
+	var sb strings.Builder
+	sb.WriteString("Configuration errors detected:\n")
+	sb.WriteString("==================================================\n")
+
+	for _, err := range errs {
+		displayName := getErrorDisplayName(err, err.config)
+		if err.IsSecret || err.ExpectedType == "secret" {
+			sb.WriteString(fmt.Sprintf("  %s not defined\n", displayName))
+		} else if err.Message != "" {
+			sb.WriteString(fmt.Sprintf("  %s %s\n", displayName, err.Message))
+		} else {
+			sb.WriteString(fmt.Sprintf("  %s validation failed\n", displayName))
+		}
+	}
+
+	sb.WriteString("==================================================\n")
+	sb.WriteString(fmt.Sprintf("Total: %d error(s)\n", len(errs)))
+
+	return sb.String()
 }
 
 // GetCommand returns the command name for this context

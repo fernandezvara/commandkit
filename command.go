@@ -86,42 +86,42 @@ func validateRequiredFlags(cmd *Command, ctx *CommandContext) {
 	}
 }
 
-// Execute executes the command with the given context
-func (cmd *Command) Execute(ctx *CommandContext) error {
+// isHelpRequested checks if help is requested in the arguments
+func isHelpRequested(args []string) bool {
+	for _, arg := range args {
+		if arg == "--help" || arg == "-h" || arg == "help" {
+			return true
+		}
+	}
+	return false
+}
+
+// Execute executes the command with the given context and returns CommandResult for unified error handling
+func (cmd *Command) Execute(ctx *CommandContext) *CommandResult {
 	// Ensure execution context exists
 	if ctx.execution == nil {
 		ctx.execution = NewExecutionContext(ctx.Command)
 	}
 
-	// isHelpRequested checks if --help or -h is in the arguments
-	isHelpRequested := func(args []string) bool {
-		for _, arg := range args {
-			if arg == "--help" || arg == "-h" {
-				return true
-			}
-		}
-		return false
-	}
-
 	// Check for help request before any processing
 	if isHelpRequested(ctx.Args) {
 		cmd.showEnhancedHelp(ctx)
-		os.Exit(0)
+		return Success() // Help was shown successfully
 	}
 
 	// Check if command has no function but has subcommands
 	if cmd.Func == nil && len(cmd.SubCommands) > 0 {
-		return fmt.Errorf("%s", cmd.GetSubcommandHelp(ctx.Command))
+		return Error(fmt.Errorf("%s", cmd.GetSubcommandHelp(ctx.Command)))
 	}
 
 	if cmd.Func == nil {
-		return fmt.Errorf("command '%s' has no implementation", ctx.Command)
+		return Error(fmt.Errorf("command '%s' has no implementation", ctx.Command))
 	}
 
 	// Process command-specific configuration if any
 	if len(cmd.Definitions) > 0 {
-		if err := cmd.processCommandConfig(ctx); err != nil {
-			return err // Errors already collected in ctx.execution
+		if result := cmd.processCommandConfig(ctx); result.Error != nil {
+			return result // Errors already collected in ctx.execution
 		}
 	}
 
@@ -138,12 +138,19 @@ func (cmd *Command) Execute(ctx *CommandContext) error {
 	// Execute the command function
 	err := finalFunc(ctx)
 
-	// Check for collected errors and exit if needed
+	// Check for collected errors and create appropriate result
 	if ctx.execution.HasErrors() {
-		ctx.execution.DisplayAndExit()
+		// Instead of exiting, return a CommandResult that should exit
+		errorMessages := ctx.execution.GetFormattedErrors()
+		return ErrorWithExit(err, errorMessages)
 	}
 
-	return err
+	// Return success or error result
+	if err != nil {
+		return Error(err)
+	}
+
+	return Success()
 }
 
 // showEnhancedHelp displays comprehensive help including flag help and environment-only configurations
@@ -185,7 +192,7 @@ func (cmd *Command) showEnhancedHelp(ctx *CommandContext) {
 }
 
 // processCommandConfig handles command-specific configuration processing
-func (cmd *Command) processCommandConfig(ctx *CommandContext) error {
+func (cmd *Command) processCommandConfig(ctx *CommandContext) *CommandResult {
 	// Create a temporary config with command-specific definitions
 	tempConfig := &Config{
 		definitions: cmd.Definitions,
@@ -209,25 +216,34 @@ func (cmd *Command) processCommandConfig(ctx *CommandContext) error {
 	tempConfig.flagSet.Parse(ctx.Args)
 
 	// Process the command-specific configuration
-	if errs := tempConfig.Process(); len(errs) > 0 {
-		// Convert ConfigError to GetError and collect in context
-		for _, configErr := range errs {
-			errorType := "not found"
-			if strings.Contains(configErr.Message, "validation") ||
-				strings.Contains(configErr.Message, "greater than") ||
-				strings.Contains(configErr.Message, "less than") ||
-				strings.Contains(configErr.Message, "oneOf") ||
-				strings.Contains(configErr.Message, "required") && configErr.Source != "none" {
-				errorType = "validation"
+	result := tempConfig.Process()
+	if result.Error != nil {
+		// Collect errors in context
+		for _, configErr := range result.Context {
+			if errMsg, ok := configErr.(string); ok {
+				errorType := "not found"
+				if strings.Contains(errMsg, "validation") ||
+					strings.Contains(errMsg, "greater than") ||
+					strings.Contains(errMsg, "less than") ||
+					strings.Contains(errMsg, "oneOf") ||
+					strings.Contains(errMsg, "required") {
+					errorType = "validation"
+				}
+				// Extract key from context if available
+				key := "unknown"
+				if k, exists := result.Context["key"]; exists {
+					key = fmt.Sprintf("%v", k)
+				}
+				ctx.execution.CollectErrorWithConfig(tempConfig, key, errorType, "", errMsg, false)
 			}
-			ctx.execution.CollectErrorWithConfig(tempConfig, configErr.Key, errorType, "", configErr.Message, false)
 		}
-		return fmt.Errorf("command configuration errors")
+		// Return the actual detailed error message, not a generic one
+		return ConfigErrorResult(result.Message)
 	}
 
 	// Update the context config
 	ctx.Config = tempConfig
-	return nil
+	return Success()
 }
 
 // validateRequiredFlags checks if all required flags have values and logs warnings for missing ones

@@ -76,61 +76,73 @@ func getErrorDisplayName(err GetError, c *Config) string {
 	return displayName
 }
 
-// Get retrieves a configuration value with type safety using generics
-// Returns error for explicit error handling
-func Get[T any](ctx *CommandContext, key string) (T, error) {
+// Get retrieves a configuration value and returns a CommandResult for unified error handling
+// This is a breaking change from the previous (T, error) return pattern
+func Get[T any](ctx *CommandContext, key string) *CommandResult {
 	c := ctx.Config
 	value, exists := c.values[key]
 	if !exists {
-		// Check if this is required data - if so, return nil for designer to handle
+		// Check if this is required data - if so, return validation error
 		if def, hasDef := c.definitions[key]; hasDef && def.required {
-			// Log warning for designer but don't collect error
+			// Log warning for designer and return validation error
 			logWarningForDesigner(fmt.Sprintf("Required key '%s' is not provided", key))
-			var zero T
-			return zero, fmt.Errorf("required configuration '%s' not provided", key)
+			return ValidationError(fmt.Sprintf("required configuration '%s' not provided", key)).
+				WithCommand(ctx.Command, ctx.SubCommand).
+				WithContext("key", key).
+				WithContext("expected_type", fmt.Sprintf("%T", (*new(T))))
 		}
-		// For non-required keys, collect error
+		// For non-required keys, collect error and return result
 		ctx.execution.CollectErrorWithConfig(c, key, "not found", "", "key not defined", false)
-		var zero T
-		return zero, fmt.Errorf("configuration '%s' not found", key)
+		return ErrorWithMessage(fmt.Errorf("configuration '%s' not found", key),
+			fmt.Sprintf("configuration '%s' not found", key)).
+			WithCommand(ctx.Command, ctx.SubCommand).
+			WithContext("key", key)
 	}
 
 	// Check if it's a secret (stored as string, needs special handling)
 	def, hasDef := c.definitions[key]
 	if hasDef && def.secret {
 		ctx.execution.CollectErrorWithConfig(c, key, "secret", "", "use GetSecret() instead", true)
-		var zero T
-		return zero, fmt.Errorf("configuration '%s' is secret, use GetSecret()", key)
+		return ErrorWithMessage(fmt.Errorf("configuration '%s' is secret, use GetSecret()", key),
+			fmt.Sprintf("configuration '%s' is secret, use GetSecret()", key)).
+			WithCommand(ctx.Command, ctx.SubCommand).
+			WithContext("key", key).
+			WithContext("is_secret", true)
 	}
 
 	result, ok := value.(T)
 	if !ok {
 		ctx.execution.CollectErrorWithConfig(c, key, fmt.Sprintf("%T", (*new(T))), fmt.Sprintf("%T", value), "type mismatch", false)
-		var zero T
-		return zero, fmt.Errorf("configuration '%s' type mismatch: expected %T, got %T", key, (*new(T)), value)
+		return ErrorWithMessage(fmt.Errorf("configuration '%s' type mismatch: expected %T, got %T", key, (*new(T)), value),
+			fmt.Sprintf("configuration '%s' type mismatch: expected %s, got %s", key, fmt.Sprintf("%T", (*new(T))), fmt.Sprintf("%T", value))).
+			WithCommand(ctx.Command, ctx.SubCommand).
+			WithContext("key", key).
+			WithContext("expected_type", fmt.Sprintf("%T", (*new(T)))).
+			WithContext("actual_type", fmt.Sprintf("%T", value))
 	}
 
-	return result, nil
+	return SuccessWithData(result)
 }
 
 // MustGet retrieves a configuration value and panics on error
 // Use when you expect the configuration to be valid and want to fail fast
 func MustGet[T any](ctx *CommandContext, key string) T {
-	result, err := Get[T](ctx, key)
-	if err != nil {
-		panic(err)
+	result := Get[T](ctx, key)
+	if result.Error != nil {
+		panic(result.Error)
 	}
-	return result
+	return GetValue[T](result)
 }
 
 // GetOr retrieves a configuration value or returns a default if not set
 // Note: This function now also collects errors and returns the default
 func GetOr[T any](ctx *CommandContext, key string, defaultValue T) T {
-	result, err := Get[T](ctx, key)
-	if err != nil {
+	result := Get[T](ctx, key)
+	if result.Error != nil {
+		// Error already collected in Get, return default value
 		return defaultValue
 	}
-	return result
+	return GetValue[T](result)
 }
 
 // Has checks if a key exists and has a non-nil value

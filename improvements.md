@@ -60,7 +60,7 @@ func (ctx *ExecutionContext) CollectError(err GetError) { ... }
 - ✅ Predictable behavior in production environments
 - ✅ Easier testing and debugging
 
-### 2. **Inconsistent Error Handling Architecture**
+### 2. **Inconsistent Error Handling Architecture** ✅ **RESOLVED**
 
 **Problem**: Multiple error handling patterns coexist:
 - `ConfigError` with `Process()` return
@@ -70,21 +70,27 @@ func (ctx *ExecutionContext) CollectError(err GetError) { ... }
 
 **Impact**: Unpredictable error behavior, debugging nightmares, inconsistent user experience.
 
-**Solution**: Implement a unified error handling strategy:
+**Solution**: ✅ **IMPLEMENTED** - Unified error handling strategy with breaking change:
 ```go
 type CommandResult struct {
-    Error error
-    ExitCode int
+    Error      error
+    ExitCode   int
     ShouldExit bool
-}
-
-// Centralize all error decisions
-func (r *CommandResult) Handle() {
-    if r.ShouldExit {
-        r.displayAndExit()
-    }
+    Message    string
+    Data       any
+    Context    map[string]any
 }
 ```
+
+**✅ Implementation Complete**:
+- ✅ Created `CommandResult` and `CommandError` types
+- ✅ Updated `Get[T]()` to return `CommandResult` 
+- ✅ Updated `Config.Process()` to return `CommandResult`
+- ✅ Updated `Command.Execute()` to return `CommandResult`
+- ✅ Updated middleware to handle `CommandResult`
+- ✅ Implemented as breaking change (no backward compatibility)
+- ✅ Updated all examples to use new API
+- ✅ **Result**: Clear, actionable error messages instead of swallowed errors
 
 ### 3. **Command Execution Complexity Explosion**
 
@@ -415,9 +421,19 @@ cfg.Define("PORT").
 
 ### ✅ Phase 1: Critical Fixes (COMPLETED)
 1. ✅ Eliminate global state - implement context-based error collection
-2. ✅ Unify error handling - create explicit error returns in Get API
+2. ✅ **Unify error handling - implement CommandResult pattern with breaking change**
 3. ✅ Fix secret security - prevent type assertion exposure
 4. ✅ Add comprehensive tests (123 tests passing)
+
+**Issue #2 Resolution**: ✅ **COMPLETE**
+- ✅ Created `CommandResult` and `CommandError` types for unified error handling
+- ✅ Updated `Get[T]()` API to return `CommandResult` instead of `(T, error)`
+- ✅ Updated `Config.Process()` to return `CommandResult`
+- ✅ Updated `Command.Execute()` to return `CommandResult`
+- ✅ Updated middleware to handle `CommandResult`
+- ✅ Implemented breaking change with no backward compatibility
+- ✅ Updated all examples to use new unified error handling
+- ✅ **Result**: Configuration errors now display detailed, actionable messages instead of being swallowed
 
 ### 🔄 Phase 2: Architecture Refactoring (Next)
 1. Extract command execution logic into focused services

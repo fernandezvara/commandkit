@@ -220,8 +220,8 @@ func TestDefaultErrorHandlingMiddleware(t *testing.T) {
 func TestAdminOnlyMiddlewareAllowsAuthorizedAdmin(t *testing.T) {
 	cfg := New()
 	cfg.Define("ADMIN_TOKEN").String().Default("admin-secret")
-	if errs := cfg.Process(); len(errs) > 0 {
-		t.Fatalf("unexpected process errors: %v", errs)
+	if result := cfg.Process(); result.Error != nil {
+		t.Fatalf("unexpected process errors: %v", result.Error)
 	}
 
 	ctx := NewCommandContext([]string{}, cfg, "admin-users", "")
@@ -243,8 +243,8 @@ func TestAdminOnlyMiddlewareAllowsAuthorizedAdmin(t *testing.T) {
 func TestAdminOnlyMiddlewareRejectsInvalidToken(t *testing.T) {
 	cfg := New()
 	cfg.Define("ADMIN_TOKEN").String().Default("wrong-token")
-	if errs := cfg.Process(); len(errs) > 0 {
-		t.Fatalf("unexpected process errors: %v", errs)
+	if result := cfg.Process(); result.Error != nil {
+		t.Fatalf("unexpected process errors: %v", result.Error)
 	}
 
 	ctx := NewCommandContext([]string{}, cfg, "admin-users", "")

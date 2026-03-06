@@ -251,12 +251,12 @@ func TestCommandExecuteEdgeCases(t *testing.T) {
 	}
 
 	ctx = NewCommandContext([]string{}, New(), "empty", "")
-	err = emptyCmd.Execute(ctx)
-	if err == nil {
+	result := emptyCmd.Execute(ctx)
+	if result.Error == nil {
 		t.Error("Expected error for command with no function and no subcommands")
 	}
-	if !strings.Contains(err.Error(), "no implementation") {
-		t.Errorf("Expected 'no implementation' error, got: %s", err.Error())
+	if !strings.Contains(result.Error.Error(), "no implementation") {
+		t.Errorf("Expected 'no implementation' error, got: %s", result.Error.Error())
 	}
 }
 
@@ -320,18 +320,18 @@ func TestGetErrorCollectionIntegration(t *testing.T) {
 	// Execute - this should collect errors and exit
 	// We can't test the os.Exit directly, but we can verify error collection
 	// by calling the Get functions directly
-	// Note: Get functions now return error for missing data
-	_, err := Get[int64](ctx, "PORT")
-	if err == nil {
+	// Note: Get functions now return CommandResult for missing data
+	result := Get[int64](ctx, "PORT")
+	if result.Error == nil {
 		t.Errorf("Expected error for missing PORT, got nil")
 	}
-	_, err = Get[string](ctx, "HOST")
-	if err == nil {
+	hostResult := Get[string](ctx, "HOST")
+	if hostResult.Error == nil {
 		t.Errorf("Expected error for missing HOST, got nil")
 	}
 
-	_, err = Get[string](ctx, "API_KEY")
-	if err == nil {
+	apiKeyResult := Get[string](ctx, "API_KEY")
+	if apiKeyResult.Error == nil {
 		t.Errorf("Expected error for missing API_KEY, got nil")
 	}
 
@@ -340,8 +340,8 @@ func TestGetErrorCollectionIntegration(t *testing.T) {
 	// Only non-required keys collect errors in the execution context
 
 	// Test non-required data still collects errors
-	_, err = Get[string](ctx, "NONEXISTENT_KEY")
-	if err == nil {
+	nonExistentResult := Get[string](ctx, "NONEXISTENT_KEY")
+	if nonExistentResult.Error == nil {
 		t.Error("Expected error for non-required key")
 	}
 

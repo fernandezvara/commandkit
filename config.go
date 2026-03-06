@@ -92,8 +92,8 @@ func (c *Config) UseMiddlewareForSubcommands(commandName string, subcommandNames
 }
 
 // Process parses flags and environment variables, validates all definitions,
-// and populates the values map. Returns any configuration errors.
-func (c *Config) Process() []ConfigError {
+// and populates the values map. Returns a CommandResult for unified error handling.
+func (c *Config) Process() *CommandResult {
 	// Clear previous values if re-processing
 	if c.processed {
 		c.values = make(map[string]any)
@@ -162,7 +162,16 @@ func (c *Config) Process() []ConfigError {
 		c.overrideWarnings.LogWarnings()
 	}
 
-	return errs
+	// Convert ConfigError slice to CommandResult
+	if len(errs) > 0 {
+		var errorMessages []string
+		for _, configErr := range errs {
+			errorMessages = append(errorMessages, configErr.Error())
+		}
+		return ConfigErrorResult(formatErrors(errs))
+	}
+
+	return Success()
 }
 
 // PrintErrors prints formatted error messages to stderr
@@ -275,8 +284,10 @@ func (c *Config) Execute(args []string) error {
 	if len(args) < 2 {
 		// No command provided, process global config and show help
 		execCtx.SetCommand("help")
-		if errs := c.Process(); len(errs) > 0 {
-			c.PrintErrors(errs)
+		if result := c.Process(); result.Error != nil {
+			if result.Message != "" {
+				fmt.Fprintln(os.Stderr, result.Message)
+			}
 			return fmt.Errorf("global configuration errors")
 		}
 		return c.ShowGlobalHelp()
@@ -326,7 +337,17 @@ func (c *Config) Execute(args []string) error {
 func (c *Config) executeWithGlobalMiddleware(cmd *Command, ctx *CommandContext) error {
 	// Create the final execution function that runs the command
 	execFunc := func(ctx *CommandContext) error {
-		return cmd.Execute(ctx)
+		result := cmd.Execute(ctx)
+		if result.Error != nil {
+			// Always display the message if it exists
+			if result.Message != "" {
+				fmt.Fprintln(os.Stderr, result.Message)
+			}
+			if result.ShouldExit {
+				result.Handle()
+			}
+		}
+		return result.Error
 	}
 
 	// Apply global middleware in reverse order (last added wraps first)

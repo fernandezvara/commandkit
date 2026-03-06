@@ -64,8 +64,8 @@ func TestGetWithErrorCollection(t *testing.T) {
 	ctx := NewCommandContext([]string{}, cfg, "test", "")
 
 	// Test that Get returns error for missing key
-	_, err := Get[string](ctx, "MISSING_KEY")
-	if err == nil {
+	result := Get[string](ctx, "MISSING_KEY")
+	if result.Error == nil {
 		t.Error("Expected error for missing required key")
 	}
 
@@ -79,9 +79,9 @@ func TestGetOrWithExecutionContext(t *testing.T) {
 	cfg.Define("OPTIONAL_KEY").String().Default("default")
 
 	// Process the configuration to set the default value
-	errs := cfg.Process()
-	if len(errs) > 0 {
-		t.Fatalf("Configuration errors: %v", errs)
+	result := cfg.Process()
+	if result.Error != nil {
+		t.Fatalf("Configuration errors: %v", result.Error)
 	}
 
 	ctx := NewCommandContext([]string{}, cfg, "test", "")
@@ -116,9 +116,9 @@ func TestMustGetWithExecutionContext(t *testing.T) {
 	cfg.Define("TEST_VALUE").String().Default("test")
 
 	// Process the configuration to set the default value
-	errs := cfg.Process()
-	if len(errs) > 0 {
-		t.Fatalf("Configuration errors: %v", errs)
+	result := cfg.Process()
+	if result.Error != nil {
+		t.Fatalf("Configuration errors: %v", result.Error)
 	}
 
 	ctx := NewCommandContext([]string{}, cfg, "test", "")

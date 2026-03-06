@@ -45,8 +45,8 @@ func main() {
 	)
 
 	// Process configuration
-	if errs := cfg.Process(); len(errs) > 0 {
-		cfg.PrintErrors(errs)
+	if result := cfg.Process(); result.Error != nil {
+		fmt.Fprintln(os.Stderr, result.Message)
 		os.Exit(1)
 	}
 
@@ -125,10 +125,11 @@ func statusCommand(ctx *commandkit.CommandContext) error {
 	}
 
 	// Get verbose flag from command-specific config
-	verbose, err := commandkit.Get[bool](ctx, "VERBOSE")
-	if err != nil {
-		return fmt.Errorf("failed to get VERBOSE config: %w", err)
+	verboseResult := commandkit.Get[bool](ctx, "VERBOSE")
+	if verboseResult.Error != nil {
+		return fmt.Errorf("failed to get VERBOSE: %w", verboseResult.Error)
 	}
+	verbose := commandkit.GetValue[bool](verboseResult)
 	if verbose {
 		fmt.Printf("🔍 Verbose mode enabled\n")
 		fmt.Printf("⏰ Current time: %s\n", time.Now().Format(time.RFC3339))
@@ -140,10 +141,11 @@ func statusCommand(ctx *commandkit.CommandContext) error {
 }
 
 func apiCommand(ctx *commandkit.CommandContext) error {
-	endpoint, err := commandkit.Get[string](ctx, "ENDPOINT")
-	if err != nil {
-		return fmt.Errorf("failed to get ENDPOINT config: %w", err)
+	endpointResult := commandkit.Get[string](ctx, "ENDPOINT")
+	if endpointResult.Error != nil {
+		return fmt.Errorf("failed to get ENDPOINT config: %w", endpointResult.Error)
 	}
+	endpoint := commandkit.GetValue[string](endpointResult)
 	fmt.Printf("🌐 API Operations\n")
 	fmt.Printf("Endpoint: %s\n", endpoint)
 
@@ -182,10 +184,11 @@ func adminCommand(ctx *commandkit.CommandContext) error {
 		fmt.Printf("🔑 Authenticated as admin\n")
 	}
 
-	force, err := commandkit.Get[bool](ctx, "FORCE")
-	if err != nil {
-		return fmt.Errorf("failed to get FORCE config: %w", err)
+	forceResult := commandkit.Get[bool](ctx, "FORCE")
+	if forceResult.Error != nil {
+		return fmt.Errorf("failed to get FORCE config: %w", forceResult.Error)
 	}
+	force := commandkit.GetValue[bool](forceResult)
 	if force {
 		fmt.Printf("⚠️  Force mode enabled\n")
 	}
@@ -208,10 +211,11 @@ func adminUsersCommand(ctx *commandkit.CommandContext) error {
 func adminShutdownCommand(ctx *commandkit.CommandContext) error {
 	fmt.Printf("🛑 Shutdown Initiated\n")
 
-	force, err := commandkit.Get[bool](ctx, "FORCE")
-	if err != nil {
-		return fmt.Errorf("failed to get FORCE config: %w", err)
+	forceResult := commandkit.Get[bool](ctx, "FORCE")
+	if forceResult.Error != nil {
+		return fmt.Errorf("failed to get FORCE config: %w", forceResult.Error)
 	}
+	force := commandkit.GetValue[bool](forceResult)
 	if !force {
 		fmt.Printf("⚠️  Use --force to confirm shutdown\n")
 		return fmt.Errorf("shutdown requires confirmation")
@@ -225,14 +229,17 @@ func adminShutdownCommand(ctx *commandkit.CommandContext) error {
 }
 
 func deployCommand(ctx *commandkit.CommandContext) error {
-	environment, err := commandkit.Get[string](ctx, "ENVIRONMENT")
-	if err != nil {
-		return fmt.Errorf("failed to get ENVIRONMENT config: %w", err)
+	environmentResult := commandkit.Get[string](ctx, "ENVIRONMENT")
+	if environmentResult.Error != nil {
+		return fmt.Errorf("failed to get ENVIRONMENT config: %w", environmentResult.Error)
 	}
-	dryRun, err := commandkit.Get[bool](ctx, "DRY_RUN")
-	if err != nil {
-		return fmt.Errorf("failed to get DRY_RUN config: %w", err)
+	environment := commandkit.GetValue[string](environmentResult)
+
+	dryRunResult := commandkit.Get[bool](ctx, "DRY_RUN")
+	if dryRunResult.Error != nil {
+		return fmt.Errorf("failed to get DRY_RUN config: %w", dryRunResult.Error)
 	}
+	dryRun := commandkit.GetValue[bool](dryRunResult)
 
 	fmt.Printf("🚀 Deployment\n")
 	fmt.Printf("Environment: %s\n", environment)
