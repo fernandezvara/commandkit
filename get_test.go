@@ -173,7 +173,7 @@ func TestGetWithSecret(t *testing.T) {
 		t.Error("Expected error for secret access")
 	}
 
-	if secretResult.Error.Error() != "configuration 'API_KEY' is secret, use GetSecret()" {
+	if secretResult.Error.Error() != "validation error: configuration 'API_KEY' is secret, use GetSecret() instead" {
 		t.Errorf("Expected secret access error, got: %v", secretResult.Error)
 	}
 

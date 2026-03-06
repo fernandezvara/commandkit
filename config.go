@@ -143,11 +143,9 @@ func (c *Config) Process() *CommandResult {
 
 		// Store the value
 		if def.secret && value != nil {
-			// Store secrets in memguard
+			// Store secrets in memguard only - no placeholders in values map
 			strValue := fmt.Sprintf("%v", value)
 			c.secrets.Store(key, strValue)
-			// Also store a placeholder in values for Has() checks
-			c.values[key] = "[SECRET]"
 		} else {
 			c.values[key] = value
 		}

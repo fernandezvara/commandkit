@@ -77,7 +77,7 @@ func getErrorDisplayName(err GetError, c *Config) string {
 }
 
 // Get retrieves a configuration value and returns a CommandResult for unified error handling
-// This is a breaking change from the previous (T, error) return pattern
+// This function now performs early secret detection to prevent type assertion exposure
 func Get[T any](ctx *CommandContext, key string) *CommandResult {
 	// Check command config first (if it exists), then global config
 	var c *Config
@@ -93,10 +93,21 @@ func Get[T any](ctx *CommandContext, key string) *CommandResult {
 		c = ctx.GlobalConfig
 	}
 
+	// Early secret detection - check definition before accessing values
+	def, hasDef := c.definitions[key]
+	if hasDef && def.secret {
+		// Secure error handling - no secret exposure
+		ctx.execution.CollectErrorWithConfig(c, key, "secret", "", "use GetSecret() instead", true)
+		return ValidationError(fmt.Sprintf("configuration '%s' is secret, use GetSecret() instead", key)).
+			WithCommand(ctx.Command, ctx.SubCommand).
+			WithContext("key", key).
+			WithContext("is_secret", true)
+	}
+
 	value, exists := c.values[key]
 	if !exists {
 		// Check if this is required data - if so, return validation error
-		if def, hasDef := c.definitions[key]; hasDef && def.required {
+		if hasDef && def.required {
 			// Log warning for designer and return validation error
 			logWarningForDesigner(fmt.Sprintf("Required key '%s' is not provided", key))
 			return ValidationError(fmt.Sprintf("required configuration '%s' not provided", key)).
@@ -112,12 +123,11 @@ func Get[T any](ctx *CommandContext, key string) *CommandResult {
 			WithContext("key", key)
 	}
 
-	// Check if it's a secret (stored as string, needs special handling)
-	def, hasDef := c.definitions[key]
-	if hasDef && def.secret {
+	// Additional safety check - ensure value is not a secret placeholder
+	if strVal, ok := value.(string); ok && strVal == "[SECRET]" {
+		// This should not happen with new implementation, but add safety check
 		ctx.execution.CollectErrorWithConfig(c, key, "secret", "", "use GetSecret() instead", true)
-		return ErrorWithMessage(fmt.Errorf("configuration '%s' is secret, use GetSecret()", key),
-			fmt.Sprintf("configuration '%s' is secret, use GetSecret()", key)).
+		return ValidationError(fmt.Sprintf("configuration '%s' is secret, use GetSecret() instead", key)).
 			WithCommand(ctx.Command, ctx.SubCommand).
 			WithContext("key", key).
 			WithContext("is_secret", true)
@@ -159,14 +169,25 @@ func GetOr[T any](ctx *CommandContext, key string, defaultValue T) T {
 }
 
 // Has checks if a key exists and has a non-nil value
+// Note: This function will return false for secret keys to prevent exposure
 func (c *Config) Has(key string) bool {
+	// Check if this is a secret key - if so, always return false to prevent exposure
+	if def, hasDef := c.definitions[key]; hasDef && def.secret {
+		return false
+	}
+
 	value, exists := c.values[key]
 	return exists && value != nil
 }
 
-// GetSecret retrieves a secret value
+// GetSecret retrieves a secret value securely
 func (c *Config) GetSecret(key string) *Secret {
 	return c.secrets.Get(key)
+}
+
+// HasSecret checks if a secret exists and is set
+func (c *Config) HasSecret(key string) bool {
+	return c.secrets.Has(key)
 }
 
 // Keys returns all defined configuration keys
