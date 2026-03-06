@@ -3,6 +3,7 @@ package commandkit
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -134,8 +135,9 @@ func TestCommandExecutor_Execute_ConfigProcessing(t *testing.T) {
 			if portResult.Error != nil {
 				return portResult.Error
 			}
-			if GetValue[int64](portResult) != 9000 {
-				return errors.New("unexpected port value")
+			actualPort := GetValue[int64](portResult)
+			if actualPort != 9000 {
+				return fmt.Errorf("unexpected port value: got %d, expected 9000", actualPort)
 			}
 			return nil
 		},
@@ -145,7 +147,7 @@ func TestCommandExecutor_Execute_ConfigProcessing(t *testing.T) {
 				valueType:    TypeInt64,
 				flag:         "port",
 				description:  "Server port",
-				defaultValue: 8080,
+				defaultValue: int64(8080),
 			},
 		},
 	}
@@ -430,7 +432,7 @@ func TestCommandExecutor_Integration(t *testing.T) {
 				valueType:    TypeInt64,
 				flag:         "port",
 				description:  "Server port",
-				defaultValue: 3000,
+				defaultValue: int64(3000),
 			},
 		},
 		Middleware: []CommandMiddleware{

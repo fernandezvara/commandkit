@@ -87,10 +87,14 @@ func TestSourceOverrideDetection(t *testing.T) {
 	cfg := New()
 
 	// Define config with flag, env, and default
-	cfg.Define("TEST_PORT").Int64().Env("TEST_PORT").Flag("port").Default(8080)
+	cfg.Define("TEST_PORT").Int64().Env("TEST_PORT").Flag("port").Default(int64(8080))
 
-	// Simulate flag value (normally set by flag parsing)
-	cfg.flagValues["TEST_PORT"] = &[]string{"3000"}[0]
+	// Save original os.Args and restore after test
+	originalArgs := os.Args
+	defer func() { os.Args = originalArgs }()
+
+	// Set up command line arguments to simulate flag parsing
+	os.Args = []string{"test", "--port", "3000"}
 
 	// Process config to trigger override detection
 	cfg.Process()

@@ -61,3 +61,6 @@ config.toml
 *.local.yaml
 *.local.json
 *.local.toml
+
+# Support documentation
+support_docs/

@@ -2,10 +2,8 @@
 package commandkit
 
 import (
-	"flag"
 	"fmt"
 	"os"
-	"strings"
 )
 
 // ConfigProcessor processes command-specific configuration
@@ -35,52 +33,109 @@ func (cp *configProcessor) ProcessCommandConfig(cmd *Command, ctx *CommandContex
 		return Error(fmt.Errorf("context cannot be nil"))
 	}
 
-	// Create a temporary config with command-specific definitions
+	// Use centralized FlagParser for command-specific flag parsing
+	services := NewCommandServices()
+	flagParser := services.FlagParser
+
+	// Parse command-specific flags using the centralized service
+	parsedFlags, err := flagParser.ParseCommand(ctx.Args, cmd.Definitions)
+	if err != nil {
+		// Collect any parsing errors
+		return Error(fmt.Errorf("command flag parsing error: %v", err))
+	}
+
+	// Create a temporary config with command-specific definitions and parsed flags
 	tempConfig := &Config{
 		definitions: cmd.Definitions,
 		values:      make(map[string]any),
 		secrets:     newSecretStore(),
-		flagSet:     flag.NewFlagSet("", flag.ContinueOnError),
-		flagValues:  make(map[string]*string),
+		flagSet:     parsedFlags.FlagSet,
+		flagValues:  parsedFlags.Values,
 		fileConfig:  ctx.GlobalConfig.fileConfig,
 		commands:    ctx.GlobalConfig.commands,
 		processed:   false,
 	}
 
-	// Register command-specific flags
+	// Process the command-specific configuration using parsed flags
+	// We need to manually process the definitions since we can't call tempConfig.Process()
+	// as it would re-parse global flags instead of command-specific flags
+	var configErrs []ConfigError
+
 	for key, def := range cmd.Definitions {
-		if def.flag != "" {
-			tempConfig.flagValues[key] = tempConfig.flagSet.String(def.flag, "", def.description)
+		var value any
+		var err error
+
+		// Check flag value from parsed flags
+		if flagVal, exists := parsedFlags.Values[key]; exists && flagVal != nil && *flagVal != "" {
+			value, err = parseValue(*flagVal, def.valueType, ",")
+			if err != nil {
+				configErrs = append(configErrs, ConfigError{
+					Key:     key,
+					Source:  "flag",
+					Value:   *flagVal,
+					Message: err.Error(),
+				})
+				continue
+			}
+		} else {
+			// Check environment variable
+			if def.envVar != "" {
+				if envVal := os.Getenv(def.envVar); envVal != "" {
+					value, err = parseValue(envVal, def.valueType, ",")
+					if err != nil {
+						configErrs = append(configErrs, ConfigError{
+							Key:     key,
+							Source:  "env",
+							Value:   envVal,
+							Message: err.Error(),
+						})
+						continue
+					}
+				}
+			}
+
+			// Check default value if no flag or env value
+			if value == nil && def.defaultValue != nil {
+				value = def.defaultValue
+			}
+		}
+
+		// Check if required field is missing
+		if def.required && value == nil {
+			var displayName string
+			if def.flag != "" && def.envVar != "" {
+				displayName = fmt.Sprintf("--%s (env: %s)", def.flag, def.envVar)
+			} else if def.flag != "" {
+				displayName = fmt.Sprintf("--%s", def.flag)
+			} else if def.envVar != "" {
+				displayName = fmt.Sprintf("env: %s", def.envVar)
+			} else {
+				displayName = key
+			}
+
+			configErrs = append(configErrs, ConfigError{
+				Key:     key,
+				Source:  "validation",
+				Message: fmt.Sprintf("required value not provided (set in file, %s)", displayName),
+			})
+			continue
+		}
+
+		// Store the value
+		if def.secret && value != nil {
+			// Store secrets in memguard
+			strValue := fmt.Sprintf("%v", value)
+			tempConfig.secrets.Store(key, strValue)
+			// Also store a placeholder in values for Has() checks
+			tempConfig.values[key] = "[SECRET]"
+		} else if value != nil {
+			tempConfig.values[key] = value
 		}
 	}
 
-	// Parse command-specific flags from context.Args
-	tempConfig.flagSet.Parse(ctx.Args)
-
-	// Process the command-specific configuration
-	result := tempConfig.Process()
-	if result.Error != nil {
-		// Collect errors in context
-		for _, configErr := range result.Context {
-			if errMsg, ok := configErr.(string); ok {
-				errorType := "not found"
-				if strings.Contains(errMsg, "validation") ||
-					strings.Contains(errMsg, "greater than") ||
-					strings.Contains(errMsg, "less than") ||
-					strings.Contains(errMsg, "oneOf") ||
-					strings.Contains(errMsg, "required") {
-					errorType = "validation"
-				}
-				// Extract key from context if available
-				key := "unknown"
-				if k, exists := result.Context["key"]; exists {
-					key = fmt.Sprintf("%v", k)
-				}
-				ctx.execution.CollectErrorWithConfig(tempConfig, key, errorType, "", errMsg, false)
-			}
-		}
-		// Return the actual detailed error message, not a generic one
-		return ConfigErrorResult(result.Message)
+	// Return errors if any occurred
+	if len(configErrs) > 0 {
+		return ConfigErrorResult(formatErrors(configErrs))
 	}
 
 	// Set the command config instead of mutating the context

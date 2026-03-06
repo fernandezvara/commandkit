@@ -104,25 +104,23 @@ func (c *Config) Process() *CommandResult {
 
 	var errs []ConfigError
 
-	// Register all flags first (only if not already registered)
-	for key, def := range c.definitions {
-		if def.flag != "" {
-			if _, exists := c.flagValues[key]; !exists {
-				c.flagValues[key] = c.flagSet.String(def.flag, "", def.description)
-			}
-		}
+	// Use centralized FlagParser for consistent flag parsing
+	services := NewCommandServices()
+	flagParser := services.FlagParser
+
+	// Parse global flags using the centralized service
+	parsedFlags, err := flagParser.ParseGlobal(os.Args[1:], c.definitions)
+	if err != nil {
+		// Collect any parsing errors
+		errs = append(errs, ConfigError{
+			Key:     "flag_parsing",
+			Source:  "flag",
+			Message: fmt.Sprintf("Flag parsing error: %v", err),
+		})
 	}
 
-	// Parse command line flags
-	// Filter out test flags that might interfere
-	filteredArgs := make([]string, 0)
-	for _, arg := range os.Args[1:] {
-		if !strings.HasPrefix(arg, "-test.") {
-			filteredArgs = append(filteredArgs, arg)
-		}
-	}
-	// Ignore errors from unknown flags to allow partial parsing
-	c.flagSet.Parse(filteredArgs)
+	// Update Config's flag values with parsed results
+	c.flagValues = parsedFlags.Values
 
 	// Process each definition
 	for key, def := range c.definitions {

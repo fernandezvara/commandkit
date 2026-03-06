@@ -8,6 +8,7 @@ type CommandServices struct {
 	ConfigProcessor ConfigProcessor
 	MiddlewareChain MiddlewareChain
 	CommandRouter   CommandRouter
+	FlagParser      FlagParser
 }
 
 // NewCommandServices creates a new CommandServices instance with all services initialized
@@ -18,5 +19,6 @@ func NewCommandServices() *CommandServices {
 		ConfigProcessor: NewConfigProcessor(),
 		MiddlewareChain: NewMiddlewareChain(),
 		CommandRouter:   NewCommandRouter(),
+		FlagParser:      NewFlagParser(),
 	}
 }

@@ -2,7 +2,6 @@
 package commandkit
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"sort"
@@ -13,16 +12,16 @@ import (
 type HelpHandler interface {
 	// ShowCommandHelp displays comprehensive help for a command including flags and environment-only configurations
 	ShowCommandHelp(cmd *Command, ctx *CommandContext)
-	
+
 	// ShowSubcommandHelp returns help text for subcommands of a command
 	ShowSubcommandHelp(parent string, subcommands map[string]*Command, ctx *CommandContext) string
-	
+
 	// IsHelpRequested checks if help is requested in the arguments
 	IsHelpRequested(args []string) bool
-	
+
 	// GenerateFlagHelp generates enhanced help text with required/default indicators and validations
 	GenerateFlagHelp(def *Definition) string
-	
+
 	// GetCommandHelp returns help text for a command
 	GetCommandHelp(cmd *Command) string
 }
@@ -37,40 +36,13 @@ func NewHelpHandler() HelpHandler {
 
 // ShowCommandHelp displays comprehensive help for a command including flags and environment-only configurations
 func (h *helpHandler) ShowCommandHelp(cmd *Command, ctx *CommandContext) {
-	// Create a temporary config to properly set up flags for help display
-	tempConfig := &Config{
-		flagSet:    flag.NewFlagSet("", flag.ContinueOnError),
-		flagValues: make(map[string]*string),
-	}
+	// Use centralized FlagParser for consistent help generation
+	services := NewCommandServices()
+	flagParser := services.FlagParser
 
-	// Register flags to show proper help with enhanced descriptions
-	for key, def := range cmd.Definitions {
-		if def.flag != "" {
-			enhancedDescription := h.GenerateFlagHelp(def)
-			tempConfig.flagValues[key] = tempConfig.flagSet.String(def.flag, "", enhancedDescription)
-		}
-	}
-
-	// Show flag help using the flag package's built-in help
-	tempConfig.flagSet.PrintDefaults()
-
-	// Show environment-only configurations (no flag)
-	var envOnlyConfigs []*Definition
-	for _, def := range cmd.Definitions {
-		if def.flag == "" && def.envVar != "" {
-			envOnlyConfigs = append(envOnlyConfigs, def)
-		}
-	}
-
-	// Print environment-only configurations if any exist
-	if len(envOnlyConfigs) > 0 {
-		fmt.Println()
-		for _, def := range envOnlyConfigs {
-			enhancedDescription := h.GenerateFlagHelp(def)
-			fmt.Printf("  (no flag) string %s\n", enhancedDescription)
-			fmt.Printf("        %s\n", def.description)
-		}
-	}
+	// Generate help using the centralized service
+	helpText := flagParser.GenerateHelp(cmd.Definitions)
+	fmt.Print(helpText)
 }
 
 // ShowSubcommandHelp returns help text for subcommands of a command
