@@ -18,6 +18,40 @@ type Command struct {
 	Middleware  []CommandMiddleware
 }
 
+// clone creates a deep copy of the command
+func (cmd *Command) clone() *Command {
+	// Copy aliases slice
+	aliases := make([]string, len(cmd.Aliases))
+	copy(aliases, cmd.Aliases)
+
+	// Copy definitions map
+	definitions := make(map[string]*Definition)
+	for k, v := range cmd.Definitions {
+		definitions[k] = v.clone()
+	}
+
+	// Copy subcommands map
+	subCommands := make(map[string]*Command)
+	for k, v := range cmd.SubCommands {
+		subCommands[k] = v.clone()
+	}
+
+	// Copy middleware slice
+	middleware := make([]CommandMiddleware, len(cmd.Middleware))
+	copy(middleware, cmd.Middleware)
+
+	return &Command{
+		Name:        cmd.Name,
+		Func:        cmd.Func,
+		ShortHelp:   cmd.ShortHelp,
+		LongHelp:    cmd.LongHelp,
+		Aliases:     aliases,
+		Definitions: definitions,
+		SubCommands: subCommands,
+		Middleware:  middleware,
+	}
+}
+
 // CommandFunc represents the function that executes a command
 type CommandFunc func(*CommandContext) error
 

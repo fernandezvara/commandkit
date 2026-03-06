@@ -21,6 +21,22 @@ type Definition struct {
 	description  string
 }
 
+// clone creates a deep copy of the definition
+func (d *Definition) clone() *Definition {
+	return &Definition{
+		key:          d.key,
+		valueType:    d.valueType,
+		envVar:       d.envVar,
+		flag:         d.flag,
+		defaultValue: d.defaultValue,
+		required:     d.required,
+		secret:       d.secret,
+		delimiter:    d.delimiter,
+		validations:  append([]Validation(nil), d.validations...),
+		description:  d.description,
+	}
+}
+
 // DefinitionBuilder provides a fluent API for building definitions
 type DefinitionBuilder struct {
 	def    *Definition
@@ -362,6 +378,14 @@ func (b *DefinitionBuilder) ItemsRange(min, max int) *DefinitionBuilder {
 func (b *DefinitionBuilder) Custom(name string, check func(value any) error) *DefinitionBuilder {
 	b.def.validations = append(b.def.validations, Validation{Name: name, Check: check})
 	return b
+}
+
+// Clone creates a copy of the definition builder for creating variations
+func (b *DefinitionBuilder) Clone() *DefinitionBuilder {
+	return &DefinitionBuilder{
+		def:    b.def.clone(),
+		config: b.config,
+	}
 }
 
 // Build finalizes the definition and adds it to the config

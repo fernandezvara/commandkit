@@ -46,6 +46,14 @@ func (b *CommandBuilder) Aliases(aliases ...string) *CommandBuilder {
 
 // Config defines command-specific configuration
 func (b *CommandBuilder) Config(fn func(*CommandConfig)) *CommandBuilder {
+	cmdConfig := b.createCommandConfig()
+	fn(cmdConfig)
+	b.mergeCommandConfig(cmdConfig)
+	return b
+}
+
+// createCommandConfig creates a command config with copied global definitions
+func (b *CommandBuilder) createCommandConfig() *CommandConfig {
 	cmdConfig := &CommandConfig{
 		Config:      b.config,
 		commandName: b.cmd.Name,
@@ -68,8 +76,11 @@ func (b *CommandBuilder) Config(fn func(*CommandConfig)) *CommandBuilder {
 		cmdConfig.Config.definitions[k] = v
 	}
 
-	fn(cmdConfig)
+	return cmdConfig
+}
 
+// mergeCommandConfig merges command-specific definitions and checks for overrides
+func (b *CommandBuilder) mergeCommandConfig(cmdConfig *CommandConfig) {
 	// Check for command overrides and store warnings
 	warnings := b.config.checkCommandOverrides(b.cmd.Name, cmdConfig.Config.definitions)
 	if warnings.HasWarnings() {
@@ -84,8 +95,6 @@ func (b *CommandBuilder) Config(fn func(*CommandConfig)) *CommandBuilder {
 	for k, v := range cmdConfig.Config.definitions {
 		b.cmd.Definitions[k] = v
 	}
-
-	return b
 }
 
 // SubCommand adds a subcommand
@@ -100,6 +109,14 @@ func (b *CommandBuilder) SubCommand(name string) *CommandBuilder {
 func (b *CommandBuilder) Middleware(middleware CommandMiddleware) *CommandBuilder {
 	b.cmd.Middleware = append(b.cmd.Middleware, middleware)
 	return b
+}
+
+// Clone creates a copy of the command builder for creating variations
+func (b *CommandBuilder) Clone() *CommandBuilder {
+	return &CommandBuilder{
+		cmd:    b.cmd.clone(),
+		config: b.config,
+	}
 }
 
 // CommandConfig wraps Config for command-specific configuration
