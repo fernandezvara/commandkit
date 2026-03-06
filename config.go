@@ -278,63 +278,37 @@ func (c *Config) GenerateHelp() string {
 
 // Execute parses command line arguments and executes the appropriate command
 func (c *Config) Execute(args []string) error {
-	// Create execution context at entry point
-	execCtx := NewExecutionContext("")
+	// Create services for routing
+	services := NewCommandServices()
+	router := services.CommandRouter
 
-	if len(args) < 2 {
-		// No command provided, process global config and show help
-		execCtx.SetCommand("help")
-		if result := c.Process(); result.Error != nil {
-			if result.Message != "" {
-				fmt.Fprintln(os.Stderr, result.Message)
-			}
-			return fmt.Errorf("global configuration errors")
-		}
-		return c.ShowGlobalHelp()
+	// Route command with error handling
+	cmd, ctx, err := router.RouteWithErrorHandling(args, c)
+	if err != nil {
+		return err
 	}
 
-	// Handle help commands
-	if args[1] == "help" || args[1] == "--help" || args[1] == "-h" {
-		execCtx.SetCommand("help")
-		if len(args) > 2 {
-			return c.ShowCommandHelp(args[2])
-		}
-		return c.ShowGlobalHelp()
+	// If no command to execute (help was shown), return success
+	if cmd == nil {
+		return nil
 	}
 
-	commandName := args[1]
-	remainingArgs := args[2:]
-	execCtx.SetCommand(commandName)
-
-	// Find command
-	cmd, exists := c.commands[commandName]
-	if !exists {
-		suggestions := c.findSuggestions(commandName)
-		return fmt.Errorf("unknown command: %q\nDid you mean: %s?", commandName, suggestions)
-	}
-
-	// Create command context with execution context
-	ctx := NewCommandContext(remainingArgs, c, commandName, "")
-	ctx.execution = execCtx
-
-	// Check for subcommands
-	if len(remainingArgs) > 0 {
-		subCmdName := remainingArgs[0]
-		if subCmd := cmd.FindSubCommand(subCmdName); subCmd != nil {
-			ctx.SubCommand = subCmdName
-			ctx.Args = remainingArgs[1:]
-			// Update command context to include subcommand
-			execCtx.SetCommand(commandName + " " + subCmdName)
-			return c.executeWithGlobalMiddleware(subCmd, ctx)
-		}
+	// Handle subcommands
+	finalCmd, finalCtx, err := router.HandleSubcommands(cmd, ctx)
+	if err != nil {
+		return err
 	}
 
 	// Execute command with global middleware
-	return c.executeWithGlobalMiddleware(cmd, ctx)
+	return c.executeWithGlobalMiddleware(finalCmd, finalCtx)
 }
 
 // executeWithGlobalMiddleware wraps command execution with global middleware
 func (c *Config) executeWithGlobalMiddleware(cmd *Command, ctx *CommandContext) error {
+	// Create services for middleware handling
+	services := NewCommandServices()
+	middlewareChain := services.MiddlewareChain
+
 	// Create the final execution function that runs the command
 	execFunc := func(ctx *CommandContext) error {
 		result := cmd.Execute(ctx)
@@ -350,12 +324,10 @@ func (c *Config) executeWithGlobalMiddleware(cmd *Command, ctx *CommandContext) 
 		return result.Error
 	}
 
-	// Apply global middleware in reverse order (last added wraps first)
-	for i := len(c.globalMiddleware) - 1; i >= 0; i-- {
-		execFunc = c.globalMiddleware[i](execFunc)
-	}
+	// Apply global middleware using MiddlewareChain service
+	finalFunc := middlewareChain.ApplyGlobalOnly(c.globalMiddleware, execFunc)
 
-	return execFunc(ctx)
+	return finalFunc(ctx)
 }
 
 // ShowGlobalHelp displays help for all commands
@@ -383,7 +355,11 @@ func (c *Config) ShowCommandHelp(commandName string) error {
 	}
 
 	fmt.Printf("Usage: %s %s [options]\n\n", os.Args[0], commandName)
-	fmt.Printf("%s\n", cmd.GetHelp())
+
+	// Use HelpHandler service to get command help
+	services := NewCommandServices()
+	helpText := services.HelpHandler.GetCommandHelp(cmd)
+	fmt.Printf("%s\n", helpText)
 	return nil
 }
 

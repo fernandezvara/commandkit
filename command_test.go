@@ -134,7 +134,10 @@ func TestCommandHelp(t *testing.T) {
 		})
 
 	cmd := cfg.commands["start"]
-	help := cmd.GetHelp()
+
+	// Use HelpHandler service to get command help
+	services := NewCommandServices()
+	help := services.HelpHandler.GetCommandHelp(cmd)
 
 	// Check that help contains expected content
 	if !contains(help, "This is a detailed help text") {
@@ -665,7 +668,9 @@ func TestGetSubcommandHelp(t *testing.T) {
 		ShortHelp: "Delete a user",
 	}
 
-	help := cmd.GetSubcommandHelp("user")
+	// Use HelpHandler service to get subcommand help
+	services := NewCommandServices()
+	help := services.HelpHandler.ShowSubcommandHelp("user", cmd.SubCommands, NewCommandContext([]string{}, New(), "user", ""))
 
 	// Check help content
 	expectedParts := []string{
