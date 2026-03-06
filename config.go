@@ -269,12 +269,12 @@ func (c *Config) GenerateHelp() string {
 
 // Execute parses command line arguments and executes the appropriate command
 func (c *Config) Execute(args []string) error {
-	// Clear any previous Get errors and set command context
-	ClearGetErrors()
+	// Create execution context at entry point
+	execCtx := NewExecutionContext("")
 
 	if len(args) < 2 {
 		// No command provided, process global config and show help
-		SetCurrentCommand("help")
+		execCtx.SetCommand("help")
 		if errs := c.Process(); len(errs) > 0 {
 			c.PrintErrors(errs)
 			return fmt.Errorf("global configuration errors")
@@ -284,7 +284,7 @@ func (c *Config) Execute(args []string) error {
 
 	// Handle help commands
 	if args[1] == "help" || args[1] == "--help" || args[1] == "-h" {
-		SetCurrentCommand("help")
+		execCtx.SetCommand("help")
 		if len(args) > 2 {
 			return c.ShowCommandHelp(args[2])
 		}
@@ -293,9 +293,7 @@ func (c *Config) Execute(args []string) error {
 
 	commandName := args[1]
 	remainingArgs := args[2:]
-
-	// Set current command for Get error context
-	SetCurrentCommand(commandName)
+	execCtx.SetCommand(commandName)
 
 	// Find command
 	cmd, exists := c.commands[commandName]
@@ -304,8 +302,9 @@ func (c *Config) Execute(args []string) error {
 		return fmt.Errorf("unknown command: %q\nDid you mean: %s?", commandName, suggestions)
 	}
 
-	// Create command context
+	// Create command context with execution context
 	ctx := NewCommandContext(remainingArgs, c, commandName, "")
+	ctx.execution = execCtx
 
 	// Check for subcommands
 	if len(remainingArgs) > 0 {
@@ -314,7 +313,7 @@ func (c *Config) Execute(args []string) error {
 			ctx.SubCommand = subCmdName
 			ctx.Args = remainingArgs[1:]
 			// Update command context to include subcommand
-			SetCurrentCommand(commandName + " " + subCmdName)
+			execCtx.SetCommand(commandName + " " + subCmdName)
 			return c.executeWithGlobalMiddleware(subCmd, ctx)
 		}
 	}

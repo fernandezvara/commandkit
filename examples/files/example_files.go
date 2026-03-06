@@ -77,11 +77,30 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Create command context for new API
+	ctx := commandkit.NewCommandContext([]string{}, cfg, "example", "")
+
 	// Use configuration
-	port := commandkit.Get[int64](cfg, "PORT")
-	baseURL := commandkit.Get[string](cfg, "BASE_URL")
-	debug := commandkit.Get[bool](cfg, "DEBUG")
-	tokenTTL := commandkit.Get[time.Duration](cfg, "ACCESS_TOKEN_TTL")
+	port, err := commandkit.Get[int64](ctx, "PORT")
+	if err != nil {
+		fmt.Printf("Error getting PORT: %v\n", err)
+		os.Exit(1)
+	}
+	baseURL, err := commandkit.Get[string](ctx, "BASE_URL")
+	if err != nil {
+		fmt.Printf("Error getting BASE_URL: %v\n", err)
+		os.Exit(1)
+	}
+	debug, err := commandkit.Get[bool](ctx, "DEBUG")
+	if err != nil {
+		fmt.Printf("Error getting DEBUG: %v\n", err)
+		os.Exit(1)
+	}
+	tokenTTL, err := commandkit.Get[time.Duration](ctx, "ACCESS_TOKEN_TTL")
+	if err != nil {
+		fmt.Printf("Error getting ACCESS_TOKEN_TTL: %v\n", err)
+		os.Exit(1)
+	}
 
 	fmt.Printf("=== Configuration Loaded (Environment: %s) ===\n", env)
 	fmt.Printf("Server starting on port %d\n", port)

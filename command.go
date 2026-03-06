@@ -88,6 +88,11 @@ func validateRequiredFlags(cmd *Command, ctx *CommandContext) {
 
 // Execute executes the command with the given context
 func (cmd *Command) Execute(ctx *CommandContext) error {
+	// Ensure execution context exists
+	if ctx.execution == nil {
+		ctx.execution = NewExecutionContext(ctx.Command)
+	}
+
 	// isHelpRequested checks if --help or -h is in the arguments
 	isHelpRequested := func(args []string) bool {
 		for _, arg := range args {
@@ -98,52 +103,11 @@ func (cmd *Command) Execute(ctx *CommandContext) error {
 		return false
 	}
 
-	// showEnhancedHelp displays comprehensive help including flag help and environment-only configurations
-	showEnhancedHelp := func(cmd *Command) {
-		// Create a temporary config to properly set up flags for help display
-		tempConfig := &Config{
-			flagSet:    flag.NewFlagSet("", flag.ContinueOnError),
-			flagValues: make(map[string]*string),
-		}
-
-		// Register flags to show proper help with enhanced descriptions
-		for key, def := range cmd.Definitions {
-			if def.flag != "" {
-				enhancedDescription := formatFlagHelp(def)
-				tempConfig.flagValues[key] = tempConfig.flagSet.String(def.flag, "", enhancedDescription)
-			}
-		}
-
-		// Show flag help using the flag package's built-in help
-		tempConfig.flagSet.PrintDefaults()
-
-		// Show environment-only configurations (no flag)
-		var envOnlyConfigs []*Definition
-		for _, def := range cmd.Definitions {
-			if def.flag == "" && def.envVar != "" {
-				envOnlyConfigs = append(envOnlyConfigs, def)
-			}
-		}
-
-		// Print environment-only configurations if any exist
-		if len(envOnlyConfigs) > 0 {
-			fmt.Println()
-			for _, def := range envOnlyConfigs {
-				enhancedDescription := formatFlagHelp(def)
-				fmt.Printf("  (no flag) string %s\n", enhancedDescription)
-				fmt.Printf("        %s\n", def.description)
-			}
-		}
-	}
-
 	// Check for help request before any processing
 	if isHelpRequested(ctx.Args) {
-		showEnhancedHelp(cmd)
+		cmd.showEnhancedHelp(ctx)
 		os.Exit(0)
 	}
-
-	// Clear any previous Get errors at the start of command execution
-	ClearGetErrors()
 
 	// Check if command has no function but has subcommands
 	if cmd.Func == nil && len(cmd.SubCommands) > 0 {
@@ -156,55 +120,13 @@ func (cmd *Command) Execute(ctx *CommandContext) error {
 
 	// Process command-specific configuration if any
 	if len(cmd.Definitions) > 0 {
-		// Create a temporary config with command-specific definitions
-		tempConfig := &Config{
-			definitions: cmd.Definitions,
-			values:      make(map[string]any),
-			secrets:     newSecretStore(),
-			flagSet:     flag.NewFlagSet("", flag.ContinueOnError),
-			flagValues:  make(map[string]*string),
-			fileConfig:  ctx.Config.fileConfig,
-			commands:    ctx.Config.commands,
-			processed:   false,
+		if err := cmd.processCommandConfig(ctx); err != nil {
+			return err // Errors already collected in ctx.execution
 		}
-
-		// Register command-specific flags
-		for key, def := range cmd.Definitions {
-			if def.flag != "" {
-				tempConfig.flagValues[key] = tempConfig.flagSet.String(def.flag, "", def.description)
-			}
-		}
-
-		// Parse command-specific flags from context.Args
-		tempConfig.flagSet.Parse(ctx.Args)
-
-		// Process the command-specific configuration
-		if errs := tempConfig.Process(); len(errs) > 0 {
-			// Convert ConfigError to GetError for consistent display
-			for _, configErr := range errs {
-				// Detect validation errors vs missing values
-				errorType := "not found"
-				if strings.Contains(configErr.Message, "validation") ||
-					strings.Contains(configErr.Message, "greater than") ||
-					strings.Contains(configErr.Message, "less than") ||
-					strings.Contains(configErr.Message, "oneOf") ||
-					strings.Contains(configErr.Message, "required") && configErr.Source != "none" {
-					errorType = "validation"
-				}
-				collectGetError(tempConfig, configErr.Key, errorType, "", configErr.Message, false)
-			}
-
-			// Display errors using our enhanced format and exit
-			displayGetErrorsAndExit()
-			return nil // This won't be reached due to exit
-		}
-
-		// Update the context with the processed config
-		ctx.Config = tempConfig
 	}
 
 	// Validate required flags and log warnings for designers
-	validateRequiredFlags(cmd, ctx)
+	cmd.validateRequiredFlags(ctx)
 
 	// Apply middleware in reverse order (last added wraps first)
 	var finalFunc CommandFunc = cmd.Func
@@ -216,12 +138,141 @@ func (cmd *Command) Execute(ctx *CommandContext) error {
 	// Execute the command function
 	err := finalFunc(ctx)
 
-	// Check for collected Get errors after command execution
-	if hasCollectedGetErrors() {
-		displayGetErrorsAndExit()
+	// Check for collected errors and exit if needed
+	if ctx.execution.HasErrors() {
+		ctx.execution.DisplayAndExit()
 	}
 
 	return err
+}
+
+// showEnhancedHelp displays comprehensive help including flag help and environment-only configurations
+func (cmd *Command) showEnhancedHelp(ctx *CommandContext) {
+	// Create a temporary config to properly set up flags for help display
+	tempConfig := &Config{
+		flagSet:    flag.NewFlagSet("", flag.ContinueOnError),
+		flagValues: make(map[string]*string),
+	}
+
+	// Register flags to show proper help with enhanced descriptions
+	for key, def := range cmd.Definitions {
+		if def.flag != "" {
+			enhancedDescription := formatFlagHelp(def)
+			tempConfig.flagValues[key] = tempConfig.flagSet.String(def.flag, "", enhancedDescription)
+		}
+	}
+
+	// Show flag help using the flag package's built-in help
+	tempConfig.flagSet.PrintDefaults()
+
+	// Show environment-only configurations (no flag)
+	var envOnlyConfigs []*Definition
+	for _, def := range cmd.Definitions {
+		if def.flag == "" && def.envVar != "" {
+			envOnlyConfigs = append(envOnlyConfigs, def)
+		}
+	}
+
+	// Print environment-only configurations if any exist
+	if len(envOnlyConfigs) > 0 {
+		fmt.Println()
+		for _, def := range envOnlyConfigs {
+			enhancedDescription := formatFlagHelp(def)
+			fmt.Printf("  (no flag) string %s\n", enhancedDescription)
+			fmt.Printf("        %s\n", def.description)
+		}
+	}
+}
+
+// processCommandConfig handles command-specific configuration processing
+func (cmd *Command) processCommandConfig(ctx *CommandContext) error {
+	// Create a temporary config with command-specific definitions
+	tempConfig := &Config{
+		definitions: cmd.Definitions,
+		values:      make(map[string]any),
+		secrets:     newSecretStore(),
+		flagSet:     flag.NewFlagSet("", flag.ContinueOnError),
+		flagValues:  make(map[string]*string),
+		fileConfig:  ctx.Config.fileConfig,
+		commands:    ctx.Config.commands,
+		processed:   false,
+	}
+
+	// Register command-specific flags
+	for key, def := range cmd.Definitions {
+		if def.flag != "" {
+			tempConfig.flagValues[key] = tempConfig.flagSet.String(def.flag, "", def.description)
+		}
+	}
+
+	// Parse command-specific flags from context.Args
+	tempConfig.flagSet.Parse(ctx.Args)
+
+	// Process the command-specific configuration
+	if errs := tempConfig.Process(); len(errs) > 0 {
+		// Convert ConfigError to GetError and collect in context
+		for _, configErr := range errs {
+			errorType := "not found"
+			if strings.Contains(configErr.Message, "validation") ||
+				strings.Contains(configErr.Message, "greater than") ||
+				strings.Contains(configErr.Message, "less than") ||
+				strings.Contains(configErr.Message, "oneOf") ||
+				strings.Contains(configErr.Message, "required") && configErr.Source != "none" {
+				errorType = "validation"
+			}
+			ctx.execution.CollectErrorWithConfig(tempConfig, configErr.Key, errorType, "", configErr.Message, false)
+		}
+		return fmt.Errorf("command configuration errors")
+	}
+
+	// Update the context config
+	ctx.Config = tempConfig
+	return nil
+}
+
+// validateRequiredFlags checks if all required flags have values and logs warnings for missing ones
+func (cmd *Command) validateRequiredFlags(ctx *CommandContext) {
+	for key, def := range cmd.Definitions {
+		if def.required {
+			// Check if value is provided in any source (flag, env, or default)
+			hasValue := false
+
+			// Check flag value
+			if def.flag != "" {
+				if flagVal, ok := ctx.Config.flagValues[key]; ok && flagVal != nil && *flagVal != "" {
+					hasValue = true
+				}
+			}
+
+			// Check environment variable
+			if !hasValue && def.envVar != "" {
+				if envVal := os.Getenv(def.envVar); envVal != "" {
+					hasValue = true
+				}
+			}
+
+			// Check default value
+			if !hasValue && def.defaultValue != nil {
+				hasValue = true
+			}
+
+			// Log warning if required flag is missing
+			if !hasValue {
+				var displayName string
+				if def.flag != "" && def.envVar != "" {
+					displayName = fmt.Sprintf("--%s (env: %s)", def.flag, def.envVar)
+				} else if def.flag != "" {
+					displayName = fmt.Sprintf("--%s", def.flag)
+				} else if def.envVar != "" {
+					displayName = fmt.Sprintf("env: %s", def.envVar)
+				} else {
+					displayName = key
+				}
+
+				logWarningForDesigner(fmt.Sprintf("Required configuration '%s' is not provided", displayName))
+			}
+		}
+	}
 }
 
 // FindSubCommand finds a subcommand by name or alias

@@ -8,7 +8,8 @@ type CommandContext struct {
 	Command    string
 	SubCommand string
 	Flags      map[string]string
-	data       map[string]any // For middleware data sharing
+	data       map[string]any    // For middleware data sharing
+	execution  *ExecutionContext // Thread-safe error collection
 }
 
 // NewCommandContext creates a new command context
@@ -20,6 +21,7 @@ func NewCommandContext(args []string, config *Config, command, subCommand string
 		SubCommand: subCommand,
 		Flags:      make(map[string]string),
 		data:       make(map[string]any),
+		execution:  NewExecutionContext(command), // Always initialize execution context
 	}
 }
 

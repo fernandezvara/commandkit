@@ -125,7 +125,10 @@ func statusCommand(ctx *commandkit.CommandContext) error {
 	}
 
 	// Get verbose flag from command-specific config
-	verbose := commandkit.Get[bool](ctx, "VERBOSE")
+	verbose, err := commandkit.Get[bool](ctx, "VERBOSE")
+	if err != nil {
+		return fmt.Errorf("failed to get VERBOSE config: %w", err)
+	}
 	if verbose {
 		fmt.Printf("Verbose mode enabled\n")
 		fmt.Printf("Current time: %s\n", time.Now().Format(time.RFC3339))
@@ -137,7 +140,10 @@ func statusCommand(ctx *commandkit.CommandContext) error {
 }
 
 func apiCommand(ctx *commandkit.CommandContext) error {
-	endpoint := commandkit.Get[string](ctx, "ENDPOINT")
+	endpoint, err := commandkit.Get[string](ctx, "ENDPOINT")
+	if err != nil {
+		return fmt.Errorf("failed to get ENDPOINT config: %w", err)
+	}
 	fmt.Printf("API Operations\n")
 	fmt.Printf("Endpoint: %s\n", endpoint)
 
@@ -176,7 +182,10 @@ func adminCommand(ctx *commandkit.CommandContext) error {
 		fmt.Printf("Authenticated as admin\n")
 	}
 
-	force := commandkit.Get[bool](ctx, "FORCE")
+	force, err := commandkit.Get[bool](ctx, "FORCE")
+	if err != nil {
+		return fmt.Errorf("failed to get FORCE config: %w", err)
+	}
 	if force {
 		fmt.Printf("Force mode enabled\n")
 	}
@@ -199,7 +208,10 @@ func adminUsersCommand(ctx *commandkit.CommandContext) error {
 func adminShutdownCommand(ctx *commandkit.CommandContext) error {
 	fmt.Printf("Shutdown Initiated\n")
 
-	force := commandkit.Get[bool](ctx, "FORCE")
+	force, err := commandkit.Get[bool](ctx, "FORCE")
+	if err != nil {
+		return fmt.Errorf("failed to get FORCE config: %w", err)
+	}
 	if !force {
 		fmt.Printf("Use --force to confirm shutdown\n")
 		return fmt.Errorf("shutdown requires confirmation")
@@ -213,8 +225,14 @@ func adminShutdownCommand(ctx *commandkit.CommandContext) error {
 }
 
 func deployCommand(ctx *commandkit.CommandContext) error {
-	environment := commandkit.Get[string](ctx, "ENVIRONMENT")
-	dryRun := commandkit.Get[bool](ctx, "DRY_RUN")
+	environment, err := commandkit.Get[string](ctx, "ENVIRONMENT")
+	if err != nil {
+		return fmt.Errorf("failed to get ENVIRONMENT config: %w", err)
+	}
+	dryRun, err := commandkit.Get[bool](ctx, "DRY_RUN")
+	if err != nil {
+		return fmt.Errorf("failed to get DRY_RUN config: %w", err)
+	}
 
 	fmt.Printf("Deployment\n")
 	fmt.Printf("Environment: %s\n", environment)

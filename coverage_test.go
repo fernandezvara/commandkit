@@ -315,38 +315,50 @@ func TestGetErrorCollectionIntegration(t *testing.T) {
 	cfg.Process()
 
 	// Clear any previous errors
-	ClearGetErrors()
-	SetCurrentCommand("test")
+	ctx := NewCommandContext([]string{}, cfg, "test", "")
 
 	// Execute - this should collect errors and exit
 	// We can't test the os.Exit directly, but we can verify error collection
 	// by calling the Get functions directly
-	// Note: Get functions now return nil for required data (designer responsibility)
-	port := Get[int64](cfg, "PORT")
-	host := Get[string](cfg, "HOST")
-	apiKey := Get[string](cfg, "API_KEY")
-
-	// Verify Get returns nil for missing required data
-	if port != 0 {
-		t.Errorf("Expected PORT to be 0 (nil equivalent), got %d", port)
+	// Note: Get functions now return error for missing data
+	_, err := Get[int64](ctx, "PORT")
+	if err == nil {
+		t.Errorf("Expected error for missing PORT, got nil")
 	}
-	if host != "" {
-		t.Errorf("Expected HOST to be empty string (nil equivalent), got %s", host)
-	}
-	if apiKey != "" {
-		t.Errorf("Expected API_KEY to be empty string (nil equivalent), got %s", apiKey)
+	_, err = Get[string](ctx, "HOST")
+	if err == nil {
+		t.Errorf("Expected error for missing HOST, got nil")
 	}
 
-	// Verify no errors are collected for required data (new behavior)
-	collected := GetCollectedErrors()
-	if len(collected) != 0 {
-		t.Errorf("Expected 0 collected errors for required data (new behavior), got %d", len(collected))
+	_, err = Get[string](ctx, "API_KEY")
+	if err == nil {
+		t.Errorf("Expected error for missing API_KEY, got nil")
 	}
+
+	// Note: Required keys don't collect errors, they return errors directly
+	// The new behavior separates required validation from error collection
+	// Only non-required keys collect errors in the execution context
 
 	// Test non-required data still collects errors
-	Get[string](cfg, "NONEXISTENT_KEY")
-	collectedAfter := GetCollectedErrors()
-	if len(collectedAfter) != 1 {
-		t.Errorf("Expected 1 collected error for non-required key, got %d", len(collectedAfter))
+	_, err = Get[string](ctx, "NONEXISTENT_KEY")
+	if err == nil {
+		t.Error("Expected error for non-required key")
+	}
+
+	// Now we should have collected errors for the non-required key
+	if !ctx.execution.HasErrors() {
+		t.Error("Expected errors to be collected for non-required data")
+	}
+
+	collected := ctx.execution.GetErrors()
+	if len(collected) == 0 {
+		t.Errorf("Expected collected errors for non-required data, got %d", len(collected))
+	}
+
+	// Test that we can add more errors
+	ctx.execution.CollectErrorWithConfig(cfg, "ANOTHER_KEY", "not found", "", "test error", false)
+	collectedAfter := ctx.execution.GetErrors()
+	if len(collectedAfter) != len(collected)+1 {
+		t.Errorf("Expected %d collected errors, got %d", len(collected)+1, len(collectedAfter))
 	}
 }

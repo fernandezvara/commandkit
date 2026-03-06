@@ -70,10 +70,29 @@ func main() {
 	}
 
 	// Use configuration with type safety
-	port := commandkit.Get[int64](cfg, "PORT")
-	baseURL := commandkit.Get[string](cfg, "BASE_URL")
-	corsOrigins := commandkit.Get[[]string](cfg, "CORS_ORIGINS")
-	tokenTTL := commandkit.Get[time.Duration](cfg, "ACCESS_TOKEN_TTL")
+	// Create a command context for the new API
+	ctx := commandkit.NewCommandContext([]string{}, cfg, "example", "")
+
+	port, err := commandkit.Get[int64](ctx, "PORT")
+	if err != nil {
+		fmt.Printf("Error getting PORT: %v\n", err)
+		os.Exit(1)
+	}
+	baseURL, err := commandkit.Get[string](ctx, "BASE_URL")
+	if err != nil {
+		fmt.Printf("Error getting BASE_URL: %v\n", err)
+		os.Exit(1)
+	}
+	corsOrigins, err := commandkit.Get[[]string](ctx, "CORS_ORIGINS")
+	if err != nil {
+		fmt.Printf("Error getting CORS_ORIGINS: %v\n", err)
+		os.Exit(1)
+	}
+	tokenTTL, err := commandkit.Get[time.Duration](ctx, "ACCESS_TOKEN_TTL")
+	if err != nil {
+		fmt.Printf("Error getting ACCESS_TOKEN_TTL: %v\n", err)
+		os.Exit(1)
+	}
 
 	fmt.Printf("=== Configuration Loaded ===\n")
 	fmt.Printf("Server starting on port %d\n", port)

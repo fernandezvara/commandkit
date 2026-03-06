@@ -123,7 +123,13 @@ func (c *Config) checkCommandOverrides(commandName string, commandDefs map[strin
 							warning.OldValue = "[SECRET:not set]"
 						}
 					} else {
-						warning.OldValue = fmt.Sprintf("%v", Get[any](c, key))
+						// For overrides, we need to get the value directly from the config values map
+						// since we don't have a CommandContext here
+						if val, exists := c.values[key]; exists && val != nil {
+							warning.OldValue = fmt.Sprintf("%v", val)
+						} else {
+							warning.OldValue = "[not set]"
+						}
 					}
 				}
 

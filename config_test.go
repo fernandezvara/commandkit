@@ -63,49 +63,71 @@ func TestBasicConfigurationDefinition(t *testing.T) {
 	}
 
 	// Test values
-	port := Get[int64](cfg, "PORT")
+	ctx := NewCommandContext([]string{}, cfg, "test", "")
+
+	port, err := Get[int64](ctx, "PORT")
+	if err != nil {
+		t.Fatalf("Error getting PORT: %v", err)
+	}
 	if port != 8080 {
 		t.Errorf("Expected PORT=8080, got %d", port)
 	}
 
-	baseURL := Get[string](cfg, "BASE_URL")
+	baseURL, err := Get[string](ctx, "BASE_URL")
+	if err != nil {
+		t.Fatalf("Error getting BASE_URL: %v", err)
+	}
 	if baseURL != "https://api.example.com" {
 		t.Errorf("Expected BASE_URL=https://api.example.com, got %s", baseURL)
 	}
 
-	debug := Get[bool](cfg, "DEBUG")
+	debug, err := Get[bool](ctx, "DEBUG")
+	if err != nil {
+		t.Fatalf("Error getting DEBUG: %v", err)
+	}
 	if !debug {
 		t.Errorf("Expected DEBUG=true, got %v", debug)
 	}
 
-	timeout := Get[time.Duration](cfg, "TIMEOUT")
+	timeout, err := Get[time.Duration](ctx, "TIMEOUT")
+	if err != nil {
+		t.Fatalf("Error getting TIMEOUT: %v", err)
+	}
 	if timeout != 30*time.Second {
 		t.Errorf("Expected TIMEOUT=30s, got %v", timeout)
 	}
 
-	corsOrigins := Get[[]string](cfg, "CORS_ORIGINS")
+	corsOrigins, err := Get[[]string](ctx, "CORS_ORIGINS")
+	if err != nil {
+		t.Fatalf("Error getting CORS_ORIGINS: %v", err)
+	}
 	if len(corsOrigins) != 1 || corsOrigins[0] != "http://localhost:3000" {
 		t.Errorf("Expected CORS_ORIGINS=[http://localhost:3000], got %v", corsOrigins)
 	}
 
 	// Test generic Get methods
-	if Get[string](cfg, "BASE_URL") != baseURL {
+	baseURLCheck, err := Get[string](ctx, "BASE_URL")
+	if err != nil || baseURLCheck != baseURL {
 		t.Error("Get[string]() method failed")
 	}
 
-	if Get[int64](cfg, "PORT") != port {
+	portCheck, err := Get[int64](ctx, "PORT")
+	if err != nil || portCheck != port {
 		t.Error("Get[int64]() method failed")
 	}
 
-	if Get[bool](cfg, "DEBUG") != debug {
+	debugCheck, err := Get[bool](ctx, "DEBUG")
+	if err != nil || debugCheck != debug {
 		t.Error("Get[bool]() method failed")
 	}
 
-	if Get[time.Duration](cfg, "TIMEOUT") != timeout {
+	timeoutCheck, err := Get[time.Duration](ctx, "TIMEOUT")
+	if err != nil || timeoutCheck != timeout {
 		t.Error("Get[time.Duration]() method failed")
 	}
 
-	if Get[[]string](cfg, "CORS_ORIGINS")[0] != corsOrigins[0] {
+	corsCheck, err := Get[[]string](ctx, "CORS_ORIGINS")
+	if err != nil || len(corsCheck) == 0 || corsCheck[0] != corsOrigins[0] {
 		t.Error("Get[[]string]() method failed")
 	}
 
@@ -228,17 +250,16 @@ func TestSecretHandling(t *testing.T) {
 	}
 
 	// Test that regular Get now collects errors for secrets instead of panicking
-	ClearGetErrors()
-	SetCurrentCommand("test")
+	ctx := NewCommandContext([]string{}, cfg, "test", "")
 
-	// Instead of calling Get directly (which would exit), we'll test the error collection mechanism
+	// Instead of calling Get directly (which would return error), we'll test the error collection mechanism
 	// by simulating what would happen when Get is called on a secret
 
 	// Simulate the error collection that would happen in Get function
-	collectGetError(cfg, "DATABASE_URL", "secret", "", "use GetSecret() instead", true)
+	ctx.execution.CollectErrorWithConfig(cfg, "DATABASE_URL", "secret", "", "use GetSecret() instead", true)
 
 	// Check that error was collected
-	collected := GetCollectedErrors()
+	collected := ctx.execution.GetErrors()
 	if len(collected) == 0 {
 		t.Error("Expected error to be collected for secret access")
 	}
