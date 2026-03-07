@@ -20,7 +20,7 @@ type Config struct {
 	globalMiddleware []CommandMiddleware
 	overrideWarnings *OverrideWarnings
 	processed        bool
-	helpIntegration  *HelpIntegration
+	helpService      HelpService
 }
 
 // New creates a new Config instance
@@ -227,16 +227,16 @@ func (c *Config) Dump() map[string]string {
 
 // GenerateHelp creates a help message using the new template-based help system
 func (c *Config) GenerateHelp() string {
-	text, _ := c.getHelpIntegration().GenerateHelp([]string{"--help"}, c.commands)
+	text, _ := c.getHelpService().GenerateHelp([]string{"--help"}, c.commands)
 	return text
 }
 
-// getHelpIntegration returns the help integration instance, creating it if needed
-func (c *Config) getHelpIntegration() *HelpIntegration {
-	if c.helpIntegration == nil {
-		c.helpIntegration = NewHelpIntegration()
+// getHelpService returns the help service instance, creating it if needed
+func (c *Config) getHelpService() HelpService {
+	if c.helpService == nil {
+		c.helpService = NewHelpService()
 	}
-	return c.helpIntegration
+	return c.helpService
 }
 
 // Execute parses command line arguments and executes the appropriate command
@@ -289,12 +289,12 @@ func (c *Config) executeWithGlobalMiddleware(cmd *Command, ctx *CommandContext) 
 
 // ShowGlobalHelp displays help for all commands using the new template-based help system
 func (c *Config) ShowGlobalHelp() error {
-	return c.getHelpIntegration().ShowHelp([]string{"--help"}, c.commands)
+	return c.getHelpService().ShowHelp([]string{"--help"}, c.commands)
 }
 
 // ShowCommandHelp displays help for a specific command using the new template-based help system
 func (c *Config) ShowCommandHelp(commandName string) error {
-	return c.getHelpIntegration().ShowHelp([]string{commandName, "--help"}, c.commands)
+	return c.getHelpService().ShowHelp([]string{commandName, "--help"}, c.commands)
 }
 
 // findSuggestions finds similar command names for suggestions

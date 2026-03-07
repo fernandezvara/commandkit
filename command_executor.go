@@ -55,7 +55,7 @@ func (ce *commandExecutor) validateCommand(cmd *Command, ctx *CommandContext) *C
 	// Check if command has no function but has subcommands
 	if cmd.Func == nil && len(cmd.SubCommands) > 0 {
 		// Use the new help system to show subcommand help
-		helpExecutor := NewHelpExecutor()
+		helpService := NewHelpService()
 
 		// Get commands from the context's global config
 		var commands map[string]*Command
@@ -73,7 +73,7 @@ func (ce *commandExecutor) validateCommand(cmd *Command, ctx *CommandContext) *C
 
 		// Show subcommand help
 		args := []string{ctx.Command, "--help"}
-		err := helpExecutor.ExecuteHelp(args, commands)
+		err := helpService.ShowHelp(args, commands)
 		if err != nil {
 			return Error(err)
 		}

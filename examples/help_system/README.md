@@ -1,6 +1,6 @@
 # Help System Example
 
-This example demonstrates the new template-based help system in CommandKit.
+This example demonstrates the template-based help system in CommandKit.
 
 ## Features Demonstrated
 
@@ -9,10 +9,10 @@ This example demonstrates the new template-based help system in CommandKit.
 - Custom command help template with enhanced formatting
 - Custom template functions (`reverse`, `banner`)
 
-### 2. Help Integration
-- `HelpIntegration` for seamless help system access
-- `HelpConfig` wrapper for Config instances
-- `HelpExecutor` for command execution integration
+### 2. Help Service
+- Direct `HelpService` usage for help system access
+- Template customization through formatter interface
+- Output management for testing and display
 
 ### 3. Output Management
 - String output for testing and automation
@@ -37,13 +37,19 @@ go run example_help_system.go
 The example demonstrates custom template functions:
 
 ```go
-integration.AddCustomFunction("reverse", func(s string) string {
-    // Reverse string functionality
-})
+helpService := commandkit.NewHelpService()
+formatter := helpService.GetFormatter()
 
-integration.AddCustomFunction("banner", func(s string) string {
-    // Banner formatting functionality
-})
+if templateFormatter, ok := formatter.(*commandkit.TemplateHelpFormatter); ok {
+    renderer := templateFormatter.GetRenderer()
+    renderer.AddFunction("reverse", func(s string) string {
+        // Reverse string functionality
+    })
+
+    renderer.AddFunction("banner", func(s string) string {
+        // Banner formatting functionality
+    })
+}
 ```
 
 ### Custom Templates
@@ -61,7 +67,9 @@ USAGE:
 {{range .Commands}}  {{.Name | printf "%-12s"}} {{.Description}}
 {{end}}{{end}}`
 
-integration.SetCustomTemplate(TemplateGlobal, customGlobalTemplate)
+if templateFormatter, ok := formatter.(*commandkit.TemplateHelpFormatter); ok {
+    templateFormatter.SetTemplate(commandkit.TemplateGlobal, customGlobalTemplate)
+}
 ```
 
 ### Help Generation
@@ -69,10 +77,10 @@ Demonstrates both display and text generation:
 
 ```go
 // Display help directly
-err := integration.ShowHelp([]string{"--help"}, commands)
+err := helpService.ShowHelp([]string{"--help"}, commands)
 
 // Generate help text
-text, err := integration.GenerateHelp([]string{"server", "--help"}, commands)
+text, err := helpService.GenerateHelp([]string{"server", "--help"}, commands)
 ```
 
 ## Output Examples
@@ -102,29 +110,33 @@ EXAMPLES:
 
 ## Integration Points
 
-### HelpIntegration
-Main integration point for the new help system:
+### HelpService
+Main interface for the help system:
 
 ```go
-integration := commandkit.NewHelpIntegration()
-integration.SetCustomTemplate(commandkit.TemplateGlobal, customTemplate)
-integration.AddCustomFunction("customFunc", customFunction)
+helpService := commandkit.NewHelpService()
+
+// Set custom templates
+formatter := helpService.GetFormatter()
+if templateFormatter, ok := formatter.(*commandkit.TemplateHelpFormatter); ok {
+    templateFormatter.SetTemplate(commandkit.TemplateGlobal, customTemplate)
+}
+
+// Add custom functions
+renderer := templateFormatter.GetRenderer()
+renderer.AddFunction("customFunc", customFunction)
 ```
 
-### HelpConfig
-Wrapper for Config instances:
+### Help Output Control
+Flexible output management:
 
 ```go
-helpConfig := commandkit.NewHelpConfig(cfg)
-err := helpConfig.ShowGlobalHelp()
-```
+// String output for testing
+stringOutput := commandkit.NewStringHelpOutput()
+helpService.SetOutput(stringOutput)
 
-### HelpExecutor
-Integration for command execution:
-
-```go
-executor := commandkit.NewHelpExecutor()
-handled, err := executor.CheckAndHandleHelp(args, commands)
+// Generate help without displaying
+text, err := helpService.GenerateHelp([]string{"--help"}, commands)
 ```
 
 ## Benefits
@@ -132,7 +144,7 @@ handled, err := executor.CheckAndHandleHelp(args, commands)
 1. **Template-Based**: Full control over help output formatting
 2. **Customizable**: Add custom functions and templates
 3. **Flexible**: Multiple output destinations
-4. **Integrated**: Seamless integration with existing CommandKit
+4. **Direct**: Simple, direct API without unnecessary layers
 5. **Extensible**: Easy to extend with new features
 
-This example showcases the power and flexibility of the new help system while maintaining backward compatibility with existing CommandKit code.
+This example showcases the power and flexibility of the help system while maintaining a clean, simple architecture.

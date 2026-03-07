@@ -45,15 +45,15 @@ func main() {
 			return nil
 		}).
 		SubCommand("database").
-			ShortHelp("Deploy database schema").
-			Config(func(cc *commandkit.CommandConfig) {
-				cc.Define("MIGRATE").Bool().Flag("migrate").Default(true).Description("Run database migrations")
-				cc.Define("SEED").Bool().Flag("seed").Default(false).Description("Seed database with initial data")
-			}).
-			Func(func(ctx *commandkit.CommandContext) error {
-				fmt.Println("Deploying database...")
-				return nil
-			})
+		ShortHelp("Deploy database schema").
+		Config(func(cc *commandkit.CommandConfig) {
+			cc.Define("MIGRATE").Bool().Flag("migrate").Default(true).Description("Run database migrations")
+			cc.Define("SEED").Bool().Flag("seed").Default(false).Description("Seed database with initial data")
+		}).
+		Func(func(ctx *commandkit.CommandContext) error {
+			fmt.Println("Deploying database...")
+			return nil
+		})
 
 	cfg.Command("admin").
 		ShortHelp("Administrative operations").
@@ -66,54 +66,57 @@ func main() {
 			return nil
 		}).
 		SubCommand("users").
-			ShortHelp("User management").
-			Config(func(cc *commandkit.CommandConfig) {
-				cc.Define("ACTION").String().Flag("action").Required().OneOf("list", "create", "delete", "update").Description("User action to perform")
-				cc.Define("EMAIL").String().Flag("email").Description("User email for operations")
-			}).
-			Func(func(ctx *commandkit.CommandContext) error {
-				fmt.Println("Managing users...")
-				return nil
-			})
+		ShortHelp("User management").
+		Config(func(cc *commandkit.CommandConfig) {
+			cc.Define("ACTION").String().Flag("action").Required().OneOf("list", "create", "delete", "update").Description("User action to perform")
+			cc.Define("EMAIL").String().Flag("email").Description("User email for operations")
+		}).
+		Func(func(ctx *commandkit.CommandContext) error {
+			fmt.Println("Managing users...")
+			return nil
+		})
 
 	// Demonstrate the new help system
 	demonstrateHelpSystem(cfg)
 }
 
 func demonstrateHelpSystem(cfg *commandkit.Config) {
-	fmt.Println("=== CommandKit Help System Demonstration ===\n")
+	fmt.Printf("=== CommandKit Help System Demonstration ===\n\n")
 
-	// Create help integration
-	integration := commandkit.NewHelpIntegration()
+	// Create help service
+	helpService := commandkit.NewHelpService()
 
 	// Add custom template functions
-	integration.AddCustomFunction("reverse", func(s string) string {
-		runes := []rune(s)
-		for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
-			runes[i], runes[j] = runes[j], runes[i]
-		}
-		return string(runes)
-	})
-
-	integration.AddCustomFunction("banner", func(s string) string {
-		lines := strings.Split(s, "\n")
-		maxLen := 0
-		for _, line := range lines {
-			if len(line) > maxLen {
-				maxLen = len(line)
+	formatter := helpService.GetFormatter()
+	if templateFormatter, ok := formatter.(*commandkit.TemplateHelpFormatter); ok {
+		renderer := templateFormatter.GetRenderer()
+		renderer.AddFunction("reverse", func(s string) string {
+			runes := []rune(s)
+			for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+				runes[i], runes[j] = runes[j], runes[i]
 			}
-		}
-		border := strings.Repeat("=", maxLen+4)
-		result := border + "\n"
-		for _, line := range lines {
-			result += fmt.Sprintf("= %s =\n", line+strings.Repeat(" ", maxLen-len(line)))
-		}
-		result += border
-		return result
-	})
+			return string(runes)
+		})
 
-	// Set custom global template
-	customGlobalTemplate := `{{banner "MyApp CLI Tool"}}
+		renderer.AddFunction("banner", func(s string) string {
+			lines := strings.Split(s, "\n")
+			maxLen := 0
+			for _, line := range lines {
+				if len(line) > maxLen {
+					maxLen = len(line)
+				}
+			}
+			border := strings.Repeat("=", maxLen+4)
+			result := border + "\n"
+			for _, line := range lines {
+				result += fmt.Sprintf("= %s =\n", line+strings.Repeat(" ", maxLen-len(line)))
+			}
+			result += border
+			return result
+		})
+
+		// Set custom templates
+		customGlobalTemplate := `{{banner "MyApp CLI Tool"}}
 
 {{.Executable | upper}} - Command Line Interface
 
@@ -132,8 +135,7 @@ EXAMPLES:
 
 For more information on a specific command: {{.Executable}} <command> --help`
 
-	// Set custom command template
-	customCommandTemplate := `{{banner (printf "%s COMMAND" .Command.Name | upper)}}
+		customCommandTemplate := `{{banner (printf "%s COMMAND" .Command.Name | upper)}}
 
 {{.Command.Name | upper}} - {{.Command.ShortHelp | title}}
 
@@ -155,13 +157,13 @@ For more information on a specific command: {{.Executable}} <command> --help`
   {{.Command.Name}} --{{(index .Flags 0).Name}} <value>
 {{end}}For more help: {{.Command.Name}} <subcommand> --help`
 
-	// Apply custom templates
-	integration.SetCustomTemplate(commandkit.TemplateGlobal, customGlobalTemplate)
-	integration.SetCustomTemplate(commandkit.TemplateCommand, customCommandTemplate)
+		templateFormatter.SetTemplate(commandkit.TemplateGlobal, customGlobalTemplate)
+		templateFormatter.SetTemplate(commandkit.TemplateCommand, customCommandTemplate)
+	}
 
 	// Create string output for demonstration
 	stringOutput := commandkit.NewStringHelpOutput()
-	integration.SetOutput(stringOutput)
+	helpService.SetOutput(stringOutput)
 
 	// Get commands map for demonstration
 	commands := getCommandsMap(cfg)
@@ -169,7 +171,7 @@ For more information on a specific command: {{.Executable}} <command> --help`
 	// Demonstrate different help types
 	fmt.Println("1. Global Help:")
 	fmt.Println("==============")
-	err := integration.ShowHelp([]string{"--help"}, commands)
+	err := helpService.ShowHelp([]string{"--help"}, commands)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 	}
@@ -178,7 +180,7 @@ For more information on a specific command: {{.Executable}} <command> --help`
 
 	fmt.Println("\n2. Command Help (server):")
 	fmt.Println("========================")
-	err = integration.ShowHelp([]string{"server", "--help"}, commands)
+	err = helpService.ShowHelp([]string{"server", "--help"}, commands)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 	}
@@ -187,7 +189,7 @@ For more information on a specific command: {{.Executable}} <command> --help`
 
 	fmt.Println("\n3. Command Help (deploy):")
 	fmt.Println("=======================")
-	err = integration.ShowHelp([]string{"deploy", "--help"}, commands)
+	err = helpService.ShowHelp([]string{"deploy", "--help"}, commands)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 	}
@@ -196,7 +198,7 @@ For more information on a specific command: {{.Executable}} <command> --help`
 
 	fmt.Println("\n4. Subcommand Help (deploy database):")
 	fmt.Println("=================================")
-	err = integration.ShowHelp([]string{"deploy", "database", "--help"}, commands)
+	err = helpService.ShowHelp([]string{"deploy", "database", "--help"}, commands)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 	}
@@ -205,52 +207,37 @@ For more information on a specific command: {{.Executable}} <command> --help`
 
 	fmt.Println("\n5. Help Generation (string output):")
 	fmt.Println("===============================")
-	text, err := integration.GenerateHelp([]string{"admin", "--help"}, commands)
+	text, err := helpService.GenerateHelp([]string{"admin", "--help"}, commands)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 	} else {
 		fmt.Println(text)
 	}
 
-	// Demonstrate HelpConfig wrapper
-	fmt.Println("\n6. HelpConfig Integration:")
-	fmt.Println("======================")
-	helpConfig := commandkit.NewHelpConfig(cfg)
-	helpConfig.SetHelpOutput(commandkit.NewStringHelpOutput())
-
-	fmt.Println("Global help via HelpConfig:")
-	err = helpConfig.ShowGlobalHelp()
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-	} else {
-		fmt.Println(helpConfig.GetHelpOutput().Get())
-	}
-
-	// Demonstrate HelpExecutor
-	fmt.Println("\n7. HelpExecutor Integration:")
+	// Demonstrate custom output management
+	fmt.Println("\n6. Custom Output Management:")
 	fmt.Println("==========================")
-	executor := commandkit.NewHelpExecutor()
+	customOutput := commandkit.NewStringHelpOutput()
+	helpService.SetOutput(customOutput)
 
-	fmt.Println("Check and handle help:")
-	handled, err := executor.CheckAndHandleHelp([]string{"--help"}, commands)
+	fmt.Println("Generate help with custom output:")
+	err = helpService.ShowHelp([]string{"--help"}, commands)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
-	} else if handled {
-		fmt.Println("Help was displayed")
 	} else {
-		fmt.Println("No help requested")
+		fmt.Println(customOutput.Get())
 	}
 
 	fmt.Println("\n=== Help System Demonstration Complete ===")
 }
 
 // Helper function to extract commands map from Config
-func getCommandsMap(cfg *commandkit.Config) map[string]*commandkit.Command {
+func getCommandsMap(_ *commandkit.Config) map[string]*commandkit.Command {
 	// This is a simplified approach - in a real implementation,
 	// we would need to access the internal commands map
 	// For now, we'll create a simple demonstration
 	commands := make(map[string]*commandkit.Command)
-	
+
 	// Create mock commands for demonstration
 	commands["server"] = &commandkit.Command{
 		Name:        "server",
@@ -261,7 +248,7 @@ func getCommandsMap(cfg *commandkit.Config) map[string]*commandkit.Command {
 		Aliases:     []string{},
 		Middleware:  []commandkit.CommandMiddleware{},
 	}
-	
+
 	commands["deploy"] = &commandkit.Command{
 		Name:        "deploy",
 		ShortHelp:   "Deploy the application",
@@ -280,7 +267,7 @@ func getCommandsMap(cfg *commandkit.Config) map[string]*commandkit.Command {
 		Aliases:    []string{},
 		Middleware: []commandkit.CommandMiddleware{},
 	}
-	
+
 	commands["admin"] = &commandkit.Command{
 		Name:        "admin",
 		ShortHelp:   "Administrative operations",
@@ -299,6 +286,6 @@ func getCommandsMap(cfg *commandkit.Config) map[string]*commandkit.Command {
 		Aliases:    []string{},
 		Middleware: []commandkit.CommandMiddleware{},
 	}
-	
+
 	return commands
 }

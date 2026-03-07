@@ -215,13 +215,14 @@ func (hd *helpDetector) ParseHelpRequestWithContext(args []string, commandPath [
 		// Help flag in middle - determine based on position
 		if helpIndex < len(commandPath) {
 			// Help flag within command path - help for command at that position
-			if helpIndex == 0 {
+			switch helpIndex {
+			case 0:
 				request.Type = HelpTypeGlobal
 				request.Command = ""
-			} else if helpIndex == 1 {
+			case 1:
 				request.Type = HelpTypeCommand
 				request.Command = commandPath[0]
-			} else {
+			default:
 				request.Type = HelpTypeSubcommand
 				request.Command = commandPath[0]
 				if helpIndex < len(commandPath) {

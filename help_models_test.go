@@ -33,7 +33,6 @@ func TestGlobalHelp(t *testing.T) {
 			{Name: "start", Description: "Start the service"},
 			{Name: "stop", Description: "Stop the service"},
 		},
-		Template: "test template",
 	}
 
 	if help.Executable != "testapp" {
@@ -51,9 +50,8 @@ func TestGlobalHelp(t *testing.T) {
 
 func TestCommandSummary(t *testing.T) {
 	summary := CommandSummary{
-		Name:        "deploy",
-		Description: "Deploy the application",
-		Aliases:     []string{"dep", "deploy-app"},
+		Name:    "deploy",
+		Aliases: []string{"dep", "deploy-app"},
 	}
 
 	if summary.Name != "deploy" {
@@ -77,12 +75,8 @@ func TestCommandHelpModel(t *testing.T) {
 	}
 
 	help := &CommandHelp{
-		Command:     cmd,
-		Usage:       "testapp start [options]",
-		Description: "Start the service with all components",
-		Flags:       []FlagInfo{},
-		Subcommands: []SubcommandInfo{},
-		Template:    "test template",
+		Command: cmd,
+		Usage:   "testapp start [options]",
 	}
 
 	if help.Command.Name != "start" {
@@ -96,15 +90,9 @@ func TestCommandHelpModel(t *testing.T) {
 
 func TestFlagInfo(t *testing.T) {
 	flag := FlagInfo{
-		Name:        "port",
-		Description: "HTTP server port",
-		Type:        "int64",
-		Required:    true,
-		Default:     8080,
-		EnvVar:      "PORT",
-		Validations: []string{"range: 1-65535"},
-		Secret:      false,
-		NoFlag:      false,
+		Name:     "port",
+		Required: true,
+		Default:  8080,
 	}
 
 	if flag.Name != "port" {
@@ -122,27 +110,19 @@ func TestFlagInfo(t *testing.T) {
 
 func TestSubcommandInfo(t *testing.T) {
 	info := SubcommandInfo{
-		Name:        "server",
-		Description: "Start server component",
-		Aliases:     []string{"srv"},
+		Name: "server",
 	}
 
 	if info.Name != "server" {
 		t.Errorf("Expected subcommand name 'server', got '%s'", info.Name)
 	}
-
-	if len(info.Aliases) != 1 {
-		t.Errorf("Expected 1 alias, got %d", len(info.Aliases))
-	}
 }
 
 func TestHelpRequest(t *testing.T) {
 	request := &HelpRequest{
-		Type:       HelpTypeCommand,
-		Command:    "start",
-		Subcommand: "",
-		Args:       []string{"start", "--help"},
-		Original:   []string{"start", "--help"},
+		Type:    HelpTypeCommand,
+		Command: "start",
+		Args:    []string{"start", "--help"},
 	}
 
 	if request.Type != HelpTypeCommand {

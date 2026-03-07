@@ -87,25 +87,25 @@ func TestGetOrWithExecutionContext(t *testing.T) {
 	ctx := NewCommandContext([]string{}, cfg, "test", "")
 
 	// Test GetOr with existing key
-	value := GetOr[string](ctx, "OPTIONAL_KEY", "fallback")
+	value := GetOr(ctx, "OPTIONAL_KEY", "fallback")
 	if value != "default" {
 		t.Errorf("Expected 'default', got '%s'", value)
 	}
 
 	// Test GetOr with missing key
-	value = GetOr[string](ctx, "MISSING_KEY", "fallback")
+	value = GetOr(ctx, "MISSING_KEY", "fallback")
 	if value != "fallback" {
 		t.Errorf("Expected 'fallback', got '%s'", value)
 	}
 
 	// Test GetOr with existing key and fallback
-	value = GetOr[string](ctx, "OPTIONAL_KEY", "new-fallback")
+	value = GetOr(ctx, "OPTIONAL_KEY", "new-fallback")
 	if value != "default" {
 		t.Errorf("Expected 'default', got '%s'", value)
 	}
 
 	// Test GetOr with missing key and fallback
-	value = GetOr[string](ctx, "MISSING_KEY", "new-fallback")
+	value = GetOr(ctx, "MISSING_KEY", "new-fallback")
 	if value != "new-fallback" {
 		t.Errorf("Expected 'new-fallback', got '%s'", value)
 	}

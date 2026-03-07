@@ -21,14 +21,14 @@ func TestGetOr(t *testing.T) {
 	ctx := NewCommandContext([]string{}, cfg, "test", "")
 
 	// Test GetOr with existing value (should work normally)
-	port := GetOr[int64](ctx, "PORT", 3000)
+	port := GetOr(ctx, "PORT", 3000)
 	if port != 8080 {
 		t.Errorf("GetOr should return existing value 8080, got %d", port)
 	}
 
 	// Test GetOr with non-existent key (now returns error and default)
 	// Instead of calling GetOr directly on missing key, we test it returns default
-	timeout := GetOr[string](ctx, "TIMEOUT", "30s")
+	timeout := GetOr(ctx, "TIMEOUT", "30s")
 	if timeout != "30s" {
 		t.Errorf("GetOr should return default '30s' for missing key, got %s", timeout)
 	}

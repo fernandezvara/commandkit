@@ -41,15 +41,15 @@ func (cr *commandRouter) RouteCommand(args []string, config *Config) (*Command, 
 		helpArgs = args[1:] // Skip program name
 	}
 
-	helpIntegration := config.getHelpIntegration()
-	if helpIntegration.GetHelpService().IsHelpRequested(helpArgs) {
-		err := helpIntegration.ShowHelp(helpArgs, config.commands)
+	helpService := config.getHelpService()
+	if helpService.IsHelpRequested(helpArgs) {
+		err := helpService.ShowHelp(helpArgs, config.commands)
 		return nil, nil, err // Help shown, no command to execute
 	}
 
 	// Handle no command case - show global help
 	if len(args) < 2 {
-		err := helpIntegration.ShowHelp([]string{"--help"}, config.commands)
+		err := config.getHelpService().ShowHelp([]string{"--help"}, config.commands)
 		return nil, nil, err // Help shown, no command to execute
 	}
 
@@ -113,8 +113,7 @@ func (cr *commandRouter) RouteWithHelpHandling(args []string, config *Config) (*
 
 	// Handle no command case - show global help
 	if len(args) < 2 {
-		helpIntegration := config.getHelpIntegration()
-		err := helpIntegration.ShowHelp([]string{"--help"}, config.commands)
+		err := config.getHelpService().ShowHelp([]string{"--help"}, config.commands)
 		return nil, nil, err // Help shown, no command to execute
 	}
 
@@ -124,8 +123,7 @@ func (cr *commandRouter) RouteWithHelpHandling(args []string, config *Config) (*
 
 	// Check if the command name is actually a help flag
 	if commandName == "--help" || commandName == "-h" || commandName == "help" {
-		helpIntegration := config.getHelpIntegration()
-		err := helpIntegration.ShowHelp([]string{"--help"}, config.commands)
+		err := config.getHelpService().ShowHelp([]string{"--help"}, config.commands)
 		return nil, nil, err // Help shown, no command to execute
 	}
 
@@ -153,8 +151,7 @@ func (cr *commandRouter) RouteWithHelpHandling(args []string, config *Config) (*
 	}
 
 	// Check for help requests using context-aware detection
-	helpIntegration := config.getHelpIntegration()
-	helpService := helpIntegration.GetHelpService()
+	helpService := config.getHelpService()
 	helpFactory := helpService.GetFactory()
 
 	// Use the remaining args after subcommand routing for help detection
@@ -164,10 +161,10 @@ func (cr *commandRouter) RouteWithHelpHandling(args []string, config *Config) (*
 		// Show appropriate help based on the detected type
 		switch helpRequest.Type {
 		case HelpTypeGlobal:
-			err := helpIntegration.ShowHelp([]string{"--help"}, config.commands)
+			err := helpService.ShowHelp([]string{"--help"}, config.commands)
 			return nil, nil, err
 		case HelpTypeCommand:
-			err := helpIntegration.ShowHelp([]string{helpRequest.Command, "--help"}, config.commands)
+			err := helpService.ShowHelp([]string{helpRequest.Command, "--help"}, config.commands)
 			return nil, nil, err
 		case HelpTypeSubcommand:
 			err := cr.showSubcommandHelp(helpRequest.Command, helpRequest.Subcommand, config)
@@ -191,8 +188,7 @@ func (cr *commandRouter) showSubcommandHelp(parentCommand, subcommandName string
 	}
 
 	// Use the help service directly to generate command help for the subcommand
-	helpIntegration := config.getHelpIntegration()
-	helpService := helpIntegration.GetHelpService()
+	helpService := config.getHelpService()
 
 	// Generate command help for the subcommand
 	executable := "example_commands" // This should be dynamic but for now it's ok

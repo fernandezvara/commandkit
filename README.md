@@ -589,7 +589,37 @@ if result.Error != nil {
 
 ## Help System
 
-CommandKit automatically generates helpful command-line help:
+CommandKit provides a comprehensive help system with automatic generation and template-based formatting:
+
+### Help Service Architecture
+
+The help system is built around a clean, direct architecture:
+
+```go
+// Direct access to help functionality
+helpService := commandkit.NewHelpService()
+
+// Check if help is requested
+if helpService.IsHelpRequested(args) {
+    err := helpService.ShowHelp(args, commands)
+    return err
+}
+
+// Generate help text (for testing or custom output)
+helpText, err := helpService.GenerateHelp(args, commands)
+```
+
+### Automatic Help Detection
+
+CommandKit automatically detects help requests in multiple formats:
+
+```bash
+myapp --help           # Global help
+myapp -h              # Global help (short)
+myapp help            # Global help (command)
+myapp start --help    # Command-specific help
+myapp start -h        # Command-specific help (short)
+```
 
 ### Enhanced Flag Help
 
@@ -625,6 +655,42 @@ Options:
         HTTP server port (default 8080, range 1-65535)
   -daemon
         Run in background (default false)
+```
+
+### Custom Help Templates
+
+```go
+helpService := commandkit.NewHelpService()
+formatter := helpService.GetFormatter()
+
+// Set custom templates for branding
+if templateFormatter, ok := formatter.(*commandkit.TemplateHelpFormatter); ok {
+    templateFormatter.SetTemplate(commandkit.TemplateGlobal, customTemplate)
+    templateFormatter.SetTemplate(commandkit.TemplateCommand, commandTemplate)
+}
+
+// Add custom template functions
+renderer := templateFormatter.GetRenderer()
+renderer.AddFunction("reverse", func(s string) string {
+    // Custom function implementation
+})
+```
+
+### Help Output Control
+
+```go
+// Use string output for testing
+stringOutput := commandkit.NewStringHelpOutput()
+helpService.SetOutput(stringOutput)
+
+// Generate help without displaying
+text, err := helpService.GenerateHelp([]string{"--help"}, commands)
+if err == nil {
+    fmt.Println(text)
+}
+
+// Get accumulated output
+output := stringOutput.Get()
 ```
 
 ## API Reference
