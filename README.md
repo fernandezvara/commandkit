@@ -552,11 +552,45 @@ if secretResult.Error != nil {
 }
 
 // Correct secret access
-secret := cfg.GetSecret("API_KEY")
-if secret.IsSet() {
+apiKey := cfg.GetSecret("API_KEY")
+if apiKey.IsSet() {
     // Use secret safely
 }
+
+### Configuration Defaults
+
+All defaults should be defined during configuration building:
+
+```go
+// ✅ CORRECT: Define defaults during configuration
+cfg.Define("PORT").Int64().Default(8080)
+cfg.Define("TIMEOUT").String().Default("30s")
+cfg.Define("DEBUG").Bool().Default(false)
+
+// ❌ WRONG: No GetOr for runtime defaults (function removed)
+value := GetOr(ctx, "PORT", 3000)  // This function no longer exists
 ```
+
+### Handling Optional Configuration
+
+For truly optional configuration, use the Get function and handle errors:
+
+```go
+// Optional configuration with fallback
+result := commandkit.Get[string](ctx, "OPTIONAL_KEY")
+var value string
+if result.Error != nil {
+    // Handle missing optional configuration
+    value = "fallback-value"  // Your application default
+} else {
+    value = commandkit.GetValue[string](result)
+}
+
+// Required configuration (use Required() in definition)
+cfg.Define("DATABASE_URL").String().Required()
+```
+
+This approach maintains configuration immutability - all defaults are defined once during configuration building, never at runtime.
 
 ### Error Messages
 
@@ -716,7 +750,6 @@ output := stringOutput.Get()
 | ----------------------------- | --------------------------------------- |
 | `Get[T](ctx, key)`            | Get value with type T (returns CommandResult) |
 | `GetValue[T](result)`         | Extract value from CommandResult        |
-| `GetOr[T](ctx, key, default)` | Get value or return default (returns CommandResult) |
 
 ### Definition Builder Methods
 

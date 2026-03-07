@@ -74,43 +74,6 @@ func TestGetWithErrorCollection(t *testing.T) {
 	// This is the new behavior - required data validation is separate from error collection
 }
 
-func TestGetOrWithExecutionContext(t *testing.T) {
-	cfg := New()
-	cfg.Define("OPTIONAL_KEY").String().Default("default")
-
-	// Process the configuration to set the default value
-	result := cfg.Process()
-	if result.Error != nil {
-		t.Fatalf("Configuration errors: %v", result.Error)
-	}
-
-	ctx := NewCommandContext([]string{}, cfg, "test", "")
-
-	// Test GetOr with existing key
-	value := GetOr(ctx, "OPTIONAL_KEY", "fallback")
-	if value != "default" {
-		t.Errorf("Expected 'default', got '%s'", value)
-	}
-
-	// Test GetOr with missing key
-	value = GetOr(ctx, "MISSING_KEY", "fallback")
-	if value != "fallback" {
-		t.Errorf("Expected 'fallback', got '%s'", value)
-	}
-
-	// Test GetOr with existing key and fallback
-	value = GetOr(ctx, "OPTIONAL_KEY", "new-fallback")
-	if value != "default" {
-		t.Errorf("Expected 'default', got '%s'", value)
-	}
-
-	// Test GetOr with missing key and fallback
-	value = GetOr(ctx, "MISSING_KEY", "new-fallback")
-	if value != "new-fallback" {
-		t.Errorf("Expected 'new-fallback', got '%s'", value)
-	}
-}
-
 func TestMustGetWithExecutionContext(t *testing.T) {
 	cfg := New()
 	cfg.Define("TEST_VALUE").String().Default("test")

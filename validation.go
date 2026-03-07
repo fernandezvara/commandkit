@@ -4,8 +4,40 @@ package commandkit
 import (
 	"fmt"
 	"regexp"
+	"sync"
 	"time"
 )
+
+// ValidationCache stores pre-compiled regex patterns for performance
+type ValidationCache struct {
+	regexCache map[string]*regexp.Regexp
+	mu         sync.RWMutex
+}
+
+var (
+	// Global validation cache instance
+	validationCache = &ValidationCache{
+		regexCache: make(map[string]*regexp.Regexp),
+	}
+)
+
+// getRegexp returns a compiled regex pattern, using cache for performance
+func (vc *ValidationCache) getRegexp(pattern string) *regexp.Regexp {
+	vc.mu.RLock()
+	if re, ok := vc.regexCache[pattern]; ok {
+		vc.mu.RUnlock()
+		return re
+	}
+	vc.mu.RUnlock()
+
+	// Compile and cache
+	vc.mu.Lock()
+	defer vc.mu.Unlock()
+	// Double-check pattern
+	re := regexp.MustCompile(pattern)
+	vc.regexCache[pattern] = re
+	return re
+}
 
 // Validation represents a validation rule
 type Validation struct {
@@ -97,11 +129,11 @@ func validateMaxLength(max int) Validation {
 }
 
 func validateRegexp(pattern string) Validation {
-	re := regexp.MustCompile(pattern)
 	return Validation{
 		Name: fmt.Sprintf("regexp(%s)", pattern),
 		Check: func(value any) error {
 			if s, ok := value.(string); ok {
+				re := validationCache.getRegexp(pattern)
 				if !re.MatchString(s) {
 					return fmt.Errorf("value does not match pattern %s", pattern)
 				}

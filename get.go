@@ -157,17 +157,6 @@ func MustGet[T any](ctx *CommandContext, key string) T {
 	return GetValue[T](result)
 }
 
-// GetOr retrieves a configuration value or returns a default if not set
-// Note: This function now also collects errors and returns the default
-func GetOr[T any](ctx *CommandContext, key string, defaultValue T) T {
-	result := Get[T](ctx, key)
-	if result.Error != nil {
-		// Error already collected in Get, return default value
-		return defaultValue
-	}
-	return GetValue[T](result)
-}
-
 // Has checks if a key exists and has a non-nil value
 // Note: This function will return false for secret keys to prevent exposure
 func (c *Config) Has(key string) bool {

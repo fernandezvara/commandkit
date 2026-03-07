@@ -6,48 +6,6 @@ import (
 	"testing"
 )
 
-func TestGetOr(t *testing.T) {
-	cfg := New()
-
-	cfg.Define("PORT").Int64().Default(int64(8080))
-	cfg.Define("HOST").String() // No default, not required
-
-	result := cfg.Process()
-	if result.Error != nil {
-		t.Fatalf("Unexpected errors: %v", result.Error)
-	}
-
-	// Create context for new API
-	ctx := NewCommandContext([]string{}, cfg, "test", "")
-
-	// Test GetOr with existing value (should work normally)
-	port := GetOr(ctx, "PORT", 3000)
-	if port != 8080 {
-		t.Errorf("GetOr should return existing value 8080, got %d", port)
-	}
-
-	// Test GetOr with non-existent key (now returns error and default)
-	// Instead of calling GetOr directly on missing key, we test it returns default
-	timeout := GetOr(ctx, "TIMEOUT", "30s")
-	if timeout != "30s" {
-		t.Errorf("GetOr should return default '30s' for missing key, got %s", timeout)
-	}
-
-	// Verify error was collected for missing key
-	if !ctx.execution.HasErrors() {
-		t.Error("Expected error to be collected for missing key")
-	}
-
-	collected := ctx.execution.GetErrors()
-	if len(collected) == 0 {
-		t.Error("Expected error to be collected for missing key")
-	}
-
-	if collected[0].Key != "TIMEOUT" {
-		t.Errorf("Expected key 'TIMEOUT', got '%s'", collected[0].Key)
-	}
-}
-
 func TestMustGet(t *testing.T) {
 	cfg := New()
 
