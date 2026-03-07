@@ -166,9 +166,9 @@ func TestGetErrorDisplayName(t *testing.T) {
 	ctx := NewCommandContext([]string{}, cfg, "test", "")
 
 	// Collect some errors to test display name formatting
-	ctx.execution.CollectErrorWithConfig(cfg, "PORT", "not found", "", "key not defined", false)
-	ctx.execution.CollectErrorWithConfig(cfg, "DATABASE_URL", "secret", "", "use GetSecret() instead", true)
-	ctx.execution.CollectErrorWithConfig(cfg, "DEBUG", "not found", "", "key not defined", false)
+	ctx.execution.CollectError(cfg, "PORT", "not found", "", "key not defined", false)
+	ctx.execution.CollectError(cfg, "DATABASE_URL", "secret", "", "use GetSecret() instead", true)
+	ctx.execution.CollectError(cfg, "DEBUG", "not found", "", "key not defined", false)
 
 	collected := ctx.execution.GetErrors()
 	if len(collected) != 3 {
@@ -200,8 +200,8 @@ func TestDisplayGetErrorsAndExit(t *testing.T) {
 
 		ctx := NewCommandContext([]string{}, cfg, "start", "")
 
-		ctx.execution.CollectErrorWithConfig(cfg, "DATABASE_URL", "not found", "", "key not defined", false)
-		ctx.execution.CollectErrorWithConfig(cfg, "PORT", "validation", "", "value 99999 is greater than maximum 65535", false)
+		ctx.execution.CollectError(cfg, "DATABASE_URL", "not found", "", "key not defined", false)
+		ctx.execution.CollectError(cfg, "PORT", "validation", "", "value 99999 is greater than maximum 65535", false)
 		ctx.execution.DisplayAndExit()
 		return
 	}

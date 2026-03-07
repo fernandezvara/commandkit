@@ -214,50 +214,93 @@ func (c *Config) checkSourceOverrides() *OverrideWarnings {
 	warnings := NewOverrideWarnings()
 
 	for key, def := range c.definitions {
-		// Check each source in priority order and detect overrides
-		c.checkSourceOverridesForKey(key, def, warnings)
+		c.checkSourceOverridesForDefinition(key, def, warnings)
 	}
 
 	return warnings
 }
 
-// checkSourceOverridesForKey checks overrides for a specific configuration key
-func (c *Config) checkSourceOverridesForKey(key string, def *Definition, warnings *OverrideWarnings) {
-	var flagValue, envValue string
-	var hasFlag, hasEnv bool
+// checkSourceOverridesForDefinition checks overrides for a specific definition using its priority order
+func (c *Config) checkSourceOverridesForDefinition(key string, def *Definition, warnings *OverrideWarnings) {
+	// Get the effective priority for this definition
+	priority := def.getEffectivePriority(c.defaultPriority)
 
-	// Check each source
-	// 1. Command flags (highest priority)
-	if def.flag != "" {
-		if flagVal, ok := c.flagValues[key]; ok && flagVal != nil && *flagVal != "" {
-			flagValue = *flagVal
-			hasFlag = true
+	// Collect all available sources and their values
+	foundSources := make(map[SourceType]string)
+
+	// Check each source in priority order to find available values
+	for _, sourceType := range priority {
+		if value, exists := c.getValueFromSource(key, def, sourceType); exists {
+			// Convert value to string for display
+			var displayValue string
+			switch v := value.(type) {
+			case string:
+				displayValue = v
+			case bool, int, int64, float64:
+				displayValue = fmt.Sprintf("%v", v)
+			case []any:
+				// Handle arrays from files
+				strs := make([]string, len(v))
+				for i, item := range v {
+					strs[i] = fmt.Sprintf("%v", item)
+				}
+				displayValue = strings.Join(strs, def.delimiter)
+			default:
+				displayValue = fmt.Sprintf("%v", v)
+			}
+
+			foundSources[sourceType] = displayValue
 		}
 	}
 
-	// 2. Environment variables
-	if def.envVar != "" {
-		if envVal := c.getValueFromEnv(def.envVar); envVal != "" {
-			envValue = envVal
-			hasEnv = true
+	// Generate override warnings based on priority order
+	c.generateOverrideWarnings(key, foundSources, priority, warnings)
+}
+
+// generateOverrideWarnings creates warnings for lower priority sources being overridden
+func (c *Config) generateOverrideWarnings(key string, foundSources map[SourceType]string, priority SourcePriority, warnings *OverrideWarnings) {
+	if len(foundSources) <= 1 {
+		// No overrides possible with 0 or 1 source
+		return
+	}
+
+	// Find the highest priority source that has a value
+	var winningSource SourceType
+	var winningValue string
+
+	for _, sourceType := range priority {
+		if value, exists := foundSources[sourceType]; exists {
+			winningSource = sourceType
+			winningValue = value
+			break
 		}
 	}
 
-	// Check for overrides
-	// Flag overrides env (keep warning - this might be unexpected)
-	if hasFlag && hasEnv {
-		warnings.Add(OverrideWarning{
-			Key:        key,
-			Source:     "environment",
-			OverrideBy: "flag",
-			OldValue:   c.maskValueIfNeeded(key, envValue),
-			NewValue:   c.maskValueIfNeeded(key, flagValue),
-			Message:    "Command-line flag overrides environment variable",
-		})
-	}
+	// Generate warnings for ALL other sources that have values (they are being overridden)
+	for _, sourceType := range priority {
+		if sourceType == winningSource {
+			continue // Skip the winning source
+		}
 
-	// Flag overrides default (remove warning - this is expected behavior)
-	// Env overrides default (remove warning - this is expected behavior)
+		// Skip warnings for default being overridden - this is expected behavior
+		if sourceType == SourceDefault {
+			continue
+		}
+
+		if lowerValue, exists := foundSources[sourceType]; exists {
+			// Create warning for this override
+			warning := OverrideWarning{
+				Key:        key,
+				Source:     sourceType.String(),
+				OverrideBy: winningSource.String(),
+				OldValue:   c.maskValueIfNeeded(key, lowerValue),
+				NewValue:   c.maskValueIfNeeded(key, winningValue),
+				Message:    fmt.Sprintf("%s overrides %s", winningSource.String(), sourceType.String()),
+			}
+
+			warnings.Add(warning)
+		}
+	}
 }
 
 // getValueFromEnv gets value from environment variable

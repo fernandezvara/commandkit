@@ -25,36 +25,30 @@ func NewExecutionContext(command string) *ExecutionContext {
 }
 
 // CollectError adds an error to the execution context with thread safety
-func (ctx *ExecutionContext) CollectError(key, expectedType, actualType, message string, isSecret bool) {
+func (ctx *ExecutionContext) CollectError(c *Config, key, expectedType, actualType, message string, isSecret bool) {
 	ctx.mu.Lock()
 	defer ctx.mu.Unlock()
 
-	// Extract flag and envVar info from config if available
-	// Note: We'll need to pass config reference for complete error info
-	err := GetError{
-		Key:          key,
-		ExpectedType: expectedType,
-		ActualType:   actualType,
-		Message:      message,
-		IsSecret:     isSecret,
-		Flag:         "",  // Will be populated by caller if needed
-		EnvVar:       "",  // Will be populated by caller if needed
-		config:       nil, // Will be populated by caller if needed
+	// If display is not provided, try to build it from config
+	display := ""
+	if c != nil {
+		flag := ""
+		envVar := ""
+		if def, hasDef := c.definitions[key]; hasDef {
+			flag = def.flag
+			envVar = def.envVar
+		}
+		display = getErrorDisplayName(GetError{Key: key, Flag: flag, EnvVar: envVar}, c)
 	}
-	ctx.errors = append(ctx.errors, err)
-}
 
-// CollectErrorWithConfig adds an error to the execution context with full config information
-func (ctx *ExecutionContext) CollectErrorWithConfig(c *Config, key, expectedType, actualType, message string, isSecret bool) {
-	ctx.mu.Lock()
-	defer ctx.mu.Unlock()
-
-	// Get definition to extract flag and envVar info
+	// Get flag and envVar from config if available
 	flag := ""
 	envVar := ""
-	if def, hasDef := c.definitions[key]; hasDef {
-		flag = def.flag
-		envVar = def.envVar
+	if c != nil {
+		if def, hasDef := c.definitions[key]; hasDef {
+			flag = def.flag
+			envVar = def.envVar
+		}
 	}
 
 	err := GetError{
@@ -65,7 +59,7 @@ func (ctx *ExecutionContext) CollectErrorWithConfig(c *Config, key, expectedType
 		IsSecret:         isSecret,
 		Flag:             flag,
 		EnvVar:           envVar,
-		Display:          getErrorDisplayName(GetError{Key: key, Flag: flag, EnvVar: envVar}, c),
+		Display:          display,
 		ErrorDescription: message,
 		config:           c,
 	}
@@ -73,6 +67,7 @@ func (ctx *ExecutionContext) CollectErrorWithConfig(c *Config, key, expectedType
 }
 
 // CollectConfigError adds a normalized config error to the execution context
+// This method preserves the existing Display and ErrorDescription from ConfigError
 func (ctx *ExecutionContext) CollectConfigError(c *Config, configErr ConfigError) {
 	ctx.mu.Lock()
 	defer ctx.mu.Unlock()
@@ -94,8 +89,8 @@ func (ctx *ExecutionContext) CollectConfigError(c *Config, configErr ConfigError
 		IsSecret:         false,
 		Flag:             flag,
 		EnvVar:           envVar,
-		Display:          configErr.Display,
-		ErrorDescription: configErr.ErrorDescription,
+		Display:          configErr.Display,          // Use existing display from ConfigError
+		ErrorDescription: configErr.ErrorDescription, // Use existing description from ConfigError
 		config:           c,
 	}
 	ctx.errors = append(ctx.errors, err)

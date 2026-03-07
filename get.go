@@ -64,11 +64,11 @@ func Get[T any](ctx *CommandContext, key string) *CommandResult {
 	def, hasDef := c.definitions[key]
 	if hasDef && def.secret {
 		// Secure error handling - no secret exposure
-		ctx.execution.CollectErrorWithConfig(c, key, "secret", "", "use GetSecret() instead", true)
+		ctx.execution.CollectError(c, key, "secret", "", "use GetSecret() instead", true)
 		return ValidationError(fmt.Sprintf("configuration '%s' is secret, use GetSecret() instead", key)).
 			WithCommand(ctx.Command, ctx.SubCommand).
 			WithContext("key", key).
-			WithContext("is_secret", true)
+			WithContext("expected_type", fmt.Sprintf("%T", (*new(T))))
 	}
 
 	value, exists := c.values[key]
@@ -83,7 +83,7 @@ func Get[T any](ctx *CommandContext, key string) *CommandResult {
 				WithContext("expected_type", fmt.Sprintf("%T", (*new(T))))
 		}
 		// For non-required keys, collect error and return result
-		ctx.execution.CollectErrorWithConfig(c, key, "not found", "", "key not defined", false)
+		ctx.execution.CollectError(c, key, "not found", "", "key not defined", false)
 		return ErrorWithMessage(fmt.Errorf("configuration '%s' not found", key),
 			fmt.Sprintf("configuration '%s' not found", key)).
 			WithCommand(ctx.Command, ctx.SubCommand).
@@ -93,7 +93,7 @@ func Get[T any](ctx *CommandContext, key string) *CommandResult {
 	// Additional safety check - ensure value is not a secret placeholder
 	if strVal, ok := value.(string); ok && strVal == "[SECRET]" {
 		// This should not happen with new implementation, but add safety check
-		ctx.execution.CollectErrorWithConfig(c, key, "secret", "", "use GetSecret() instead", true)
+		ctx.execution.CollectError(c, key, "secret", "", "use GetSecret() instead", true)
 		return ValidationError(fmt.Sprintf("configuration '%s' is secret, use GetSecret() instead", key)).
 			WithCommand(ctx.Command, ctx.SubCommand).
 			WithContext("key", key).
@@ -102,7 +102,7 @@ func Get[T any](ctx *CommandContext, key string) *CommandResult {
 
 	result, ok := value.(T)
 	if !ok {
-		ctx.execution.CollectErrorWithConfig(c, key, fmt.Sprintf("%T", (*new(T))), fmt.Sprintf("%T", value), "type mismatch", false)
+		ctx.execution.CollectError(c, key, fmt.Sprintf("%T", (*new(T))), fmt.Sprintf("%T", value), "type mismatch", false)
 		return ErrorWithMessage(fmt.Errorf("configuration '%s' type mismatch: expected %T, got %T", key, (*new(T)), value),
 			fmt.Sprintf("configuration '%s' type mismatch: expected %s, got %s", key, fmt.Sprintf("%T", (*new(T))), fmt.Sprintf("%T", value))).
 			WithCommand(ctx.Command, ctx.SubCommand).

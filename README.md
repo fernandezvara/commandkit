@@ -5,7 +5,8 @@ A production-ready Go CLI framework with type-safe configuration, powerful comma
 ## Features
 
 - **Type-Safe Configuration**: Fluent API with generics for compile-time safety
-- **Multiple Sources**: Config files → Flags → Environment → Defaults
+- **Configurable Source Priority**: Flexible priority ordering for config sources
+- **Multiple Sources**: Config files → Flags → Environment → Defaults (customizable)
 - **Rich Validation**: Built-in validators with custom validation support
 - **Secret Protection**: Memory-protected secrets with automatic cleanup
 - **Command System**: Subcommands, aliases, and hierarchical organization
@@ -109,12 +110,80 @@ func main() {
 
 ## Configuration Sources
 
-Sources are resolved in priority order (highest to lowest):
+Sources are resolved in priority order (highest to lowest). By default:
 
-1. **Configuration files** (JSON, YAML, TOML)
-2. **Command-line flags**
-3. **Environment variables**
-4. **Default values**
+1. **Command-line flags**
+2. **Environment variables**  
+3. **Default values**
+
+You can customize the priority order per configuration or globally:
+
+### Default Priority Behavior
+
+```go
+cfg := commandkit.New()
+
+// Uses default priority: Flag > Env > Default
+cfg.Define("PORT").
+    Int64().
+    Env("PORT").
+    Flag("port").
+    Default(8080)
+```
+
+### Custom Priority
+
+```go
+// Environment variables take priority over flags
+cfg.Define("DATABASE_URL").
+    String().
+    Env("DATABASE_URL").
+    Flag("database-url").
+    Default("localhost:5432").
+    PriorityEnvFlagDefault() // Env > Flag > Default
+```
+
+### Config-Level Default Priority
+
+```go
+// Set default priority for all configurations
+cfg.SetDefaultPriority(commandkit.PriorityEnvFlagDefault)
+
+// All definitions will use Env > Flag > Default unless explicitly overridden
+cfg.Define("API_KEY").String().Env("API_KEY").Default("default")
+```
+
+### Available Priority Presets
+
+```go
+// Common priority presets
+commandkit.PriorityFlagEnvDefault     // Flag > Env > Default (default)
+commandkit.PriorityEnvFlagDefault     // Env > Flag > Default
+commandkit.PriorityFileEnvFlagDefault // File > Env > Flag > Default
+commandkit.PriorityDefaultOnly        // Default only
+
+// Custom priority order
+cfg.Define("KEY").Priority([]commandkit.SourceType{
+    commandkit.SourceEnv,
+    commandkit.SourceFlag, 
+    commandkit.SourceDefault,
+})
+```
+
+### Override Detection
+
+CommandKit automatically detects and warns about configuration overrides:
+
+```bash
+$ go run myapp --port 3000
+Configuration overrides detected:
+==================================================
+PORT
+  environment -> flag (9000 -> 3000)
+  Note: flag overrides environment
+==================================================
+Total: 1 override(s)
+```
 
 ### Configuration Files
 
@@ -743,6 +812,8 @@ output := stringOutput.Get()
 | `GetSecret(key)`    | Get a secret value                        |
 | `Command(name)`     | Define a new command                      |
 | `UseMiddleware()`    | Add global middleware                      |
+| `SetDefaultPriority(SourcePriority)` | Set default priority for all definitions |
+| `GetDefaultPriority()` | Get current default priority order        |
 
 ### Generic Getters
 
@@ -764,6 +835,12 @@ output := stringOutput.Get()
 | `.Description(text)`          | Set description for help            |
 | `.Clone()`                    | Create builder variation            |
 | `.Delimiter(d)`               | Set delimiter for slices            |
+| `.Sources(...SourceType)`     | Set available sources               |
+| `.Priority(SourcePriority)`    | Set custom priority order           |
+| `.PriorityFlagEnvDefault()`   | Set Flag > Env > Default priority   |
+| `.PriorityEnvFlagDefault()`   | Set Env > Flag > Default priority   |
+| `.PriorityFileEnvFlagDefault()` | Set File > Env > Flag > Default priority |
+| `.PriorityDefaultOnly()`      | Set Default only priority           |
 
 ### Validation Methods
 
@@ -800,6 +877,7 @@ The `examples/` directory contains comprehensive examples:
 - `middleware/` - Middleware patterns
 - `files/` - Configuration file loading
 - `builder_clone/` - Builder patterns and DRY configuration
+- `priority/` - Configurable source priority examples
 
 Run examples:
 ```bash
@@ -808,6 +886,9 @@ go run example_basic.go
 
 cd examples/commands
 go run example_commands.go start --port 3000
+
+cd examples/priority
+go run priority_example.go
 ```
 
 ## License

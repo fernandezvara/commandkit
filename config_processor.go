@@ -46,72 +46,78 @@ func (cp *configProcessor) ProcessCommandConfig(cmd *Command, ctx *CommandContex
 
 	// Create a temporary config with command-specific definitions and parsed flags
 	tempConfig := &Config{
-		definitions: cmd.Definitions,
-		values:      make(map[string]any),
-		secrets:     newSecretStore(),
-		flagSet:     parsedFlags.FlagSet,
-		flagValues:  parsedFlags.Values,
-		fileConfig:  ctx.GlobalConfig.fileConfig,
-		commands:    ctx.GlobalConfig.commands,
-		processed:   false,
+		definitions:      cmd.Definitions,
+		values:           make(map[string]any),
+		secrets:          newSecretStore(),
+		flagSet:          parsedFlags.FlagSet,
+		flagValues:       parsedFlags.Values,
+		fileConfig:       ctx.GlobalConfig.fileConfig,
+		commands:         ctx.GlobalConfig.commands,
+		defaultPriority:  ctx.GlobalConfig.defaultPriority, // Inherit default priority
+		overrideWarnings: NewOverrideWarnings(),            // Initialize override warnings
+		processed:        false,
 	}
 
-	// Process the command-specific configuration using parsed flags
-	// We need to manually process the definitions since we can't call tempConfig.Process()
-	// as it would re-parse global flags instead of command-specific flags
+	// Process the command-specific configuration using the same priority system as global config
+	// Clear any previous errors to prevent accumulation
+	if ctx.execution != nil {
+		ctx.execution.Clear()
+	}
+
 	var configErrs []ConfigError
 
 	for key, def := range cmd.Definitions {
-		var value any
-		var err error
-		source := "none"
-		rawValue := ""
-
-		// Check flag value from parsed flags
-		if flagVal, exists := parsedFlags.Values[key]; exists && flagVal != nil && *flagVal != "" {
-			source = "flag"
-			rawValue = *flagVal
-			value, err = parseValue(*flagVal, def.valueType, ",")
-			if err != nil {
-				configErrs = append(configErrs, newParseConfigError(key, def, source, rawValue, err))
-				continue
+		// Use the same priority-based resolution as global config
+		value, source, err := tempConfig.resolveValueWithPriority(key, def)
+		if err != nil {
+			displayValue := ""
+			if value != nil && !def.secret {
+				displayValue = fmt.Sprintf("%v", value)
+			} else if value != nil && def.secret {
+				displayValue = maskSecret(fmt.Sprintf("%v", value))
 			}
-		} else {
-			// Check environment variable
-			if def.envVar != "" {
-				if envVal := os.Getenv(def.envVar); envVal != "" {
-					source = "env"
-					rawValue = envVal
-					value, err = parseValue(envVal, def.valueType, ",")
-					if err != nil {
-						configErrs = append(configErrs, newParseConfigError(key, def, source, rawValue, err))
-						continue
-					}
+
+			// Check if this is a "Not provided" error and create proper ConfigError
+			if err.Error() == "Not provided" {
+				configErr := newRequiredConfigError(key, def)
+				configErrs = append(configErrs, configErr)
+			} else {
+				// This is a validation or parsing error - create proper ConfigError with display
+				configErr := ConfigError{
+					Key:              key,
+					Source:           source.String(),
+					Value:            displayValue,
+					Message:          err.Error(),
+					Display:          buildErrorDisplay(def),
+					ErrorDescription: err.Error(),
 				}
+				configErrs = append(configErrs, configErr)
 			}
-
-			// Check default value if no flag or env value
-			if value == nil && def.defaultValue != nil {
-				source = "default"
-				rawValue = fmt.Sprintf("%v", def.defaultValue)
-				value = def.defaultValue
-			}
+			continue
 		}
 
 		// Check if required field is missing
 		if def.required && value == nil {
-			configErrs = append(configErrs, newRequiredConfigError(key, def))
+			configErr := newRequiredConfigError(key, def)
+			configErrs = append(configErrs, configErr)
 			continue
 		}
 
 		if value != nil {
 			validationFailed := false
 			for _, validation := range def.validations {
-				if source == "default" && validation.Name == "required" {
+				if source == SourceDefault && validation.Name == "required" {
 					continue
 				}
 				if err := validation.Check(value); err != nil {
-					configErrs = append(configErrs, newValidationConfigError(key, def, source, rawValue, value, validation.Name, err))
+					rawValue := ""
+					if !def.secret {
+						rawValue = fmt.Sprintf("%v", value)
+					} else {
+						rawValue = "[secret]"
+					}
+					configErr := newValidationConfigError(key, def, source.String(), rawValue, value, validation.Name, err)
+					configErrs = append(configErrs, configErr)
 					validationFailed = true
 					break
 				}
@@ -129,6 +135,13 @@ func (cp *configProcessor) ProcessCommandConfig(cmd *Command, ctx *CommandContex
 		} else if value != nil {
 			tempConfig.values[key] = value
 		}
+	}
+
+	// Check for source overrides and store warnings for command-specific config
+	overrideWarnings := tempConfig.checkSourceOverrides()
+	if overrideWarnings.HasWarnings() {
+		tempConfig.overrideWarnings = overrideWarnings
+		tempConfig.overrideWarnings.LogWarnings()
 	}
 
 	// Return errors if any occurred

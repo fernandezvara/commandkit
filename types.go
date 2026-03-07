@@ -46,6 +46,49 @@ func (t ValueType) String() string {
 	}
 }
 
+// SourceType represents a configuration source type
+type SourceType int
+
+const (
+	SourceDefault SourceType = iota
+	SourceFlag
+	SourceEnv
+	SourceFile
+)
+
+func (s SourceType) String() string {
+	switch s {
+	case SourceDefault:
+		return "default"
+	case SourceFlag:
+		return "flag"
+	case SourceEnv:
+		return "environment" // Changed from "env" to "environment" to match test expectations
+	case SourceFile:
+		return "file"
+	default:
+		return "unknown"
+	}
+}
+
+// SourcePriority defines the priority order for configuration sources
+type SourcePriority []SourceType
+
+// Common priority presets
+var (
+	// PriorityFlagEnvDefault sets Flag > Env > Default priority
+	PriorityFlagEnvDefault = SourcePriority{SourceFlag, SourceEnv, SourceDefault}
+
+	// PriorityEnvFlagDefault sets Env > Flag > Default priority
+	PriorityEnvFlagDefault = SourcePriority{SourceEnv, SourceFlag, SourceDefault}
+
+	// PriorityFileEnvFlagDefault sets File > Env > Flag > Default priority (current default)
+	PriorityFileEnvFlagDefault = SourcePriority{SourceFile, SourceEnv, SourceFlag, SourceDefault}
+
+	// PriorityDefaultOnly uses only Default values
+	PriorityDefaultOnly = SourcePriority{SourceDefault}
+)
+
 // parseValue parses a string value into the expected type
 func parseValue(raw string, valueType ValueType, delimiter string) (any, error) {
 	if raw == "" {

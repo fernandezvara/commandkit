@@ -19,6 +19,8 @@ type Definition struct {
 	delimiter    string
 	validations  []Validation
 	description  string
+	sources      []SourceType   // Available sources for this definition
+	priority     SourcePriority // Custom priority order (nil = use config default)
 }
 
 // clone creates a deep copy of the definition
@@ -34,6 +36,8 @@ func (d *Definition) clone() *Definition {
 		delimiter:    d.delimiter,
 		validations:  append([]Validation(nil), d.validations...),
 		description:  d.description,
+		sources:      append([]SourceType(nil), d.sources...),
+		priority:     append(SourcePriority(nil), d.priority...),
 	}
 }
 
@@ -249,6 +253,43 @@ func (b *DefinitionBuilder) Flag(flag string) *DefinitionBuilder {
 	return b
 }
 
+// Sources sets the available sources for this definition
+func (b *DefinitionBuilder) Sources(sources ...SourceType) *DefinitionBuilder {
+	b.def.sources = append([]SourceType(nil), sources...)
+	return b
+}
+
+// Priority sets the custom priority order for this definition
+func (b *DefinitionBuilder) Priority(priority SourcePriority) *DefinitionBuilder {
+	// Validate the priority before setting
+	if err := b.def.validatePriority(priority); err != nil {
+		// For now, we'll set it anyway and let validation happen during processing
+		// In a future enhancement, we could panic or return an error
+	}
+	b.def.priority = append(SourcePriority(nil), priority...)
+	return b
+}
+
+// PriorityFlagEnvDefault sets Flag > Env > Default priority
+func (b *DefinitionBuilder) PriorityFlagEnvDefault() *DefinitionBuilder {
+	return b.Priority(PriorityFlagEnvDefault)
+}
+
+// PriorityEnvFlagDefault sets Env > Flag > Default priority
+func (b *DefinitionBuilder) PriorityEnvFlagDefault() *DefinitionBuilder {
+	return b.Priority(PriorityEnvFlagDefault)
+}
+
+// PriorityFileEnvFlagDefault sets File > Env > Flag > Default priority (current default)
+func (b *DefinitionBuilder) PriorityFileEnvFlagDefault() *DefinitionBuilder {
+	return b.Priority(PriorityFileEnvFlagDefault)
+}
+
+// PriorityDefaultOnly uses only Default values
+func (b *DefinitionBuilder) PriorityDefaultOnly() *DefinitionBuilder {
+	return b.Priority(PriorityDefaultOnly)
+}
+
 // Behavior setters
 
 func (b *DefinitionBuilder) Required() *DefinitionBuilder {
@@ -392,4 +433,59 @@ func (b *DefinitionBuilder) Clone() *DefinitionBuilder {
 // This is called automatically; you don't need to call it explicitly
 func (b *DefinitionBuilder) build() *Definition {
 	return b.def
+}
+
+// Helper functions for priority resolution
+
+// getEffectivePriority returns the priority to use for this definition
+// Uses definition's priority if set, otherwise falls back to config default
+func (d *Definition) getEffectivePriority(configDefault SourcePriority) SourcePriority {
+	if len(d.priority) > 0 {
+		return d.priority
+	}
+	return configDefault
+}
+
+// inferAvailableSources determines which sources are available for this definition
+// based on the configured fields (envVar, flag, defaultValue, etc.)
+func (d *Definition) inferAvailableSources() []SourceType {
+	var sources []SourceType
+
+	// Add Default source if defaultValue is set
+	if d.defaultValue != nil {
+		sources = append(sources, SourceDefault)
+	}
+
+	// Add Env source if envVar is set
+	if d.envVar != "" {
+		sources = append(sources, SourceEnv)
+	}
+
+	// Add Flag source if flag is set
+	if d.flag != "" {
+		sources = append(sources, SourceFlag)
+	}
+
+	// Always include File source (files can provide any key)
+	sources = append(sources, SourceFile)
+
+	return sources
+}
+
+// validatePriority checks if the priority order is valid for this definition
+func (d *Definition) validatePriority(priority SourcePriority) error {
+	availableSources := d.inferAvailableSources()
+	availableSet := make(map[SourceType]bool)
+	for _, source := range availableSources {
+		availableSet[source] = true
+	}
+
+	// Check that all sources in priority are available
+	for _, source := range priority {
+		if !availableSet[source] {
+			return fmt.Errorf("priority includes unavailable source: %s", source.String())
+		}
+	}
+
+	return nil
 }

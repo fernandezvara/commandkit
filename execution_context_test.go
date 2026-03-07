@@ -18,7 +18,7 @@ func TestExecutionContext(t *testing.T) {
 	}
 
 	// Test collecting an error
-	ctx.CollectError("test-key", "string", "", "test error", false)
+	ctx.CollectError(nil, "test-key", "string", "", "test error", false)
 
 	if !ctx.HasErrors() {
 		t.Error("Expected errors after collecting one")

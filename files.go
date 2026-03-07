@@ -148,86 +148,112 @@ func (c *Config) getFileValue(key string) (any, bool) {
 	return nil, false
 }
 
-// Update resolveValue to include file configuration as highest priority
-func (c *Config) resolveValueWithFiles(key string, def *Definition) (any, string, error) {
-	var rawValue string
-	var source string
-
-	// Priority 1: Configuration files
-	if fileValue, exists := c.getFileValue(key); exists {
-		// Convert file value to string for parsing
-		switch v := fileValue.(type) {
-		case string:
-			rawValue = v
-		case bool:
-			rawValue = fmt.Sprintf("%v", v)
-		case int, int64, float64:
-			rawValue = fmt.Sprintf("%v", v)
-		case []any:
-			// Handle arrays
-			strs := make([]string, len(v))
-			for i, item := range v {
-				strs[i] = fmt.Sprintf("%v", item)
-			}
-			rawValue = strings.Join(strs, def.delimiter)
-		default:
-			return nil, "file", fmt.Errorf("unsupported file value type: %T", v)
+// getValueFromSource gets value from a specific source type
+func (c *Config) getValueFromSource(key string, def *Definition, sourceType SourceType) (any, bool) {
+	switch sourceType {
+	case SourceFile:
+		if fileValue, exists := c.getFileValue(key); exists {
+			return fileValue, true
 		}
-		source = "file"
-	}
+		return nil, false
 
-	// Priority 2: Environment variables
-	if rawValue == "" && def.envVar != "" {
-		if envVal := os.Getenv(def.envVar); envVal != "" {
-			rawValue = envVal
-			source = "env"
-		}
-	}
-
-	// Priority 3: Command line flags
-	if rawValue == "" && def.flag != "" {
-		if flagVal, ok := c.flagValues[key]; ok && flagVal != nil && *flagVal != "" {
-			rawValue = *flagVal
-			source = "flag"
-		}
-	}
-
-	// Priority 4: Default value
-	if rawValue == "" && def.defaultValue != nil {
-		source = "default"
-		// Default is already the correct type, validate and return
-		for _, v := range def.validations {
-			if v.Name == "required" {
-				continue // Skip required check for defaults
-			}
-			if err := v.Check(def.defaultValue); err != nil {
-				return def.defaultValue, source, err
+	case SourceEnv:
+		if def.envVar != "" {
+			if envVal := os.Getenv(def.envVar); envVal != "" {
+				return envVal, true
 			}
 		}
-		return def.defaultValue, source, nil
+		return nil, false
+
+	case SourceFlag:
+		if def.flag != "" {
+			if flagVal, ok := c.flagValues[key]; ok && flagVal != nil && *flagVal != "" {
+				return *flagVal, true
+			}
+		}
+		return nil, false
+
+	case SourceDefault:
+		if def.defaultValue != nil {
+			return def.defaultValue, true
+		}
+		return nil, false
+
+	default:
+		return nil, false
+	}
+}
+
+// resolveValueWithPriority resolves a configuration value using the specified priority order
+func (c *Config) resolveValueWithPriority(key string, def *Definition) (any, SourceType, error) {
+	// Get the effective priority for this definition
+	priority := def.getEffectivePriority(c.defaultPriority)
+
+	// Check sources in priority order
+	for _, sourceType := range priority {
+		if value, exists := c.getValueFromSource(key, def, sourceType); exists {
+			// Handle special case for Default source - no parsing needed
+			if sourceType == SourceDefault {
+				// Run validations (except required check for defaults)
+				for _, v := range def.validations {
+					if v.Name == "required" {
+						continue // Skip required check for defaults
+					}
+					if err := v.Check(value); err != nil {
+						return value, sourceType, err
+					}
+				}
+				return value, sourceType, nil
+			}
+
+			// For non-default sources, convert to string and parse
+			var rawValue string
+			switch v := value.(type) {
+			case string:
+				rawValue = v
+			case bool, int, int64, float64:
+				rawValue = fmt.Sprintf("%v", v)
+			case []any:
+				// Handle arrays from files
+				strs := make([]string, len(v))
+				for i, item := range v {
+					strs[i] = fmt.Sprintf("%v", item)
+				}
+				rawValue = strings.Join(strs, def.delimiter)
+			default:
+				return value, sourceType, fmt.Errorf("unsupported value type: %T", v)
+			}
+
+			// Parse the raw string value into the expected type
+			parsedValue, err := parseValue(rawValue, def.valueType, def.delimiter)
+			if err != nil {
+				return rawValue, sourceType, err
+			}
+
+			// Run validations
+			for _, validation := range def.validations {
+				if err := validation.Check(parsedValue); err != nil {
+					return parsedValue, sourceType, err
+				}
+			}
+
+			return parsedValue, sourceType, nil
+		}
 	}
 
 	// No value found
-	if rawValue == "" {
-		source = "none"
-		if def.required {
-			return nil, source, fmt.Errorf("required value not provided (set in file, %s or --%s)", def.envVar, def.flag)
-		}
-		return nil, source, nil
+	if def.required {
+		return nil, SourceDefault, fmt.Errorf("Not provided")
 	}
 
-	// Parse the raw string value into the expected type
-	parsedValue, err := parseValue(rawValue, def.valueType, def.delimiter)
+	return nil, SourceDefault, nil
+}
+
+// resolveValueWithFiles is kept for backward compatibility but delegates to resolveValueWithPriority
+func (c *Config) resolveValueWithFiles(key string, def *Definition) (any, string, error) {
+	value, sourceType, err := c.resolveValueWithPriority(key, def)
 	if err != nil {
-		return rawValue, source, err
+		return value, sourceType.String(), err
 	}
-
-	// Run validations
-	for _, validation := range def.validations {
-		if err := validation.Check(parsedValue); err != nil {
-			return parsedValue, source, err
-		}
-	}
-
-	return parsedValue, source, nil
+	return value, sourceType.String(), nil
 }

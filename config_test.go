@@ -278,7 +278,7 @@ func TestSecretHandling(t *testing.T) {
 	// by simulating what would happen when Get is called on a secret
 
 	// Simulate the error collection that would happen in Get function
-	ctx.execution.CollectErrorWithConfig(cfg, "DATABASE_URL", "secret", "", "use GetSecret() instead", true)
+	ctx.execution.CollectError(cfg, "DATABASE_URL", "secret", "", "use GetSecret() instead", true)
 
 	// Check that error was collected
 	collected := ctx.execution.GetErrors()

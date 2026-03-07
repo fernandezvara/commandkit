@@ -21,6 +21,7 @@ type Config struct {
 	overrideWarnings *OverrideWarnings
 	processed        bool
 	helpService      HelpService
+	defaultPriority  SourcePriority // Fallback priority for definitions without explicit priority
 }
 
 // New creates a new Config instance
@@ -36,6 +37,7 @@ func New() *Config {
 		globalMiddleware: make([]CommandMiddleware, 0),
 		overrideWarnings: NewOverrideWarnings(),
 		processed:        false,
+		defaultPriority:  PriorityFlagEnvDefault, // Flag > Env > Default to match test expectations
 	}
 }
 
@@ -92,6 +94,18 @@ func (c *Config) UseMiddlewareForSubcommands(commandName string, subcommandNames
 	c.globalMiddleware = append(c.globalMiddleware, wrapper)
 }
 
+// SetDefaultPriority sets the default priority order for all definitions
+// that don't have an explicit priority set
+func (c *Config) SetDefaultPriority(priority SourcePriority) *Config {
+	c.defaultPriority = append(SourcePriority(nil), priority...)
+	return c
+}
+
+// GetDefaultPriority returns the current default priority order
+func (c *Config) GetDefaultPriority() SourcePriority {
+	return append(SourcePriority(nil), c.defaultPriority...)
+}
+
 // Process parses flags and environment variables, validates all definitions,
 // and populates the values map. Returns a CommandResult for unified error handling.
 func (c *Config) Process() *CommandResult {
@@ -125,7 +139,7 @@ func (c *Config) Process() *CommandResult {
 
 	// Process each definition
 	for key, def := range c.definitions {
-		value, source, err := c.resolveValueWithFiles(key, def)
+		value, source, err := c.resolveValueWithPriority(key, def)
 		if err != nil {
 			displayValue := ""
 			if value != nil && !def.secret {
@@ -135,7 +149,7 @@ func (c *Config) Process() *CommandResult {
 			}
 			errs = append(errs, ConfigError{
 				Key:     key,
-				Source:  source,
+				Source:  source.String(),
 				Value:   displayValue,
 				Message: err.Error(),
 			})

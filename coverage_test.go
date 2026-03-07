@@ -355,7 +355,7 @@ func TestGetErrorCollectionIntegration(t *testing.T) {
 	}
 
 	// Test that we can add more errors
-	ctx.execution.CollectErrorWithConfig(cfg, "ANOTHER_KEY", "not found", "", "test error", false)
+	ctx.execution.CollectError(cfg, "ANOTHER_KEY", "not found", "", "test error", false)
 	collectedAfter := ctx.execution.GetErrors()
 	if len(collectedAfter) != len(collected)+1 {
 		t.Errorf("Expected %d collected errors, got %d", len(collected)+1, len(collectedAfter))

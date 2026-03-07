@@ -143,18 +143,12 @@ Secrets are masked for security.`)
 }
 
 func startCommand(ctx *commandkit.CommandContext) error {
-	// Process command-specific configuration
+	// Configuration has already been processed by the command executor
 	var config *commandkit.Config
 	if ctx.CommandConfig != nil {
 		config = ctx.CommandConfig
 	} else {
 		config = ctx.GlobalConfig
-	}
-	if result := config.Process(); result.Error != nil {
-		if result.Message != "" {
-			fmt.Fprintln(os.Stderr, result.Message)
-		}
-		return fmt.Errorf("configuration errors")
 	}
 
 	// Get configuration values
@@ -207,19 +201,7 @@ func startCommand(ctx *commandkit.CommandContext) error {
 }
 
 func startServerCommand(ctx *commandkit.CommandContext) error {
-	// Process command-specific configuration
-	var config *commandkit.Config
-	if ctx.CommandConfig != nil {
-		config = ctx.CommandConfig
-	} else {
-		config = ctx.GlobalConfig
-	}
-	if result := config.Process(); result.Error != nil {
-		if result.Message != "" {
-			fmt.Fprintln(os.Stderr, result.Message)
-		}
-		return fmt.Errorf("configuration errors")
-	}
+	// Configuration has already been processed by the command executor
 
 	workersResult := commandkit.Get[[]int64](ctx, "WORKERS")
 	if workersResult.Error != nil {
@@ -241,19 +223,7 @@ func startServerCommand(ctx *commandkit.CommandContext) error {
 }
 
 func startWorkerCommand(ctx *commandkit.CommandContext) error {
-	// Process command-specific configuration
-	var config *commandkit.Config
-	if ctx.CommandConfig != nil {
-		config = ctx.CommandConfig
-	} else {
-		config = ctx.GlobalConfig
-	}
-	if result := config.Process(); result.Error != nil {
-		if result.Message != "" {
-			fmt.Fprintln(os.Stderr, result.Message)
-		}
-		return fmt.Errorf("configuration errors")
-	}
+	// Configuration has already been processed by the command executor
 
 	countResult := commandkit.Get[int64](ctx, "COUNT")
 	if countResult.Error != nil {
