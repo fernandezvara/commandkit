@@ -35,14 +35,14 @@ func (c ErrorCategory) String() string {
 
 // CommandError represents a unified error type for all command operations
 type CommandError struct {
-	Category    ErrorCategory
-	Key         string
-	Source      string // "env", "flag", "default", "runtime", "system", "user"
-	Value       string // Masked if secret
-	Message     string
-	Command     string // Command that generated this error
-	SubCommand  string // Subcommand if applicable
-	Context     map[string]any // Additional context
+	Category   ErrorCategory
+	Key        string
+	Source     string // "env", "flag", "default", "runtime", "system", "user"
+	Value      string // Masked if secret
+	Message    string
+	Command    string         // Command that generated this error
+	SubCommand string         // Subcommand if applicable
+	Context    map[string]any // Additional context
 }
 
 // Error implements the error interface
@@ -132,7 +132,7 @@ func ConvertFromConfigError(configErr ConfigError, command string) *CommandError
 		Key:      configErr.Key,
 		Source:   configErr.Source,
 		Value:    configErr.Value,
-		Message:  configErr.Message,
+		Message:  configErr.ErrorDescription,
 		Command:  command,
 	}
 }
@@ -140,13 +140,13 @@ func ConvertFromConfigError(configErr ConfigError, command string) *CommandError
 // ConvertFromGetError converts a legacy GetError to CommandError
 func ConvertFromGetError(getErr GetError, command string) *CommandError {
 	return &CommandError{
-		Category:    ErrorCategoryConfiguration,
-		Key:         getErr.Key,
-		Source:      "get",
-		Value:       getErr.ActualType,
-		Message:     getErr.Message,
-		Command:     command,
-		Context:     map[string]any{
+		Category: ErrorCategoryConfiguration,
+		Key:      getErr.Key,
+		Source:   "get",
+		Value:    getErr.ActualType,
+		Message:  getErr.Message,
+		Command:  command,
+		Context: map[string]any{
 			"expected_type": getErr.ExpectedType,
 			"is_secret":     getErr.IsSecret,
 		},

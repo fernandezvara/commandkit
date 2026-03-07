@@ -128,9 +128,10 @@ func (c *Config) Process() *CommandResult {
 	if err != nil {
 		// Collect any parsing errors
 		errs = append(errs, ConfigError{
-			Key:     "flag_parsing",
-			Source:  "flag",
-			Message: fmt.Sprintf("Flag parsing error: %v", err),
+			Key:              "flag_parsing",
+			Source:           "flag",
+			Display:          "",
+			ErrorDescription: fmt.Sprintf("Flag parsing error: %v", err),
 		})
 	}
 
@@ -148,10 +149,11 @@ func (c *Config) Process() *CommandResult {
 				displayValue = maskSecret(fmt.Sprintf("%v", value))
 			}
 			errs = append(errs, ConfigError{
-				Key:     key,
-				Source:  source.String(),
-				Value:   displayValue,
-				Message: err.Error(),
+				Key:              key,
+				Source:           source.String(),
+				Value:            displayValue,
+				Display:          "",
+				ErrorDescription: err.Error(),
 			})
 			continue
 		}

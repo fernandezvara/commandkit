@@ -131,7 +131,12 @@ func extractOneOfValues(name string) string {
 				quotedParts = append(quotedParts, fmt.Sprintf("'%s'", part))
 			}
 		}
-		return "[" + strings.Join(quotedParts, ", ") + "]"
+		var sb strings.Builder
+		sb.Grow(len(quotedParts)*8 + 2) // Pre-allocate estimated capacity
+		sb.WriteString("[")
+		sb.WriteString(strings.Join(quotedParts, ", "))
+		sb.WriteString("]")
+		return sb.String()
 	}
 
 	// Handle simple format oneOf(a,b,c)
@@ -142,7 +147,12 @@ func extractOneOfValues(name string) string {
 			quotedParts = append(quotedParts, fmt.Sprintf("'%s'", strings.TrimSpace(part)))
 		}
 	}
-	return "[" + strings.Join(quotedParts, ", ") + "]"
+	var sb strings.Builder
+	sb.Grow(len(quotedParts)*8 + 2) // Pre-allocate estimated capacity
+	sb.WriteString("[")
+	sb.WriteString(strings.Join(quotedParts, ", "))
+	sb.WriteString("]")
+	return sb.String()
 }
 
 // formatFlagHelp generates enhanced help text with required/default indicators and validations

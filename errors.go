@@ -35,22 +35,12 @@ type ConfigError struct {
 	Key              string
 	Source           string // "env", "flag", "default", or "none"
 	Value            string // Masked if secret
-	Message          string
 	Display          string
 	ErrorDescription string
 }
 
 func (e *ConfigError) Error() string {
-	if e.ErrorDescription != "" {
-		return e.ErrorDescription
-	}
-	if e.Source == "none" {
-		return fmt.Sprintf("%s: %s", e.Key, e.Message)
-	}
-	if e.Value != "" {
-		return fmt.Sprintf("%s (%s=%s): %s", e.Key, e.Source, e.Value, e.Message)
-	}
-	return fmt.Sprintf("%s (%s): %s", e.Key, e.Source, e.Message)
+	return e.ErrorDescription
 }
 
 func buildErrorDisplay(def *Definition) string {
@@ -138,65 +128,14 @@ func buildFlagDisplay(def *Definition) string {
 	return fmt.Sprintf("%s (%s)", base, strings.Join(indicators, ", "))
 }
 
-func standardizeValidationMessage(value any, validationName string, original error) string {
-	switch {
-	case validationName == "required":
-		return "Not provided"
-	case strings.HasPrefix(validationName, "min("):
-		return fmt.Sprintf("Below minimum: %v", value)
-	case strings.HasPrefix(validationName, "max("):
-		return fmt.Sprintf("Out of bounds: %v", value)
-	case strings.HasPrefix(validationName, "minLength("):
-		return fmt.Sprintf("Too short: %q", value)
-	case strings.HasPrefix(validationName, "maxLength("):
-		return fmt.Sprintf("Too long: %q", value)
-	case strings.HasPrefix(validationName, "regexp("):
-		return fmt.Sprintf("Invalid format: %q", value)
-	case strings.HasPrefix(validationName, "oneOf("):
-		allowed := extractOneOfValues(validationName)
-		return fmt.Sprintf("Invalid choice: %q (allowed: %s)", value, allowed)
-	case strings.HasPrefix(validationName, "minDuration("):
-		return fmt.Sprintf("Too short: %v", value)
-	case strings.HasPrefix(validationName, "maxDuration("):
-		return fmt.Sprintf("Too long: %v", value)
-	case strings.HasPrefix(validationName, "minItems("):
-		return fmt.Sprintf("Too few items: %v", value)
-	case strings.HasPrefix(validationName, "maxItems("):
-		return fmt.Sprintf("Too many items: %v", value)
-	default:
-		return original.Error()
-	}
-}
-
-func newValidationConfigError(key string, def *Definition, source string, rawValue string, value any, validationName string, original error) ConfigError {
+// newConfigError creates a unified ConfigError for all error types
+func newConfigError(key string, def *Definition, source string, rawValue string, original error) ConfigError {
 	return ConfigError{
 		Key:              key,
 		Source:           source,
 		Value:            rawValue,
-		Message:          original.Error(),
-		Display:          buildErrorDisplay(def),
-		ErrorDescription: standardizeValidationMessage(value, validationName, original),
-	}
-}
-
-func newParseConfigError(key string, def *Definition, source string, rawValue string, original error) ConfigError {
-	return ConfigError{
-		Key:              key,
-		Source:           source,
-		Value:            rawValue,
-		Message:          original.Error(),
 		Display:          buildErrorDisplay(def),
 		ErrorDescription: original.Error(),
-	}
-}
-
-func newRequiredConfigError(key string, def *Definition) ConfigError {
-	return ConfigError{
-		Key:              key,
-		Source:           "validation",
-		Message:          "required value not provided",
-		Display:          buildErrorDisplay(def),
-		ErrorDescription: "Not provided",
 	}
 }
 
@@ -207,6 +146,7 @@ func formatErrors(errs []ConfigError) string {
 	}
 
 	var sb strings.Builder
+	sb.Grow(len(errs) * 200) // Pre-allocate estimated capacity
 
 	sb.WriteString("Configuration errors detected:\n")
 	sb.WriteString(strings.Repeat("=", 50) + "\n")
@@ -222,7 +162,7 @@ func formatErrors(errs []ConfigError) string {
 		if err.Value != "" {
 			sb.WriteString(fmt.Sprintf("  Value: %s\n", err.Value))
 		}
-		sb.WriteString(fmt.Sprintf("  Error: %s\n", err.Message))
+		sb.WriteString(fmt.Sprintf("  Error: %s\n", err.ErrorDescription))
 	}
 
 	sb.WriteString(strings.Repeat("=", 50) + "\n")

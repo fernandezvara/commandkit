@@ -86,8 +86,8 @@ func TestConfigPrintErrors(t *testing.T) {
 
 	// Create some config errors
 	errs := []ConfigError{
-		{Key: "TEST_KEY", Source: "none", Message: "required value not provided"},
-		{Key: "ANOTHER_KEY", Source: "env", Message: "invalid format"},
+		{Key: "TEST_KEY", Source: "none", Display: "", ErrorDescription: "required value not provided"},
+		{Key: "ANOTHER_KEY", Source: "env", Display: "", ErrorDescription: "invalid format"},
 	}
 
 	// Capture stderr output

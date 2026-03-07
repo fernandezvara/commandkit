@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestConfigErrorString(t *testing.T) {
@@ -13,16 +12,16 @@ func TestConfigErrorString(t *testing.T) {
 		expected string
 	}{
 		{
-			ConfigError{Key: "PORT", Source: "env", Value: "8080", Message: "invalid value"},
-			"PORT (env=8080): invalid value",
+			ConfigError{Key: "PORT", Source: "env", Value: "8080", Display: "", ErrorDescription: "invalid value"},
+			"invalid value",
 		},
 		{
-			ConfigError{Key: "HOST", Source: "flag", Value: "", Message: "required"},
-			"HOST (flag): required",
+			ConfigError{Key: "HOST", Source: "flag", Value: "", Display: "", ErrorDescription: "required"},
+			"required",
 		},
 		{
-			ConfigError{Key: "API_KEY", Source: "none", Value: "", Message: "not provided"},
-			"API_KEY: not provided",
+			ConfigError{Key: "API_KEY", Source: "none", Value: "", Display: "", ErrorDescription: "not provided"},
+			"not provided",
 		},
 	}
 
@@ -143,37 +142,6 @@ func TestBuildFlagDisplay(t *testing.T) {
 	}
 }
 
-func TestStandardizeValidationMessage(t *testing.T) {
-	original := fmt.Errorf("original error")
-
-	tests := []struct {
-		name           string
-		value          any
-		validationName string
-		expected       string
-	}{
-		{"required", nil, "required", "Not provided"},
-		{"min", int64(1), "min(10)", "Below minimum: 1"},
-		{"max", int64(80000), "max(65535)", "Out of bounds: 80000"},
-		{"minLength", "ab", "minLength(3)", `Too short: "ab"`},
-		{"maxLength", "abcdef", "maxLength(3)", `Too long: "abcdef"`},
-		{"regexp", "abc", "regexp(^\\d+$)", `Invalid format: "abc"`},
-		{"oneOf", "s", "oneOf(debug,info,warn,error)", `Invalid choice: "s" (allowed: ['debug', 'info', 'warn', 'error'])`},
-		{"minDuration", 5 * time.Second, "minDuration(10s)", "Too short: 5s"},
-		{"maxDuration", 2 * time.Hour, "maxDuration(1h)", "Too long: 2h0m0s"},
-		{"minItems", []string{"a"}, "minItems(2)", "Too few items: [a]"},
-		{"maxItems", []string{"a", "b", "c"}, "maxItems(2)", "Too many items: [a b c]"},
-		{"default", "x", "custom", "original error"},
-	}
-
-	for _, tt := range tests {
-		got := standardizeValidationMessage(tt.value, tt.validationName, original)
-		if got != tt.expected {
-			t.Fatalf("%s: expected %q, got %q", tt.name, tt.expected, got)
-		}
-	}
-}
-
 func TestNewConfigErrorConstructors(t *testing.T) {
 	def := &Definition{
 		key:          "PORT",
@@ -182,15 +150,15 @@ func TestNewConfigErrorConstructors(t *testing.T) {
 		defaultValue: int64(8080),
 	}
 
-	validationErr := newValidationConfigError("PORT", def, "flag", "80000", int64(80000), "max(65535)", fmt.Errorf("value 80000 is greater than maximum 65535"))
+	validationErr := newConfigError("PORT", def, "flag", "80000", fmt.Errorf("value 80000 is greater than maximum 65535"))
 	if validationErr.Display != "--port int64 (default: 8080)" {
 		t.Fatalf("unexpected validation display: %q", validationErr.Display)
 	}
-	if validationErr.ErrorDescription != "Out of bounds: 80000" {
+	if validationErr.ErrorDescription != "value 80000 is greater than maximum 65535" {
 		t.Fatalf("unexpected validation error description: %q", validationErr.ErrorDescription)
 	}
 
-	parseErr := newParseConfigError("PORT", def, "flag", "abc", fmt.Errorf("invalid syntax"))
+	parseErr := newConfigError("PORT", def, "flag", "abc", fmt.Errorf("invalid syntax"))
 	if parseErr.ErrorDescription != "invalid syntax" {
 		t.Fatalf("unexpected parse error description: %q", parseErr.ErrorDescription)
 	}
@@ -201,7 +169,7 @@ func TestNewConfigErrorConstructors(t *testing.T) {
 		flag:      "base-url",
 		required:  true,
 	}
-	requiredErr := newRequiredConfigError("BASE_URL", requiredDef)
+	requiredErr := newConfigError("BASE_URL", requiredDef, "validation", "", fmt.Errorf("Not provided"))
 	if requiredErr.Display != "--base-url url (required)" {
 		t.Fatalf("unexpected required display: %q", requiredErr.Display)
 	}
@@ -224,7 +192,7 @@ func TestFormatErrors(t *testing.T) {
 
 	// Test single error
 	errs := []ConfigError{
-		{Key: "PORT", Source: "env", Value: "invalid", Message: "must be a number"},
+		{Key: "PORT", Source: "env", Value: "invalid", Display: "", ErrorDescription: "must be a number"},
 	}
 	result = formatErrors(errs)
 
@@ -243,9 +211,9 @@ func TestFormatErrors(t *testing.T) {
 
 	// Test multiple errors
 	errs = []ConfigError{
-		{Key: "PORT", Source: "env", Value: "99999", Message: "value out of range"},
-		{Key: "API_KEY", Source: "none", Value: "", Message: "required value not provided"},
-		{Key: "HOST", Source: "flag", Value: "invalid-url", Message: "invalid URL format"},
+		{Key: "PORT", Source: "env", Value: "99999", Display: "", ErrorDescription: "value out of range"},
+		{Key: "API_KEY", Source: "none", Value: "", Display: "", ErrorDescription: "required value not provided"},
+		{Key: "HOST", Source: "flag", Value: "invalid-url", Display: "", ErrorDescription: "invalid URL format"},
 	}
 	result = formatErrors(errs)
 
@@ -271,7 +239,7 @@ func TestFormatErrors(t *testing.T) {
 func TestFormatErrorsSourceDisplay(t *testing.T) {
 	// Test that source "none" doesn't show source line
 	errs := []ConfigError{
-		{Key: "API_KEY", Source: "none", Value: "", Message: "required"},
+		{Key: "API_KEY", Source: "none", Value: "", Display: "", ErrorDescription: "required"},
 	}
 	result := formatErrors(errs)
 
@@ -282,7 +250,7 @@ func TestFormatErrorsSourceDisplay(t *testing.T) {
 
 	// Test that other sources show source line
 	errs = []ConfigError{
-		{Key: "PORT", Source: "env", Value: "8080", Message: "invalid"},
+		{Key: "PORT", Source: "env", Value: "8080", Display: "", ErrorDescription: "invalid"},
 	}
 	result = formatErrors(errs)
 

@@ -77,28 +77,15 @@ func (cp *configProcessor) ProcessCommandConfig(cmd *Command, ctx *CommandContex
 				displayValue = maskSecret(fmt.Sprintf("%v", value))
 			}
 
-			// Check if this is a "Not provided" error and create proper ConfigError
-			if err.Error() == "Not provided" {
-				configErr := newRequiredConfigError(key, def)
-				configErrs = append(configErrs, configErr)
-			} else {
-				// This is a validation or parsing error - create proper ConfigError with display
-				configErr := ConfigError{
-					Key:              key,
-					Source:           source.String(),
-					Value:            displayValue,
-					Message:          err.Error(),
-					Display:          buildErrorDisplay(def),
-					ErrorDescription: err.Error(),
-				}
-				configErrs = append(configErrs, configErr)
-			}
+			// Create ConfigError using unified function
+			configErr := newConfigError(key, def, source.String(), displayValue, err)
+			configErrs = append(configErrs, configErr)
 			continue
 		}
 
 		// Check if required field is missing
 		if def.required && value == nil {
-			configErr := newRequiredConfigError(key, def)
+			configErr := newConfigError(key, def, "validation", "", fmt.Errorf("Not provided"))
 			configErrs = append(configErrs, configErr)
 			continue
 		}
@@ -116,7 +103,7 @@ func (cp *configProcessor) ProcessCommandConfig(cmd *Command, ctx *CommandContex
 					} else {
 						rawValue = "[secret]"
 					}
-					configErr := newValidationConfigError(key, def, source.String(), rawValue, value, validation.Name, err)
+					configErr := newConfigError(key, def, source.String(), rawValue, err)
 					configErrs = append(configErrs, configErr)
 					validationFailed = true
 					break

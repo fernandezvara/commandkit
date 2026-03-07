@@ -85,7 +85,7 @@ func (ctx *ExecutionContext) CollectConfigError(c *Config, configErr ConfigError
 		Key:              configErr.Key,
 		ExpectedType:     "validation",
 		ActualType:       "",
-		Message:          configErr.Message,
+		Message:          configErr.ErrorDescription,
 		IsSecret:         false,
 		Flag:             flag,
 		EnvVar:           envVar,
