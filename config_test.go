@@ -221,12 +221,13 @@ func TestValidation(t *testing.T) {
 		t.Fatalf("Expected configuration errors, got none")
 	}
 
-	// Check that we have errors (specific error count checking is harder with CommandResult)
 	if result.Message == "" {
-		t.Fatalf("Expected error message, got empty")
+		t.Fatalf("Expected formatted configuration error message, got empty")
 	}
 
-	// Verify that error message contains expected validation errors
+	if !strings.Contains(result.Message, "Configuration errors detected:") {
+		t.Fatalf("Expected formatted config error output, got: %s", result.Message)
+	}
 	if !strings.Contains(result.Message, "99999") || !strings.Contains(result.Message, "0.500000") {
 		t.Errorf("Error message doesn't contain expected validation errors: %s", result.Message)
 	}

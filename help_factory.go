@@ -6,7 +6,7 @@ type HelpFactory interface {
 	// Core help creation methods
 	CreateGlobalHelp(commands map[string]*Command, executable string) *GlobalHelp
 	CreateCommandHelp(cmd *Command, executable string) *CommandHelp
-	CreateCommandHelpWithErrors(cmd *Command, executable string, errors []ConfigError) *CommandHelp
+	CreateCommandHelpWithErrors(cmd *Command, executable string, errors []GetError) *CommandHelp
 	CreateSubcommandHelp(parent string, subcommands map[string]*Command) *SubcommandHelp
 	CreateFlagHelp(command string, defs map[string]*Definition) *FlagHelp
 
@@ -101,7 +101,7 @@ func (hf *helpFactory) CreateCommandHelp(cmd *Command, executable string) *Comma
 }
 
 // CreateCommandHelpWithErrors creates detailed help for a specific command with errors
-func (hf *helpFactory) CreateCommandHelpWithErrors(cmd *Command, executable string, errors []ConfigError) *CommandHelp {
+func (hf *helpFactory) CreateCommandHelpWithErrors(cmd *Command, executable string, errors []GetError) *CommandHelp {
 	commandInfo := hf.extractor.ExtractCommandInfo(cmd, executable)
 
 	// Match errors to flags
@@ -120,10 +120,10 @@ func (hf *helpFactory) CreateCommandHelpWithErrors(cmd *Command, executable stri
 	}
 }
 
-func (hf *helpFactory) orderErrors(flags []FlagInfo, errors []ConfigError) []ConfigError {
-	ordered := make([]ConfigError, 0, len(errors))
+func (hf *helpFactory) orderErrors(flags []FlagInfo, errors []GetError) []GetError {
+	ordered := make([]GetError, 0, len(errors))
 	used := make(map[string]bool)
-	errorMap := make(map[string]ConfigError)
+	errorMap := make(map[string]GetError)
 	for _, err := range errors {
 		errorMap[err.Key] = err
 	}
@@ -145,12 +145,12 @@ func (hf *helpFactory) orderErrors(flags []FlagInfo, errors []ConfigError) []Con
 }
 
 // matchErrorsToFlags matches errors to their corresponding flags
-func (hf *helpFactory) matchErrorsToFlags(flags []FlagInfo, errors []ConfigError) []FlagInfo {
+func (hf *helpFactory) matchErrorsToFlags(flags []FlagInfo, errors []GetError) []FlagInfo {
 	result := make([]FlagInfo, len(flags))
 	copy(result, flags)
 
 	// Create error map for quick lookup
-	errorMap := make(map[string]ConfigError)
+	errorMap := make(map[string]GetError)
 	for _, err := range errors {
 		errorMap[err.Key] = err
 	}

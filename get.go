@@ -4,7 +4,6 @@ package commandkit
 import (
 	"fmt"
 	"log"
-	"strings"
 )
 
 // GetError represents an error collected from Get functions
@@ -29,53 +28,19 @@ func logWarningForDesigner(message string) {
 
 // getErrorDisplayName returns the display name matching help message format
 func getErrorDisplayName(err GetError, c *Config) string {
-	// Get the definition to extract type and other info
-	var valueType string
-	var indicators []string
-
-	if def, hasDef := c.definitions[err.Key]; hasDef {
-		// Add value type
-		valueType = fmt.Sprintf("%s", def.valueType)
-
-		// Add environment variable context
-		if def.envVar != "" {
-			indicators = append(indicators, fmt.Sprintf("env: %s", def.envVar))
+	if c != nil {
+		if def, hasDef := c.definitions[err.Key]; hasDef {
+			return buildErrorDisplay(def)
 		}
-
-		// Add required indicator
-		if def.required {
-			indicators = append(indicators, "required")
-		}
-
-		// Add secret indicator
-		if def.secret {
-			indicators = append(indicators, "secret")
-		}
-	} else {
-		valueType = "string" // fallback type
 	}
 
-	// Build the display name
-	var displayName string
 	if err.Flag != "" {
-		displayName = fmt.Sprintf("-%s %s", err.Flag, valueType)
-	} else if def, hasDef := c.definitions[err.Key]; hasDef && def.flag == "" && def.envVar != "" {
-		// Environment-only configuration
-		displayName = fmt.Sprintf("(no flag) %s", valueType)
-		// env var already added in indicators above
-	} else if err.EnvVar != "" {
-		displayName = fmt.Sprintf("(no flag) %s", valueType)
-		indicators = append([]string{fmt.Sprintf("env: %s", err.EnvVar)}, indicators...)
-	} else {
-		displayName = fmt.Sprintf("%s %s", err.Key, valueType)
+		return fmt.Sprintf("--%s string", err.Flag)
 	}
-
-	// Add indicators
-	if len(indicators) > 0 {
-		return fmt.Sprintf("%s (%s)", displayName, strings.Join(indicators, ", "))
+	if err.EnvVar != "" {
+		return fmt.Sprintf("(no flag) string (env: %s)", err.EnvVar)
 	}
-
-	return displayName
+	return fmt.Sprintf("%s string", err.Key)
 }
 
 // Get retrieves a configuration value and returns a CommandResult for unified error handling

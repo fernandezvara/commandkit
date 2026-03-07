@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -273,16 +272,12 @@ func (c *Config) executeWithGlobalMiddleware(cmd *Command, ctx *CommandContext) 
 		if result.Error != nil {
 			// Check if execution context has errors and display them
 			if ctx.execution != nil && ctx.execution.HasErrors() {
-				configErrs := ctx.execution.convertToConfigErrors(ctx.execution.GetErrors())
-				helpService := c.getHelpService()
-				executable := filepath.Base(os.Args[0])
-				commandHelp := helpService.GetFactory().CreateCommandHelpWithErrors(cmd, executable, configErrs)
-				helpText, err := helpService.GetFormatter().FormatCommandHelp(commandHelp)
-				if err == nil {
-					fmt.Fprintln(os.Stderr, helpText)
-					os.Exit(1)
+				helpText, err := ctx.execution.renderErrorsWithCommand(cmd, c.getHelpService())
+				if err != nil {
+					return err
 				}
-				ctx.execution.DisplayAndExit()
+				fmt.Fprintln(os.Stderr, helpText)
+				os.Exit(1)
 			}
 
 			// Always display the message if it exists

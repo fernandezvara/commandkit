@@ -177,13 +177,13 @@ func TestGetErrorDisplayName(t *testing.T) {
 
 	// Test display name formatting
 	portDisplayName := getErrorDisplayName(collected[0], cfg)
-	if portDisplayName != "-port int64 (env: PORT)" {
-		t.Errorf("Expected '-port int64 (env: PORT)', got '%s'", portDisplayName)
+	if portDisplayName != "--port int64 (env: PORT)" {
+		t.Errorf("Expected '--port int64 (env: PORT)', got '%s'", portDisplayName)
 	}
 
 	dbDisplayName := getErrorDisplayName(collected[1], cfg)
-	if dbDisplayName != "(no flag) string (env: DATABASE_URL, secret)" {
-		t.Errorf("Expected '(no flag) string (env: DATABASE_URL, secret)', got '%s'", dbDisplayName)
+	if dbDisplayName != "(no flag) string (env: DATABASE_URL)" {
+		t.Errorf("Expected '(no flag) string (env: DATABASE_URL)', got '%s'", dbDisplayName)
 	}
 
 	debugDisplayName := getErrorDisplayName(collected[2], cfg)
@@ -214,16 +214,16 @@ func TestDisplayGetErrorsAndExit(t *testing.T) {
 	}
 
 	outputStr := string(output)
-	if !contains(outputStr, "Configuration errors detected") {
-		t.Error("Expected error message to contain 'Configuration errors detected'")
+	if !contains(outputStr, "Usage: start [options]") {
+		t.Error("Expected templated output to contain command usage")
 	}
-	if !contains(outputStr, "(no flag) string (env: DATABASE_URL, required, secret) not defined") {
-		t.Error("Expected error message to contain DATABASE_URL not defined")
+	if !contains(outputStr, "Configuration errors:") {
+		t.Error("Expected templated output to contain configuration errors section")
 	}
-	if !contains(outputStr, "validation failed: value 99999 is greater than maximum 65535") {
-		t.Error("Expected error message to contain PORT validation failed")
+	if !contains(outputStr, "(no flag) string (env: DATABASE_URL, required) -> key not defined") {
+		t.Error("Expected templated output to contain DATABASE_URL error")
 	}
-	if !contains(outputStr, "Use 'start --help' for more information") {
-		t.Error("Expected help message to contain command context")
+	if !contains(outputStr, "--port int64 -> value 99999 is greater than maximum 65535") {
+		t.Error("Expected templated output to contain PORT validation error")
 	}
 }

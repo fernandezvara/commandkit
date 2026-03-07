@@ -105,9 +105,12 @@ func TestConfigProcessor_ProcessCommandConfig_WithError(t *testing.T) {
 		t.Error("ProcessCommandConfig() should have returned an error for missing required flag")
 	}
 
-	// Check that error message contains validation information
-	if result.Message == "" {
-		t.Error("Error message should not be empty for missing required flag")
+	if result.Message != "" {
+		t.Error("ProcessCommandConfig() should not return a pre-rendered message block for missing required flag")
+	}
+
+	if !ctx.execution.HasErrors() {
+		t.Error("Execution context should retain collected config errors for templated rendering")
 	}
 }
 

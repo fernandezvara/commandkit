@@ -4,7 +4,6 @@ package commandkit
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"testing"
 )
 
@@ -332,19 +331,20 @@ func TestCommandExecutor_Execute_CollectedErrors(t *testing.T) {
 	result := executor.Execute(cmd, ctx, services)
 
 	// Check that execution returned appropriate result for collected errors
-	// Note: ErrorWithExit sets Error=nil but ShouldExit=true with message
-	if result.ShouldExit {
-		// This is the expected behavior for collected errors
-		if result.Message == "" {
-			t.Error("Result should have message when ShouldExit is true")
-		}
-	} else {
-		t.Error("Result should have ShouldExit flag set for collected errors")
+	if result.Error == nil {
+		t.Error("Result should return an error for collected execution errors")
 	}
 
-	// Check that error message contains the collected error
-	if !strings.Contains(result.Message, "test error") {
-		t.Errorf("Error message should contain the collected error, got: %s", result.Message)
+	if result.ShouldExit {
+		t.Error("Collected execution errors should no longer rely on ErrorWithExit")
+	}
+
+	if !ctx.execution.HasErrors() {
+		t.Error("Execution context should retain collected errors for templated rendering")
+	}
+
+	if result.Message != "" {
+		t.Errorf("Collected execution errors should not return a pre-rendered message block, got: %s", result.Message)
 	}
 }
 

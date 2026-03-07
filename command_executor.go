@@ -119,7 +119,10 @@ func (ce *commandExecutor) executeWithMiddleware(cmd *Command, ctx *CommandConte
 
 	// Check for collected errors and create appropriate result
 	if ctx.execution.HasErrors() {
-		return ErrorWithExit(err, ctx.execution.GetFormattedErrors())
+		if err != nil {
+			return Error(err)
+		}
+		return Error(fmt.Errorf("command execution failed with collected errors"))
 	}
 
 	// Return success or error result

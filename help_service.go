@@ -291,7 +291,7 @@ func (mho *MultiHelpOutput) Reset() {
 }
 
 // ShowCommandHelpWithErrors displays command help with configuration errors
-func (hs *helpService) ShowCommandHelpWithErrors(commandName string, commands map[string]*Command, errors []ConfigError) error {
+func (hs *helpService) ShowCommandHelpWithErrors(commandName string, commands map[string]*Command, errors []GetError) error {
 	helpText, err := hs.GenerateCommandHelpWithErrors(commandName, commands, errors)
 	if err != nil {
 		return err
@@ -300,7 +300,7 @@ func (hs *helpService) ShowCommandHelpWithErrors(commandName string, commands ma
 }
 
 // GenerateCommandHelpWithErrors generates help string with errors
-func (hs *helpService) GenerateCommandHelpWithErrors(commandName string, commands map[string]*Command, errors []ConfigError) (string, error) {
+func (hs *helpService) GenerateCommandHelpWithErrors(commandName string, commands map[string]*Command, errors []GetError) (string, error) {
 	command, exists := commands[commandName]
 	if !exists {
 		return "", fmt.Errorf("command '%s' not found", commandName)

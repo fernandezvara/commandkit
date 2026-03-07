@@ -138,7 +138,7 @@ func (cp *configProcessor) ProcessCommandConfig(cmd *Command, ctx *CommandContex
 			ctx.execution.CollectConfigError(tempConfig, configErr)
 		}
 
-		return ErrorWithMessage(fmt.Errorf("configuration errors detected"), ctx.execution.GetFormattedErrors())
+		return Error(fmt.Errorf("configuration errors detected"))
 	}
 
 	// Set the command config instead of mutating the context

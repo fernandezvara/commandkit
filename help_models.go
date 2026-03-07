@@ -34,7 +34,7 @@ type CommandHelp struct {
 	Subcommands []SubcommandInfo
 	Template    string
 	// NEW: Error information
-	Errors    []ConfigError
+	Errors    []GetError
 	HasErrors bool
 }
 
