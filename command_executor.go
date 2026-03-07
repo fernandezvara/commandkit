@@ -119,9 +119,7 @@ func (ce *commandExecutor) executeWithMiddleware(cmd *Command, ctx *CommandConte
 
 	// Check for collected errors and create appropriate result
 	if ctx.execution.HasErrors() {
-		// Instead of exiting, return a CommandResult that should exit
-		errorMessages := ctx.execution.GetFormattedErrors()
-		return ErrorWithExit(err, errorMessages)
+		return ErrorWithExit(err, ctx.execution.GetFormattedErrors())
 	}
 
 	// Return success or error result

@@ -289,3 +289,26 @@ func (mho *MultiHelpOutput) Reset() {
 		output.Reset()
 	}
 }
+
+// ShowCommandHelpWithErrors displays command help with configuration errors
+func (hs *helpService) ShowCommandHelpWithErrors(commandName string, commands map[string]*Command, errors []ConfigError) error {
+	helpText, err := hs.GenerateCommandHelpWithErrors(commandName, commands, errors)
+	if err != nil {
+		return err
+	}
+	return hs.output.Print(helpText)
+}
+
+// GenerateCommandHelpWithErrors generates help string with errors
+func (hs *helpService) GenerateCommandHelpWithErrors(commandName string, commands map[string]*Command, errors []ConfigError) (string, error) {
+	command, exists := commands[commandName]
+	if !exists {
+		return "", fmt.Errorf("command '%s' not found", commandName)
+	}
+
+	// Create command help with errors
+	executable := hs.getExecutableName()
+	help := hs.factory.CreateCommandHelpWithErrors(command, executable, errors)
+
+	return hs.formatter.FormatCommandHelp(help)
+}

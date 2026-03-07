@@ -6,6 +6,7 @@ type HelpFactory interface {
 	// Core help creation methods
 	CreateGlobalHelp(commands map[string]*Command, executable string) *GlobalHelp
 	CreateCommandHelp(cmd *Command, executable string) *CommandHelp
+	CreateCommandHelpWithErrors(cmd *Command, executable string, errors []ConfigError) *CommandHelp
 	CreateSubcommandHelp(parent string, subcommands map[string]*Command) *SubcommandHelp
 	CreateFlagHelp(command string, defs map[string]*Definition) *FlagHelp
 
@@ -28,6 +29,7 @@ type TemplateType int
 const (
 	TemplateGlobal TemplateType = iota
 	TemplateCommand
+	TemplateCommandError
 	TemplateSubcommand
 	TemplateFlag
 )
@@ -98,6 +100,72 @@ func (hf *helpFactory) CreateCommandHelp(cmd *Command, executable string) *Comma
 	}
 }
 
+// CreateCommandHelpWithErrors creates detailed help for a specific command with errors
+func (hf *helpFactory) CreateCommandHelpWithErrors(cmd *Command, executable string, errors []ConfigError) *CommandHelp {
+	commandInfo := hf.extractor.ExtractCommandInfo(cmd, executable)
+
+	// Match errors to flags
+	flagsWithErrors := hf.matchErrorsToFlags(commandInfo.Flags, errors)
+	orderedErrors := hf.orderErrors(flagsWithErrors, errors)
+
+	return &CommandHelp{
+		Command:     cmd,
+		Usage:       commandInfo.Usage,
+		Description: commandInfo.Description,
+		Flags:       flagsWithErrors,
+		Subcommands: commandInfo.Subcommands,
+		Template:    hf.templates[TemplateCommandError],
+		Errors:      orderedErrors,
+		HasErrors:   len(errors) > 0,
+	}
+}
+
+func (hf *helpFactory) orderErrors(flags []FlagInfo, errors []ConfigError) []ConfigError {
+	ordered := make([]ConfigError, 0, len(errors))
+	used := make(map[string]bool)
+	errorMap := make(map[string]ConfigError)
+	for _, err := range errors {
+		errorMap[err.Key] = err
+	}
+
+	for _, flag := range flags {
+		if err, ok := errorMap[flag.Key]; ok {
+			ordered = append(ordered, err)
+			used[flag.Key] = true
+		}
+	}
+
+	for _, err := range errors {
+		if !used[err.Key] {
+			ordered = append(ordered, err)
+		}
+	}
+
+	return ordered
+}
+
+// matchErrorsToFlags matches errors to their corresponding flags
+func (hf *helpFactory) matchErrorsToFlags(flags []FlagInfo, errors []ConfigError) []FlagInfo {
+	result := make([]FlagInfo, len(flags))
+	copy(result, flags)
+
+	// Create error map for quick lookup
+	errorMap := make(map[string]ConfigError)
+	for _, err := range errors {
+		errorMap[err.Key] = err
+	}
+
+	// Update flags with error information
+	for i, flag := range result {
+		if err, hasError := errorMap[flag.Key]; hasError {
+			result[i].HasError = true
+			result[i].ErrorMsg = err.ErrorDescription
+		}
+	}
+
+	return result
+}
+
 // CreateSubcommandHelp creates help for subcommands
 func (hf *helpFactory) CreateSubcommandHelp(parent string, subcommands map[string]*Command) *SubcommandHelp {
 	subcommandInfo := hf.extractor.ExtractSubcommandInfo(subcommands)
@@ -134,6 +202,7 @@ func (hf *helpFactory) GetTemplate(templateType TemplateType) string {
 func (hf *helpFactory) setDefaultTemplates() {
 	hf.templates[TemplateGlobal] = DefaultGlobalTemplate
 	hf.templates[TemplateCommand] = DefaultCommandTemplate
+	hf.templates[TemplateCommandError] = DefaultCommandErrorTemplate
 	hf.templates[TemplateSubcommand] = DefaultSubcommandTemplate
 	hf.templates[TemplateFlag] = DefaultFlagTemplate
 }
@@ -155,10 +224,25 @@ Use '{{.Executable}} <command> --help' for command-specific help`
 {{.Description}}
 
 {{if .Flags}}Options:
-{{range .Flags}}{{if .NoFlag}}  (no flag) {{.Type}} (env: {{.EnvVar}}{{if .Required}}, required{{end}}{{if .Default}}, default: {{.Default}}{{end}}{{if .Secret}}, secret{{end}})
-        {{.Description}}
-{{else}}  --{{.Name}} {{.Type}}{{if .Required}} (required){{end}}{{if .Default}} (default: {{.Default}}){{end}}{{if .EnvVar}} (env: {{.EnvVar}}){{end}}{{if .Validations}} ({{join .Validations ", "}}){{end}}{{if .Secret}} (secret){{end}}
-        {{.Description}}
+{{range .Flags}}  {{.DisplayLine}}
+{{if .Description}}        {{.Description}}
+{{end}}{{end}}{{end}}
+
+{{if .Subcommands}}Subcommands:
+{{range .Subcommands}}  {{printf "%-12s" .Name}} {{.Description}}{{if .Aliases}} (aliases: {{join .Aliases ", "}}){{end}}
+{{end}}{{end}}`
+
+	DefaultCommandErrorTemplate = `Usage: {{.Command.Name}} [options]
+
+{{.Description}}
+
+{{if .HasErrors}}Configuration errors:
+{{range .Errors}}  {{.Display}} -> {{.ErrorDescription}}
+{{end}}
+
+{{end}}{{if .Flags}}Options:
+{{range .Flags}}  {{.DisplayLine}}
+{{if .Description}}        {{.Description}}
 {{end}}{{end}}{{end}}
 
 {{if .Subcommands}}Subcommands:

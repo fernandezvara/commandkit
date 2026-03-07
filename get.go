@@ -9,14 +9,16 @@ import (
 
 // GetError represents an error collected from Get functions
 type GetError struct {
-	Key          string
-	ExpectedType string
-	ActualType   string
-	Message      string
-	IsSecret     bool
-	Flag         string  // Flag name (e.g., "port")
-	EnvVar       string  // Environment variable name (e.g., "PORT")
-	config       *Config // Reference to config for definition lookup
+	Key              string
+	ExpectedType     string
+	ActualType       string
+	Message          string
+	IsSecret         bool
+	Flag             string // Flag name (e.g., "port")
+	EnvVar           string // Environment variable name (e.g., "PORT")
+	Display          string
+	ErrorDescription string
+	config           *Config // Reference to config for definition lookup
 }
 
 // logWarningForDesigner logs warnings for CLI designers about configuration issues

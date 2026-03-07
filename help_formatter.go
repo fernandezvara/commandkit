@@ -60,6 +60,8 @@ func (hf *TemplateHelpFormatter) FormatCommandHelp(help *CommandHelp) (string, e
 		"Description": help.Description,
 		"Flags":       help.Flags,
 		"Subcommands": help.Subcommands,
+		"Errors":      help.Errors,
+		"HasErrors":   help.HasErrors,
 	}
 
 	return hf.renderer.Render(templateStr, data)
@@ -119,6 +121,7 @@ func (hf *TemplateHelpFormatter) GetRenderer() TemplateRenderer {
 func (hf *TemplateHelpFormatter) setDefaultTemplates() {
 	hf.templates[TemplateGlobal] = DefaultGlobalTemplate
 	hf.templates[TemplateCommand] = DefaultCommandTemplate
+	hf.templates[TemplateCommandError] = DefaultCommandErrorTemplate
 	hf.templates[TemplateSubcommand] = DefaultSubcommandTemplate
 	hf.templates[TemplateFlag] = DefaultFlagTemplate
 }

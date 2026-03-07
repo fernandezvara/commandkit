@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"strings"
 	"sync"
 )
 
@@ -58,14 +57,45 @@ func (ctx *ExecutionContext) CollectErrorWithConfig(c *Config, key, expectedType
 	}
 
 	err := GetError{
-		Key:          key,
-		ExpectedType: expectedType,
-		ActualType:   actualType,
-		Message:      message,
-		IsSecret:     isSecret,
-		Flag:         flag,
-		EnvVar:       envVar,
-		config:       c,
+		Key:              key,
+		ExpectedType:     expectedType,
+		ActualType:       actualType,
+		Message:          message,
+		IsSecret:         isSecret,
+		Flag:             flag,
+		EnvVar:           envVar,
+		Display:          getErrorDisplayName(GetError{Key: key, Flag: flag, EnvVar: envVar}, c),
+		ErrorDescription: message,
+		config:           c,
+	}
+	ctx.errors = append(ctx.errors, err)
+}
+
+// CollectConfigError adds a normalized config error to the execution context
+func (ctx *ExecutionContext) CollectConfigError(c *Config, configErr ConfigError) {
+	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
+
+	flag := ""
+	envVar := ""
+	if c != nil {
+		if def, hasDef := c.definitions[configErr.Key]; hasDef {
+			flag = def.flag
+			envVar = def.envVar
+		}
+	}
+
+	err := GetError{
+		Key:              configErr.Key,
+		ExpectedType:     "validation",
+		ActualType:       "",
+		Message:          configErr.Message,
+		IsSecret:         false,
+		Flag:             flag,
+		EnvVar:           envVar,
+		Display:          configErr.Display,
+		ErrorDescription: configErr.ErrorDescription,
+		config:           c,
 	}
 	ctx.errors = append(ctx.errors, err)
 }
@@ -86,32 +116,27 @@ func (ctx *ExecutionContext) GetErrors() []GetError {
 	return errs
 }
 
-// GetFormattedErrors returns all collected errors as a formatted string
+// GetFormattedErrors returns all collected errors as a simplified fallback string
 func (ctx *ExecutionContext) GetFormattedErrors() string {
 	errs := ctx.GetErrors()
 	if len(errs) == 0 {
 		return ""
 	}
 
-	var sb strings.Builder
-	sb.WriteString("Configuration errors detected:\n")
-	sb.WriteString("==================================================\n")
-
+	result := "Configuration errors:\n"
 	for _, err := range errs {
-		displayName := getErrorDisplayName(err, err.config)
-		if err.IsSecret || err.ExpectedType == "secret" {
-			sb.WriteString(fmt.Sprintf("  %s not defined\n", displayName))
-		} else if err.Message != "" {
-			sb.WriteString(fmt.Sprintf("  %s %s\n", displayName, err.Message))
-		} else {
-			sb.WriteString(fmt.Sprintf("  %s validation failed\n", displayName))
+		display := err.Display
+		if display == "" && err.config != nil {
+			display = getErrorDisplayName(err, err.config)
 		}
+		description := err.ErrorDescription
+		if description == "" {
+			description = err.Message
+		}
+		result += fmt.Sprintf("  %s -> %s\n", display, description)
 	}
 
-	sb.WriteString("==================================================\n")
-	sb.WriteString(fmt.Sprintf("Total: %d error(s)\n", len(errs)))
-
-	return sb.String()
+	return result
 }
 
 // GetCommand returns the command name for this context
@@ -139,22 +164,31 @@ func (ctx *ExecutionContext) DisplayAndExit() {
 
 	// Sort errors alphabetically by display name for consistency with help
 	sort.Slice(errs, func(i, j int) bool {
-		displayNameI := getErrorDisplayName(errs[i], errs[i].config)
-		displayNameJ := getErrorDisplayName(errs[j], errs[j].config)
+		displayNameI := errs[i].Display
+		if displayNameI == "" && errs[i].config != nil {
+			displayNameI = getErrorDisplayName(errs[i], errs[i].config)
+		}
+		displayNameJ := errs[j].Display
+		if displayNameJ == "" && errs[j].config != nil {
+			displayNameJ = getErrorDisplayName(errs[j], errs[j].config)
+		}
 		return displayNameI < displayNameJ
 	})
 
 	for _, err := range errs {
-		displayName := getErrorDisplayName(err, err.config)
+		displayName := err.Display
+		if displayName == "" && err.config != nil {
+			displayName = getErrorDisplayName(err, err.config)
+		}
 
 		if err.IsSecret || err.ExpectedType == "secret" {
-			// Secret errors show simple "not defined" message
 			fmt.Fprintf(os.Stderr, "  %s not defined\n", displayName)
 		} else if err.ExpectedType == "validation" {
-			// Validation errors show the validation message
 			fmt.Fprintf(os.Stderr, "  %s validation failed: %s\n", displayName, err.Message)
 		} else if err.ExpectedType == "not found" {
 			fmt.Fprintf(os.Stderr, "  %s not defined\n", displayName)
+		} else if err.ErrorDescription != "" {
+			fmt.Fprintf(os.Stderr, "  %s %s\n", displayName, err.ErrorDescription)
 		} else {
 			fmt.Fprintf(os.Stderr, "  %s: expected %s, got %s\n", displayName, err.ExpectedType, err.ActualType)
 		}
@@ -162,13 +196,28 @@ func (ctx *ExecutionContext) DisplayAndExit() {
 
 	fmt.Fprintf(os.Stderr, "\n")
 
-	// Show command help if we have a current command context
 	command := ctx.GetCommand()
 	if command != "" {
 		fmt.Fprintf(os.Stderr, "Use '%s --help' for more information.\n", command)
 	}
 
 	os.Exit(1)
+}
+
+// convertToConfigErrors converts GetError slice to ConfigError slice
+func (ctx *ExecutionContext) convertToConfigErrors(getErrs []GetError) []ConfigError {
+	configErrs := make([]ConfigError, len(getErrs))
+	for i, err := range getErrs {
+		configErrs[i] = ConfigError{
+			Key:              err.Key,
+			Source:           "validation",
+			Value:            "",
+			Message:          err.Message,
+			Display:          err.Display,
+			ErrorDescription: err.ErrorDescription,
+		}
+	}
+	return configErrs
 }
 
 // Clear removes all collected errors (useful for testing)

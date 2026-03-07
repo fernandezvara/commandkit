@@ -26,14 +26,14 @@ func NewHelpExtractor() HelpExtractor {
 // ExtractGlobalSummary extracts command summaries for global help
 func (he *helpExtractor) ExtractGlobalSummary(commands map[string]*Command) []CommandSummary {
 	var summaries []CommandSummary
-	
+
 	// Sort commands for consistent display
 	names := make([]string, 0, len(commands))
 	for name := range commands {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	
+
 	for _, name := range names {
 		cmd := commands[name]
 		summary := CommandSummary{
@@ -43,7 +43,7 @@ func (he *helpExtractor) ExtractGlobalSummary(commands map[string]*Command) []Co
 		}
 		summaries = append(summaries, summary)
 	}
-	
+
 	return summaries
 }
 
@@ -51,19 +51,19 @@ func (he *helpExtractor) ExtractGlobalSummary(commands map[string]*Command) []Co
 func (he *helpExtractor) ExtractCommandInfo(cmd *Command, executable string) *CommandHelp {
 	// Build usage string
 	usage := fmt.Sprintf("%s %s [options]", executable, cmd.Name)
-	
+
 	// Build description
 	description := cmd.LongHelp
 	if description == "" {
 		description = cmd.ShortHelp
 	}
-	
+
 	// Extract flag information
 	flags := he.ExtractFlagInfo(cmd.Definitions)
-	
+
 	// Extract subcommand information
 	subcommands := he.ExtractSubcommandInfo(cmd.SubCommands)
-	
+
 	return &CommandHelp{
 		Command:     cmd,
 		Usage:       usage,
@@ -76,19 +76,21 @@ func (he *helpExtractor) ExtractCommandInfo(cmd *Command, executable string) *Co
 // ExtractFlagInfo extracts information about flags/definitions
 func (he *helpExtractor) ExtractFlagInfo(defs map[string]*Definition) []FlagInfo {
 	var flags []FlagInfo
-	
+
 	// Sort definitions for consistent display
 	keys := make([]string, 0, len(defs))
 	for key := range defs {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
-	
+
 	for _, key := range keys {
 		def := defs[key]
-		
+
 		flag := FlagInfo{
+			Key:         key,
 			Name:        def.flag,
+			DisplayLine: buildFlagDisplay(def),
 			Description: def.description,
 			Type:        def.valueType.String(),
 			Required:    def.required,
@@ -97,37 +99,37 @@ func (he *helpExtractor) ExtractFlagInfo(defs map[string]*Definition) []FlagInfo
 			Secret:      def.secret,
 			NoFlag:      def.flag == "",
 		}
-		
+
 		// Extract validations
 		flag.Validations = he.extractValidations(def.validations)
-		
+
 		// Mask secret defaults
 		if flag.Secret && flag.Default != nil {
 			flag.Default = "[hidden]"
 		}
-		
+
 		// Handle flag name for environment-only configurations
 		if flag.NoFlag && flag.Name == "" {
 			flag.Name = key
 		}
-		
+
 		flags = append(flags, flag)
 	}
-	
+
 	return flags
 }
 
 // ExtractSubcommandInfo extracts information about subcommands
 func (he *helpExtractor) ExtractSubcommandInfo(subcommands map[string]*Command) []SubcommandInfo {
 	var subcommandInfo []SubcommandInfo
-	
+
 	// Sort subcommands for consistent display
 	names := make([]string, 0, len(subcommands))
 	for name := range subcommands {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	
+
 	for _, name := range names {
 		subCmd := subcommands[name]
 		info := SubcommandInfo{
@@ -137,7 +139,7 @@ func (he *helpExtractor) ExtractSubcommandInfo(subcommands map[string]*Command) 
 		}
 		subcommandInfo = append(subcommandInfo, info)
 	}
-	
+
 	return subcommandInfo
 }
 
@@ -145,7 +147,7 @@ func (he *helpExtractor) ExtractSubcommandInfo(subcommands map[string]*Command) 
 func (he *helpExtractor) extractValidations(validations []Validation) []string {
 	var result []string
 	var minVal, maxVal string
-	
+
 	for _, validation := range validations {
 		switch {
 		case validation.Name == "required":
@@ -173,7 +175,7 @@ func (he *helpExtractor) extractValidations(validations []Validation) []string {
 			result = append(result, validation.Name)
 		}
 	}
-	
+
 	// Handle min/max range
 	if minVal != "" && maxVal != "" {
 		result = append([]string{fmt.Sprintf("valid: %s-%s", minVal, maxVal)}, result...)
@@ -182,7 +184,7 @@ func (he *helpExtractor) extractValidations(validations []Validation) []string {
 	} else if maxVal != "" {
 		result = append([]string{fmt.Sprintf("max: %s", maxVal)}, result...)
 	}
-	
+
 	return result
 }
 
@@ -211,13 +213,13 @@ func (he *helpExtractor) extractOneOfValues(name string) string {
 	if end == -1 {
 		return name[start:]
 	}
-	
+
 	values := name[start : start+end]
 	// Remove brackets and quotes, clean up spacing
 	values = strings.ReplaceAll(values, "[", "")
 	values = strings.ReplaceAll(values, "]", "")
 	values = strings.ReplaceAll(values, "'", "")
 	values = strings.ReplaceAll(values, `"`, "")
-	
+
 	return values
 }

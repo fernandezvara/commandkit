@@ -64,31 +64,27 @@ func (cp *configProcessor) ProcessCommandConfig(cmd *Command, ctx *CommandContex
 	for key, def := range cmd.Definitions {
 		var value any
 		var err error
+		source := "none"
+		rawValue := ""
 
 		// Check flag value from parsed flags
 		if flagVal, exists := parsedFlags.Values[key]; exists && flagVal != nil && *flagVal != "" {
+			source = "flag"
+			rawValue = *flagVal
 			value, err = parseValue(*flagVal, def.valueType, ",")
 			if err != nil {
-				configErrs = append(configErrs, ConfigError{
-					Key:     key,
-					Source:  "flag",
-					Value:   *flagVal,
-					Message: err.Error(),
-				})
+				configErrs = append(configErrs, newParseConfigError(key, def, source, rawValue, err))
 				continue
 			}
 		} else {
 			// Check environment variable
 			if def.envVar != "" {
 				if envVal := os.Getenv(def.envVar); envVal != "" {
+					source = "env"
+					rawValue = envVal
 					value, err = parseValue(envVal, def.valueType, ",")
 					if err != nil {
-						configErrs = append(configErrs, ConfigError{
-							Key:     key,
-							Source:  "env",
-							Value:   envVal,
-							Message: err.Error(),
-						})
+						configErrs = append(configErrs, newParseConfigError(key, def, source, rawValue, err))
 						continue
 					}
 				}
@@ -96,29 +92,33 @@ func (cp *configProcessor) ProcessCommandConfig(cmd *Command, ctx *CommandContex
 
 			// Check default value if no flag or env value
 			if value == nil && def.defaultValue != nil {
+				source = "default"
+				rawValue = fmt.Sprintf("%v", def.defaultValue)
 				value = def.defaultValue
 			}
 		}
 
 		// Check if required field is missing
 		if def.required && value == nil {
-			var displayName string
-			if def.flag != "" && def.envVar != "" {
-				displayName = fmt.Sprintf("--%s (env: %s)", def.flag, def.envVar)
-			} else if def.flag != "" {
-				displayName = fmt.Sprintf("--%s", def.flag)
-			} else if def.envVar != "" {
-				displayName = fmt.Sprintf("env: %s", def.envVar)
-			} else {
-				displayName = key
-			}
-
-			configErrs = append(configErrs, ConfigError{
-				Key:     key,
-				Source:  "validation",
-				Message: fmt.Sprintf("required value not provided (set in file, %s)", displayName),
-			})
+			configErrs = append(configErrs, newRequiredConfigError(key, def))
 			continue
+		}
+
+		if value != nil {
+			validationFailed := false
+			for _, validation := range def.validations {
+				if source == "default" && validation.Name == "required" {
+					continue
+				}
+				if err := validation.Check(value); err != nil {
+					configErrs = append(configErrs, newValidationConfigError(key, def, source, rawValue, value, validation.Name, err))
+					validationFailed = true
+					break
+				}
+			}
+			if validationFailed {
+				continue
+			}
 		}
 
 		// Store the value
@@ -133,7 +133,12 @@ func (cp *configProcessor) ProcessCommandConfig(cmd *Command, ctx *CommandContex
 
 	// Return errors if any occurred
 	if len(configErrs) > 0 {
-		return ConfigErrorResult(formatErrors(configErrs))
+		// Collect errors in execution context for display
+		for _, configErr := range configErrs {
+			ctx.execution.CollectConfigError(tempConfig, configErr)
+		}
+
+		return ErrorWithMessage(fmt.Errorf("configuration errors detected"), ctx.execution.GetFormattedErrors())
 	}
 
 	// Set the command config instead of mutating the context

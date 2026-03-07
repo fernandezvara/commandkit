@@ -33,19 +33,27 @@ type CommandHelp struct {
 	Flags       []FlagInfo
 	Subcommands []SubcommandInfo
 	Template    string
+	// NEW: Error information
+	Errors    []ConfigError
+	HasErrors bool
 }
 
 // FlagInfo represents information about a configuration flag
 type FlagInfo struct {
-	Name         string
-	Description  string
-	Type         string
-	Required     bool
-	Default      interface{}
-	EnvVar       string
-	Validations  []string
-	Secret       bool
-	NoFlag       bool // Environment-only configuration
+	Key         string
+	Name        string
+	DisplayLine string
+	Description string
+	Type        string
+	Required    bool
+	Default     interface{}
+	EnvVar      string
+	Validations []string
+	Secret      bool
+	NoFlag      bool // Environment-only configuration
+	// NEW: Error information
+	HasError bool
+	ErrorMsg string
 }
 
 // SubcommandInfo represents information about a subcommand
@@ -64,16 +72,16 @@ type SubcommandHelp struct {
 
 // FlagHelp represents help for flags/definitions
 type FlagHelp struct {
-	Command    string
-	Flags      []FlagInfo
-	Template   string
+	Command  string
+	Flags    []FlagInfo
+	Template string
 }
 
 // HelpRequest represents a parsed help request
 type HelpRequest struct {
-	Type        HelpType
-	Command     string
-	Subcommand  string
-	Args        []string
-	Original    []string
+	Type       HelpType
+	Command    string
+	Subcommand string
+	Args       []string
+	Original   []string
 }
