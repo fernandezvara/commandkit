@@ -7,7 +7,7 @@ import (
 )
 
 func TestFlagParser_ParseCommand(t *testing.T) {
-	flagParser := NewFlagParser()
+	flagParser := newFlagParser()
 
 	// Create test definitions
 	defs := make(map[string]*Definition)
@@ -80,7 +80,7 @@ func TestFlagParser_ParseCommand(t *testing.T) {
 }
 
 func TestFlagParser_ParseGlobal(t *testing.T) {
-	flagParser := NewFlagParser()
+	flagParser := newFlagParser()
 
 	// Create test definitions
 	defs := make(map[string]*Definition)
@@ -137,7 +137,7 @@ func TestFlagParser_ParseGlobal(t *testing.T) {
 }
 
 func TestFlagParser_ParseGlobalFiltersTestFlags(t *testing.T) {
-	flagParser := NewFlagParser()
+	flagParser := newFlagParser()
 
 	// Create test definitions
 	defs := make(map[string]*Definition)
@@ -178,7 +178,7 @@ func TestFlagParser_ParseGlobalFiltersTestFlags(t *testing.T) {
 }
 
 func TestFlagParser_GenerateHelp(t *testing.T) {
-	flagParser := NewFlagParser()
+	flagParser := newFlagParser()
 
 	// Create test definitions with various properties
 	defs := make(map[string]*Definition)
@@ -246,7 +246,7 @@ func TestFlagParser_GenerateHelp(t *testing.T) {
 }
 
 func TestFlagParser_GenerateHelpWithNoFlags(t *testing.T) {
-	flagParser := NewFlagParser()
+	flagParser := newFlagParser()
 
 	// Create definitions with only environment variables
 	defs := make(map[string]*Definition)
@@ -274,7 +274,7 @@ func TestFlagParser_GenerateHelpWithNoFlags(t *testing.T) {
 }
 
 func TestFlagParser_GenerateHelpWithEmptyDefinitions(t *testing.T) {
-	flagParser := NewFlagParser()
+	flagParser := newFlagParser()
 
 	helpText := flagParser.GenerateHelp(make(map[string]*Definition))
 
@@ -285,7 +285,7 @@ func TestFlagParser_GenerateHelpWithEmptyDefinitions(t *testing.T) {
 }
 
 func TestParsedFlags_Structure(t *testing.T) {
-	flagParser := NewFlagParser()
+	flagParser := newFlagParser()
 
 	defs := make(map[string]*Definition)
 	defs["port"] = &Definition{

@@ -24,11 +24,9 @@ func main() {
 	fmt.Println("Testing unified error handling...")
 
 	// Test 1: Missing required value
-	result := commandkit.Get[string](ctx, "DATABASE_URL")
-	if result.Error != nil {
-		fmt.Printf("✅ Expected error caught: %v\n", result.Error)
-		fmt.Printf("   Message: %s\n", result.Message)
-		fmt.Printf("   ShouldExit: %v\n", result.ShouldExit)
+	_, err := commandkit.Get[string](ctx, "DATABASE_URL")
+	if err != nil {
+		fmt.Printf("✅ Expected error caught: %v\n", err)
 	} else {
 		fmt.Printf("❌ Expected error but got success\n")
 	}

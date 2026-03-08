@@ -69,6 +69,14 @@ For production use, consider using the --daemon flag.`).
 				Flag("daemon").
 				Default(false).
 				Description("Run in background")
+
+			// Debug mode
+			cc.Define("DEBUG").
+				Bool().
+				Env("DEBUG").
+				Flag("debug").
+				Default(false).
+				Description("Enable debug mode")
 		})
 
 	startCmd.SubCommand("server").
@@ -152,35 +160,30 @@ func startCommand(ctx *commandkit.CommandContext) error {
 	}
 
 	// Get configuration values
-	portResult := commandkit.Get[int64](ctx, "PORT")
-	if portResult.Error != nil {
-		return fmt.Errorf("failed to get PORT: %w", portResult.Error)
+	port, err := commandkit.Get[int64](ctx, "PORT")
+	if err != nil {
+		return fmt.Errorf("failed to get PORT: %w", err)
 	}
-	port := commandkit.GetValue[int64](portResult)
 
-	baseURLResult := commandkit.Get[string](ctx, "BASE_URL")
-	if baseURLResult.Error != nil {
-		return fmt.Errorf("failed to get BASE_URL: %w", baseURLResult.Error)
+	baseURL, err := commandkit.Get[string](ctx, "BASE_URL")
+	if err != nil {
+		return fmt.Errorf("failed to get BASE_URL: %w", err)
 	}
-	baseURL := commandkit.GetValue[string](baseURLResult)
 
-	daemonResult := commandkit.Get[bool](ctx, "DAEMON")
-	if daemonResult.Error != nil {
-		return fmt.Errorf("failed to get DAEMON: %w", daemonResult.Error)
+	daemon, err := commandkit.Get[bool](ctx, "DAEMON")
+	if err != nil {
+		return fmt.Errorf("failed to get DAEMON: %w", err)
 	}
-	daemon := commandkit.GetValue[bool](daemonResult)
 
-	verboseResult := commandkit.Get[bool](ctx, "VERBOSE")
-	if verboseResult.Error != nil {
-		return fmt.Errorf("failed to get VERBOSE: %w", verboseResult.Error)
+	debug, err := commandkit.Get[bool](ctx, "DEBUG")
+	if err != nil {
+		return fmt.Errorf("failed to get DEBUG: %w", err)
 	}
-	verbose := commandkit.GetValue[bool](verboseResult)
 
-	logLevelResult := commandkit.Get[string](ctx, "LOG_LEVEL")
-	if logLevelResult.Error != nil {
-		return fmt.Errorf("failed to get LOG_LEVEL: %w", logLevelResult.Error)
+	logLevel, err := commandkit.Get[string](ctx, "LOG_LEVEL")
+	if err != nil {
+		return fmt.Errorf("failed to get LOG_LEVEL: %w", err)
 	}
-	logLevel := commandkit.GetValue[string](logLevelResult)
 
 	// Access secrets safely
 	dbURL := config.GetSecret("DATABASE_URL")
@@ -189,7 +192,7 @@ func startCommand(ctx *commandkit.CommandContext) error {
 	fmt.Printf("Port: %d\n", port)
 	fmt.Printf("Base URL: %s\n", baseURL)
 	fmt.Printf("Daemon mode: %v\n", daemon)
-	fmt.Printf("Verbose: %v\n", verbose)
+	fmt.Printf("Verbose: %v\n", debug)
 	fmt.Printf("Log Level: %s\n", logLevel)
 
 	if dbURL.IsSet() {
@@ -203,17 +206,15 @@ func startCommand(ctx *commandkit.CommandContext) error {
 func startServerCommand(ctx *commandkit.CommandContext) error {
 	// Configuration has already been processed by the command executor
 
-	workersResult := commandkit.Get[[]int64](ctx, "WORKERS")
-	if workersResult.Error != nil {
-		return fmt.Errorf("failed to get WORKERS: %w", workersResult.Error)
+	workers, err := commandkit.Get[[]int64](ctx, "WORKERS")
+	if err != nil {
+		return fmt.Errorf("failed to get WORKERS: %w", err)
 	}
-	workers := commandkit.GetValue[[]int64](workersResult)
 
-	portResult := commandkit.Get[int64](ctx, "PORT")
-	if portResult.Error != nil {
-		return fmt.Errorf("failed to get PORT: %w", portResult.Error)
+	port, err := commandkit.Get[int64](ctx, "PORT")
+	if err != nil {
+		return fmt.Errorf("failed to get PORT: %w", err)
 	}
-	port := commandkit.GetValue[int64](portResult)
 
 	fmt.Printf("=== Starting Server ===\n")
 	fmt.Printf("Port: %d\n", port)
@@ -225,11 +226,10 @@ func startServerCommand(ctx *commandkit.CommandContext) error {
 func startWorkerCommand(ctx *commandkit.CommandContext) error {
 	// Configuration has already been processed by the command executor
 
-	countResult := commandkit.Get[int64](ctx, "COUNT")
-	if countResult.Error != nil {
-		return fmt.Errorf("failed to get COUNT: %w", countResult.Error)
+	count, err := commandkit.Get[int64](ctx, "COUNT")
+	if err != nil {
+		return fmt.Errorf("failed to get COUNT: %w", err)
 	}
-	count := commandkit.GetValue[int64](countResult)
 
 	fmt.Printf("=== Starting Workers ===\n")
 	fmt.Printf("Worker count: %d\n", count)
@@ -252,11 +252,10 @@ func stopCommand(ctx *commandkit.CommandContext) error {
 		return fmt.Errorf("configuration errors")
 	}
 
-	timeoutResult := commandkit.Get[time.Duration](ctx, "TIMEOUT")
-	if timeoutResult.Error != nil {
-		return fmt.Errorf("failed to get TIMEOUT: %w", timeoutResult.Error)
+	timeout, err := commandkit.Get[time.Duration](ctx, "TIMEOUT")
+	if err != nil {
+		return fmt.Errorf("failed to get TIMEOUT: %w", err)
 	}
-	timeout := commandkit.GetValue[time.Duration](timeoutResult)
 
 	fmt.Printf("=== Stopping Service ===\n")
 	fmt.Printf("Graceful shutdown timeout: %v\n", timeout)

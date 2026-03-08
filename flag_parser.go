@@ -18,6 +18,9 @@ type FlagParser interface {
 
 	// GenerateHelp generates consistent help text for flags
 	GenerateHelp(defs map[string]*Definition) string
+
+	// ConvertFlagErrorsToConfigErrors converts flag parsing errors to ConfigError instances
+	ConvertFlagErrorsToConfigErrors(errors []error, defs map[string]*Definition) []ConfigError
 }
 
 // ParsedFlags contains the results of flag parsing
@@ -31,8 +34,8 @@ type ParsedFlags struct {
 // flagParser implements FlagParser interface
 type flagParser struct{}
 
-// NewFlagParser creates a new FlagParser instance
-func NewFlagParser() FlagParser {
+// newFlagParser creates a new FlagParser instance
+func newFlagParser() FlagParser {
 	return &flagParser{}
 }
 
@@ -173,4 +176,66 @@ func (fp *flagParser) generateEnhancedDescription(def *Definition) string {
 	}
 
 	return def.description
+}
+
+// ConvertFlagErrorsToConfigErrors converts flag parsing errors to ConfigError instances
+func (fp *flagParser) ConvertFlagErrorsToConfigErrors(errors []error, defs map[string]*Definition) []ConfigError {
+	var configErrs []ConfigError
+
+	for _, err := range errors {
+		// Try to extract the problematic flag from the error message
+		errMsg := err.Error()
+		var flagName string
+
+		// Common flag error patterns
+		if strings.Contains(errMsg, "flag needs an argument: -") {
+			// Extract flag name from "flag needs an argument: -debug"
+			parts := strings.Split(errMsg, "-")
+			if len(parts) > 1 {
+				flagName = parts[1]
+			}
+		} else if strings.Contains(errMsg, "invalid flag: -") {
+			// Extract flag name from "invalid flag: -unknown"
+			parts := strings.Split(errMsg, "-")
+			if len(parts) > 1 {
+				flagName = parts[1]
+			}
+		} else if strings.Contains(errMsg, "provided but not defined: -") {
+			// Extract flag name from "flag provided but not defined: -unknown"
+			parts := strings.Split(errMsg, "-")
+			if len(parts) > 1 {
+				flagName = parts[1]
+			}
+		}
+
+		// Find the corresponding definition
+		var def *Definition
+		if flagName != "" {
+			for key, d := range defs {
+				if d.flag == flagName {
+					def = d
+					flagName = key
+					break
+				}
+			}
+		}
+
+		// If we can't determine the specific flag, create a generic error
+		if def == nil {
+			// Create a generic definition for unknown flag errors
+			def = &Definition{
+				key:         "unknown_flag",
+				flag:        flagName,
+				valueType:   TypeString,
+				description: "Unknown flag",
+			}
+			flagName = "unknown_flag"
+		}
+
+		// Create ConfigError
+		configErr := newConfigError(flagName, def, "flag", "", err)
+		configErrs = append(configErrs, configErr)
+	}
+
+	return configErrs
 }

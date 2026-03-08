@@ -77,8 +77,8 @@ func (e *CommandError) WithCommand(command, subcommand string) *CommandError {
 	return e
 }
 
-// NewValidationError creates a new validation error
-func NewValidationError(key, message string) *CommandError {
+// newValidationError creates a new validation error
+func newValidationError(key, message string) *CommandError {
 	return &CommandError{
 		Category: ErrorCategoryValidation,
 		Key:      key,
@@ -87,8 +87,8 @@ func NewValidationError(key, message string) *CommandError {
 	}
 }
 
-// NewConfigurationError creates a new configuration error
-func NewConfigurationError(key, source, value, message string) *CommandError {
+// newConfigurationError creates a new configuration error
+func newConfigurationError(key, source, value, message string) *CommandError {
 	return &CommandError{
 		Category: ErrorCategoryConfiguration,
 		Key:      key,
@@ -98,8 +98,8 @@ func NewConfigurationError(key, source, value, message string) *CommandError {
 	}
 }
 
-// NewRuntimeError creates a new runtime error
-func NewRuntimeError(message string) *CommandError {
+// newRuntimeError creates a new runtime error
+func newRuntimeError(message string) *CommandError {
 	return &CommandError{
 		Category: ErrorCategoryRuntime,
 		Source:   "runtime",
@@ -107,8 +107,8 @@ func NewRuntimeError(message string) *CommandError {
 	}
 }
 
-// NewSystemError creates a new system error
-func NewSystemError(message string) *CommandError {
+// newSystemError creates a new system error
+func newSystemError(message string) *CommandError {
 	return &CommandError{
 		Category: ErrorCategorySystem,
 		Source:   "system",
@@ -116,39 +116,11 @@ func NewSystemError(message string) *CommandError {
 	}
 }
 
-// NewUserError creates a new user error
-func NewUserError(message string) *CommandError {
+// newUserError creates a new user error
+func newUserError(message string) *CommandError {
 	return &CommandError{
 		Category: ErrorCategoryUser,
 		Source:   "user",
 		Message:  message,
-	}
-}
-
-// ConvertFromConfigError converts a legacy ConfigError to CommandError
-func ConvertFromConfigError(configErr ConfigError, command string) *CommandError {
-	return &CommandError{
-		Category: ErrorCategoryConfiguration,
-		Key:      configErr.Key,
-		Source:   configErr.Source,
-		Value:    configErr.Value,
-		Message:  configErr.ErrorDescription,
-		Command:  command,
-	}
-}
-
-// ConvertFromGetError converts a legacy GetError to CommandError
-func ConvertFromGetError(getErr GetError, command string) *CommandError {
-	return &CommandError{
-		Category: ErrorCategoryConfiguration,
-		Key:      getErr.Key,
-		Source:   "get",
-		Value:    getErr.ActualType,
-		Message:  getErr.Message,
-		Command:  command,
-		Context: map[string]any{
-			"expected_type": getErr.ExpectedType,
-			"is_secret":     getErr.IsSecret,
-		},
 	}
 }

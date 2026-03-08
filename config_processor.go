@@ -23,26 +23,27 @@ func NewConfigProcessor() ConfigProcessor {
 	return &configProcessor{}
 }
 
+// newConfigProcessor creates a new ConfigProcessor instance for internal use
+func newConfigProcessor() ConfigProcessor {
+	return &configProcessor{}
+}
+
 // ProcessCommandConfig handles command-specific configuration processing
 func (cp *configProcessor) ProcessCommandConfig(cmd *Command, ctx *CommandContext) *CommandResult {
 	if cmd == nil {
-		return Error(fmt.Errorf("command cannot be nil"))
+		return errorResult(fmt.Errorf("command cannot be nil"))
 	}
 
 	if ctx == nil {
-		return Error(fmt.Errorf("context cannot be nil"))
+		return errorResult(fmt.Errorf("context cannot be nil"))
 	}
 
 	// Use centralized FlagParser for command-specific flag parsing
-	services := NewCommandServices()
+	services := newCommandServices()
 	flagParser := services.FlagParser
 
 	// Parse command-specific flags using the centralized service
 	parsedFlags, err := flagParser.ParseCommand(ctx.Args, cmd.Definitions)
-	if err != nil {
-		// Collect any parsing errors
-		return Error(fmt.Errorf("command flag parsing error: %v", err))
-	}
 
 	// Create a temporary config with command-specific definitions and parsed flags
 	tempConfig := &Config{
@@ -56,6 +57,30 @@ func (cp *configProcessor) ProcessCommandConfig(cmd *Command, ctx *CommandContex
 		defaultPriority:  ctx.GlobalConfig.defaultPriority, // Inherit default priority
 		overrideWarnings: NewOverrideWarnings(),            // Initialize override warnings
 		processed:        false,
+	}
+
+	// Check for flag parsing errors (either from err return or from ParsedFlags.Errors)
+	if err != nil || len(parsedFlags.Errors) > 0 {
+		var allErrors []error
+		if err != nil {
+			allErrors = append(allErrors, err)
+		}
+		allErrors = append(allErrors, parsedFlags.Errors...)
+
+		// Convert flag parsing errors to ConfigError instances and collect them
+		flagConfigErrs := flagParser.ConvertFlagErrorsToConfigErrors(allErrors, cmd.Definitions)
+
+		// Clear any previous errors BEFORE collecting flag errors
+		if ctx.execution != nil {
+			ctx.execution.Clear()
+		}
+
+		// Collect flag errors in execution context using the same pattern as other config errors
+		for _, configErr := range flagConfigErrs {
+			ctx.execution.CollectConfigError(tempConfig, configErr)
+		}
+
+		return configErrorResult("configuration errors detected")
 	}
 
 	// Process the command-specific configuration using the same priority system as global config
@@ -138,22 +163,22 @@ func (cp *configProcessor) ProcessCommandConfig(cmd *Command, ctx *CommandContex
 			ctx.execution.CollectConfigError(tempConfig, configErr)
 		}
 
-		return Error(fmt.Errorf("configuration errors detected"))
+		return errorResult(fmt.Errorf("configuration errors detected"))
 	}
 
 	// Set the command config instead of mutating the context
 	ctx.CommandConfig = tempConfig
-	return Success()
+	return success()
 }
 
 // ValidateRequiredFlags checks if all required flags have values and logs warnings for missing ones
 func (cp *configProcessor) ValidateRequiredFlags(cmd *Command, ctx *CommandContext) *CommandResult {
 	if cmd == nil {
-		return Success() // Nothing to validate
+		return success() // Nothing to validate
 	}
 
 	if ctx == nil {
-		return Error(fmt.Errorf("context cannot be nil"))
+		return errorResult(fmt.Errorf("context cannot be nil"))
 	}
 
 	for key, def := range cmd.Definitions {
@@ -205,5 +230,5 @@ func (cp *configProcessor) ValidateRequiredFlags(cmd *Command, ctx *CommandConte
 		}
 	}
 
-	return Success()
+	return success()
 }

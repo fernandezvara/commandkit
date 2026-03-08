@@ -10,13 +10,13 @@ type CommandServices struct {
 	FlagParser      FlagParser
 }
 
-// NewCommandServices creates a new CommandServices instance with all services initialized
-func NewCommandServices() *CommandServices {
+// newCommandServices creates a new CommandServices instance with all services initialized
+func newCommandServices() *CommandServices {
 	return &CommandServices{
-		Executor:        NewCommandExecutor(),
-		ConfigProcessor: NewConfigProcessor(),
-		MiddlewareChain: NewMiddlewareChain(),
-		CommandRouter:   NewCommandRouter(),
-		FlagParser:      NewFlagParser(),
+		Executor:        newCommandExecutor(),
+		ConfigProcessor: newConfigProcessor(),
+		MiddlewareChain: newMiddlewareChain(),
+		CommandRouter:   newCommandRouter(),
+		FlagParser:      newFlagParser(),
 	}
 }

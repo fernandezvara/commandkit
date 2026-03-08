@@ -17,7 +17,7 @@ type MiddlewareChain interface {
 type middlewareChain struct{}
 
 // NewMiddlewareChain creates a new MiddlewareChain instance
-func NewMiddlewareChain() MiddlewareChain {
+func newMiddlewareChain() MiddlewareChain {
 	return &middlewareChain{}
 }
 

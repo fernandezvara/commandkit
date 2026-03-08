@@ -24,7 +24,7 @@ type CommandRouter interface {
 type commandRouter struct{}
 
 // NewCommandRouter creates a new CommandRouter instance
-func NewCommandRouter() CommandRouter {
+func newCommandRouter() CommandRouter {
 	return &commandRouter{}
 }
 

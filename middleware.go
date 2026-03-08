@@ -90,11 +90,11 @@ func TokenAuthMiddleware(tokenKey string) CommandMiddleware {
 			}
 			token = secret.String()
 		} else {
-			result := Get[string](ctx, tokenKey)
-			if result.Error != nil {
+			var err error
+			token, err = Get[string](ctx, tokenKey)
+			if err != nil {
 				return fmt.Errorf("missing authentication token (config key: %s)", tokenKey)
 			}
-			token = GetValue[string](result)
 		}
 
 		if token == "" {
@@ -184,11 +184,10 @@ func AdminOnlyMiddleware(adminTokenKey string) CommandMiddleware {
 			return len(ctx.Command) > 6 && ctx.Command[:6] == "admin-"
 		},
 		AuthMiddleware(func(ctx *CommandContext) error {
-			result := Get[string](ctx, adminTokenKey)
-			if result.Error != nil {
+			token, err := Get[string](ctx, adminTokenKey)
+			if err != nil {
 				return fmt.Errorf("admin commands require authentication token (config key: %s)", adminTokenKey)
 			}
-			token := GetValue[string](result)
 
 			if token == "" {
 				return fmt.Errorf("admin commands require authentication token (config key: %s)", adminTokenKey)

@@ -75,88 +75,82 @@ func TestBasicConfigurationDefinition(t *testing.T) {
 	// Test values
 	ctx := NewCommandContext([]string{}, cfg, "test", "")
 
-	portResult := Get[int64](ctx, "PORT")
-	if portResult.Error != nil {
-		t.Fatalf("Error getting PORT: %v", portResult.Error)
+	port, err := Get[int64](ctx, "PORT")
+	if err != nil {
+		t.Fatalf("Error getting PORT: %v", err)
 	}
-	port := GetValue[int64](portResult)
 	if port != 8080 {
 		t.Errorf("Expected PORT=8080, got %d", port)
 	}
 
-	baseURLResult := Get[string](ctx, "BASE_URL")
-	if baseURLResult.Error != nil {
-		t.Fatalf("Error getting BASE_URL: %v", baseURLResult.Error)
+	baseURL, err := Get[string](ctx, "BASE_URL")
+	if err != nil {
+		t.Fatalf("Error getting BASE_URL: %v", err)
 	}
-	baseURL := GetValue[string](baseURLResult)
 	if baseURL != "https://api.example.com" {
 		t.Errorf("Expected BASE_URL=https://api.example.com, got %s", baseURL)
 	}
 
-	debugResult := Get[bool](ctx, "DEBUG")
-	if debugResult.Error != nil {
-		t.Fatalf("Error getting DEBUG: %v", debugResult.Error)
+	debug, err := Get[bool](ctx, "DEBUG")
+	if err != nil {
+		t.Fatalf("Error getting DEBUG: %v", err)
 	}
-	debug := GetValue[bool](debugResult)
 	if !debug {
 		t.Errorf("Expected DEBUG=true, got %v", debug)
 	}
 
-	timeoutResult := Get[time.Duration](ctx, "TIMEOUT")
-	if timeoutResult.Error != nil {
-		t.Fatalf("Error getting TIMEOUT: %v", timeoutResult.Error)
+	timeout, err := Get[time.Duration](ctx, "TIMEOUT")
+	if err != nil {
+		t.Fatalf("Error getting TIMEOUT: %v", err)
 	}
-	timeout := GetValue[time.Duration](timeoutResult)
 	if timeout != 30*time.Second {
 		t.Errorf("Expected TIMEOUT=30s, got %v", timeout)
 	}
 
-	hostsResult := Get[[]string](ctx, "HOSTS")
-	if hostsResult.Error != nil {
-		t.Fatalf("Error getting HOSTS: %v", hostsResult.Error)
+	hosts, err := Get[[]string](ctx, "HOSTS")
+	if err != nil {
+		t.Fatalf("Error getting HOSTS: %v", err)
 	}
-	hosts := GetValue[[]string](hostsResult)
 	if len(hosts) != 1 || hosts[0] != "http://localhost:8080" {
 		t.Errorf("Expected HOSTS=[http://localhost:8080], got %v", hosts)
 	}
 
-	corsOriginsResult := Get[[]string](ctx, "CORS_ORIGINS")
-	if corsOriginsResult.Error != nil {
-		t.Fatalf("Error getting CORS_ORIGINS: %v", corsOriginsResult.Error)
+	corsOrigins, err := Get[[]string](ctx, "CORS_ORIGINS")
+	if err != nil {
+		t.Fatalf("Error getting CORS_ORIGINS: %v", err)
 	}
-	corsOrigins := GetValue[[]string](corsOriginsResult)
 	if len(corsOrigins) != 1 || corsOrigins[0] != "http://localhost:3000" {
 		t.Errorf("Expected CORS_ORIGINS=[http://localhost:3000], got %v", corsOrigins)
 	}
 
 	// Test generic Get methods
-	baseURLCheckResult := Get[string](ctx, "BASE_URL")
-	if baseURLCheckResult.Error != nil || GetValue[string](baseURLCheckResult) != baseURL {
+	baseURLCheck, err := Get[string](ctx, "BASE_URL")
+	if err != nil || baseURLCheck != baseURL {
 		t.Error("Get[string]() method failed")
 	}
 
-	portCheckResult := Get[int64](ctx, "PORT")
-	if portCheckResult.Error != nil || GetValue[int64](portCheckResult) != port {
+	portCheck, err := Get[int64](ctx, "PORT")
+	if err != nil || portCheck != port {
 		t.Error("Get[int64]() method failed")
 	}
 
-	debugCheckResult := Get[bool](ctx, "DEBUG")
-	if debugCheckResult.Error != nil || GetValue[bool](debugCheckResult) != debug {
+	debugCheck, err := Get[bool](ctx, "DEBUG")
+	if err != nil || debugCheck != debug {
 		t.Error("Get[bool]() method failed")
 	}
 
-	timeoutCheckResult := Get[time.Duration](ctx, "TIMEOUT")
-	if timeoutCheckResult.Error != nil || GetValue[time.Duration](timeoutCheckResult) != timeout {
+	timeoutCheck, err := Get[time.Duration](ctx, "TIMEOUT")
+	if err != nil || timeoutCheck != timeout {
 		t.Error("Get[time.Duration]() method failed")
 	}
 
-	hostsCheckResult := Get[[]string](ctx, "HOSTS")
-	if hostsCheckResult.Error != nil || !reflect.DeepEqual(GetValue[[]string](hostsCheckResult), hosts) {
+	hostsCheck, err := Get[[]string](ctx, "HOSTS")
+	if err != nil || !reflect.DeepEqual(hostsCheck, hosts) {
 		t.Error("Get[[]string]() method failed")
 	}
 
-	corsCheckResult := Get[[]string](ctx, "CORS_ORIGINS")
-	if corsCheckResult.Error != nil || !reflect.DeepEqual(GetValue[[]string](corsCheckResult), corsOrigins) {
+	corsCheck, err := Get[[]string](ctx, "CORS_ORIGINS")
+	if err != nil || !reflect.DeepEqual(corsCheck, corsOrigins) {
 		t.Error("Get[[]string]() method failed")
 	}
 

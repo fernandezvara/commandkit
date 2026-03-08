@@ -38,28 +38,16 @@ func (r *CommandResult) GetValue() any {
 	return r.Data
 }
 
-// GetValueTyped extracts a typed value from a successful CommandResult
-func GetValue[T any](r *CommandResult) T {
-	if r.Error != nil {
-		panic("cannot get value from failed CommandResult")
-	}
-	if r.Data == nil {
-		var zero T
-		return zero
-	}
-	return r.Data.(T)
-}
-
-// Success creates a successful command result
-func Success() *CommandResult {
+// success creates a successful command result
+func success() *CommandResult {
 	return &CommandResult{
 		ExitCode:   0,
 		ShouldExit: false,
 	}
 }
 
-// SuccessWithData creates a successful command result with data
-func SuccessWithData(data any) *CommandResult {
+// successWithData creates a successful command result with data
+func successWithData(data any) *CommandResult {
 	return &CommandResult{
 		ExitCode:   0,
 		ShouldExit: false,
@@ -67,8 +55,8 @@ func SuccessWithData(data any) *CommandResult {
 	}
 }
 
-// SuccessWithMessage creates a successful command result with a message
-func SuccessWithMessage(message string) *CommandResult {
+// successWithMessage creates a successful command result with a message
+func successWithMessage(message string) *CommandResult {
 	return &CommandResult{
 		ExitCode:   0,
 		ShouldExit: false,
@@ -76,8 +64,8 @@ func SuccessWithMessage(message string) *CommandResult {
 	}
 }
 
-// Error creates an error command result
-func Error(err error) *CommandResult {
+// errorResult creates an error command result
+func errorResult(err error) *CommandResult {
 	return &CommandResult{
 		Error:      err,
 		ExitCode:   1,
@@ -85,8 +73,8 @@ func Error(err error) *CommandResult {
 	}
 }
 
-// ErrorWithMessage creates an error command result with a custom message
-func ErrorWithMessage(err error, message string) *CommandResult {
+// errorWithMessage creates an error command result with a custom message
+func errorWithMessage(err error, message string) *CommandResult {
 	return &CommandResult{
 		Error:      err,
 		ExitCode:   1,
@@ -95,8 +83,8 @@ func ErrorWithMessage(err error, message string) *CommandResult {
 	}
 }
 
-// ErrorWithExit creates an error command result that should exit
-func ErrorWithExit(err error, message string) *CommandResult {
+// errorWithExit creates an error command result that should exit
+func errorWithExit(err error, message string) *CommandResult {
 	return &CommandResult{
 		Error:      err,
 		ExitCode:   1,
@@ -105,8 +93,8 @@ func ErrorWithExit(err error, message string) *CommandResult {
 	}
 }
 
-// ValidationError creates a validation error result that should exit
-func ValidationError(message string) *CommandResult {
+// validationError creates a validation error result that should exit
+func validationError(message string) *CommandResult {
 	return &CommandResult{
 		Error:      fmt.Errorf("validation error: %s", message),
 		ExitCode:   1,
@@ -134,8 +122,8 @@ func (r *CommandResult) WithCommand(command, subcommand string) *CommandResult {
 	return r
 }
 
-// ConfigErrorResult creates a configuration error result that should exit
-func ConfigErrorResult(message string) *CommandResult {
+// configErrorResult creates a configuration error result that should exit
+func configErrorResult(message string) *CommandResult {
 	return &CommandResult{
 		Error:      fmt.Errorf("configuration error: %s", message),
 		ExitCode:   1,

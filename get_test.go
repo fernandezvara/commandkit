@@ -50,8 +50,8 @@ func TestGetWithMissingKey(t *testing.T) {
 	ctx := NewCommandContext([]string{}, cfg, "test", "")
 
 	// Test Get with missing key
-	getResult := Get[string](ctx, "MISSING_KEY")
-	if getResult.Error == nil {
+	_, err := Get[string](ctx, "MISSING_KEY")
+	if err == nil {
 		t.Error("Expected error for missing key")
 	}
 
@@ -84,8 +84,8 @@ func TestGetWithTypeMismatch(t *testing.T) {
 	ctx := NewCommandContext([]string{}, cfg, "test", "")
 
 	// Test Get with type mismatch
-	typeResult := Get[int64](ctx, "PORT")
-	if typeResult.Error == nil {
+	_, err := Get[int64](ctx, "PORT")
+	if err == nil {
 		t.Error("Expected error for type mismatch")
 	}
 
@@ -126,13 +126,13 @@ func TestGetWithSecret(t *testing.T) {
 	ctx := NewCommandContext([]string{}, cfg, "test", "")
 
 	// Test Get with secret (should return error)
-	secretResult := Get[string](ctx, "API_KEY")
-	if secretResult.Error == nil {
+	_, err := Get[string](ctx, "API_KEY")
+	if err == nil {
 		t.Error("Expected error for secret access")
 	}
 
-	if secretResult.Error.Error() != "validation error: configuration 'API_KEY' is secret, use GetSecret() instead" {
-		t.Errorf("Expected secret access error, got: %v", secretResult.Error)
+	if err.Error() != "validation error: configuration 'API_KEY' is secret, use GetSecret() instead" {
+		t.Errorf("Expected secret access error, got: %v", err)
 	}
 
 	// Verify error was collected

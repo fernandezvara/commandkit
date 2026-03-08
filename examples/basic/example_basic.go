@@ -64,8 +64,8 @@ func main() {
 		Description("Allowed CORS origins")
 
 	// Process configuration
-	if errs := cfg.Process(); len(errs) > 0 {
-		cfg.PrintErrors(errs)
+	if result := cfg.Process(); result.Error != nil {
+		fmt.Fprintln(os.Stderr, result.Message)
 		os.Exit(1)
 	}
 

@@ -12,23 +12,23 @@ type CommandExecutor interface {
 // commandExecutor implements CommandExecutor interface
 type commandExecutor struct{}
 
-// NewCommandExecutor creates a new CommandExecutor instance
-func NewCommandExecutor() CommandExecutor {
+// newCommandExecutor creates a new CommandExecutor instance
+func newCommandExecutor() CommandExecutor {
 	return &commandExecutor{}
 }
 
 // Execute orchestrates the complete command execution using all services
 func (ce *commandExecutor) Execute(cmd *Command, ctx *CommandContext, services *CommandServices) *CommandResult {
 	if cmd == nil {
-		return Error(fmt.Errorf("command cannot be nil"))
+		return errorResult(fmt.Errorf("command cannot be nil"))
 	}
 
 	if ctx == nil {
-		return Error(fmt.Errorf("context cannot be nil"))
+		return errorResult(fmt.Errorf("context cannot be nil"))
 	}
 
 	if services == nil {
-		return Error(fmt.Errorf("services cannot be nil"))
+		return errorResult(fmt.Errorf("services cannot be nil"))
 	}
 
 	// Ensure execution context exists
@@ -75,13 +75,13 @@ func (ce *commandExecutor) validateCommand(cmd *Command, ctx *CommandContext) *C
 		args := []string{ctx.Command, "--help"}
 		err := helpService.ShowHelp(args, commands)
 		if err != nil {
-			return Error(err)
+			return errorResult(err)
 		}
-		return Success() // Help was shown successfully
+		return success() // Help was shown successfully
 	}
 
 	if cmd.Func == nil {
-		return Error(fmt.Errorf("command '%s' has no implementation", ctx.Command))
+		return errorResult(fmt.Errorf("command '%s' has no implementation", ctx.Command))
 	}
 
 	return nil // Continue with execution
@@ -111,6 +111,12 @@ func (ce *commandExecutor) processConfiguration(cmd *Command, ctx *CommandContex
 func (ce *commandExecutor) executeWithMiddleware(cmd *Command, ctx *CommandContext, services *CommandServices) *CommandResult {
 	middlewareChain := services.MiddlewareChain
 
+	// Check for configuration errors BEFORE executing the command
+	if ctx.execution != nil && ctx.execution.HasErrors() {
+		// Return configuration error result that will trigger proper error display
+		return configErrorResult("configuration errors detected")
+	}
+
 	// Apply middleware using MiddlewareChain service
 	finalFunc := middlewareChain.ApplyCommandOnly(cmd, cmd.Func)
 
@@ -120,15 +126,15 @@ func (ce *commandExecutor) executeWithMiddleware(cmd *Command, ctx *CommandConte
 	// Check for collected errors and create appropriate result
 	if ctx.execution.HasErrors() {
 		if err != nil {
-			return Error(err)
+			return errorResult(err)
 		}
-		return Error(fmt.Errorf("command execution failed with collected errors"))
+		return errorResult(fmt.Errorf("command execution failed with collected errors"))
 	}
 
 	// Return success or error result
 	if err != nil {
-		return Error(err)
+		return errorResult(err)
 	}
 
-	return Success()
+	return success()
 }

@@ -27,17 +27,6 @@ func NewCommandContext(args []string, config *Config, command, subCommand string
 	}
 }
 
-// ContextGet retrieves a typed value from the context data using generics
-func ContextGet[T any](ctx *CommandContext, key string) T {
-	if value, exists := ctx.GetData(key); exists {
-		if result, ok := value.(T); ok {
-			return result
-		}
-	}
-	var zero T
-	return zero
-}
-
 // Set stores data in the context for middleware sharing
 func (ctx *CommandContext) Set(key string, value any) {
 	if ctx.data == nil {

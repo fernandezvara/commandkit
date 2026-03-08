@@ -120,7 +120,7 @@ func (c *Config) Process() *CommandResult {
 	var errs []ConfigError
 
 	// Use centralized FlagParser for consistent flag parsing
-	services := NewCommandServices()
+	services := c.createServices()
 	flagParser := services.FlagParser
 
 	// Parse global flags using the centralized service
@@ -181,10 +181,10 @@ func (c *Config) Process() *CommandResult {
 		for _, configErr := range errs {
 			errorMessages = append(errorMessages, configErr.Error())
 		}
-		return ConfigErrorResult(formatErrors(errs))
+		return configErrorResult(formatErrors(errs))
 	}
 
-	return Success()
+	return success()
 }
 
 // PrintErrors prints formatted error messages to stderr
@@ -255,10 +255,13 @@ func (c *Config) getHelpService() HelpService {
 	return c.helpService
 }
 
-// Execute parses command line arguments and executes the appropriate command
+// createServices creates a new CommandServices instance for internal use
+func (c *Config) createServices() *CommandServices {
+	return newCommandServices()
+}
 func (c *Config) Execute(args []string) error {
 	// Create services for routing
-	services := NewCommandServices()
+	services := c.createServices()
 	router := services.CommandRouter
 
 	// Route command with integrated help handling
@@ -279,7 +282,7 @@ func (c *Config) Execute(args []string) error {
 // executeWithGlobalMiddleware wraps command execution with global middleware
 func (c *Config) executeWithGlobalMiddleware(cmd *Command, ctx *CommandContext) error {
 	// Create services for middleware handling
-	services := NewCommandServices()
+	services := c.createServices()
 	middlewareChain := services.MiddlewareChain
 
 	// Create the final execution function that runs the command

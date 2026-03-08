@@ -64,8 +64,8 @@ func TestGetWithErrorCollection(t *testing.T) {
 	ctx := NewCommandContext([]string{}, cfg, "test", "")
 
 	// Test that Get returns error for missing key
-	result := Get[string](ctx, "MISSING_KEY")
-	if result.Error == nil {
+	_, err := Get[string](ctx, "MISSING_KEY")
+	if err == nil {
 		t.Error("Expected error for missing required key")
 	}
 

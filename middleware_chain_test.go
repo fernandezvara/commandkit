@@ -8,7 +8,7 @@ import (
 )
 
 func TestMiddlewareChain_ApplyCommandOnly(t *testing.T) {
-	chain := NewMiddlewareChain()
+	chain := newMiddlewareChain()
 
 	// Create a command with middleware
 	cmd := &Command{
@@ -63,7 +63,7 @@ func TestMiddlewareChain_ApplyCommandOnly(t *testing.T) {
 }
 
 func TestMiddlewareChain_ApplyGlobalOnly(t *testing.T) {
-	chain := NewMiddlewareChain()
+	chain := newMiddlewareChain()
 
 	// Create global middleware
 	globalMiddleware := []CommandMiddleware{
@@ -115,7 +115,7 @@ func TestMiddlewareChain_ApplyGlobalOnly(t *testing.T) {
 }
 
 func TestMiddlewareChain_Apply_Combined(t *testing.T) {
-	chain := NewMiddlewareChain()
+	chain := newMiddlewareChain()
 
 	// Create a command with middleware
 	cmd := &Command{
@@ -172,7 +172,7 @@ func TestMiddlewareChain_Apply_Combined(t *testing.T) {
 }
 
 func TestMiddlewareChain_EmptyMiddleware(t *testing.T) {
-	chain := NewMiddlewareChain()
+	chain := newMiddlewareChain()
 
 	// Create command without middleware
 	cmd := &Command{
@@ -203,7 +203,7 @@ func TestMiddlewareChain_EmptyMiddleware(t *testing.T) {
 }
 
 func TestMiddlewareChain_NilCommand(t *testing.T) {
-	chain := NewMiddlewareChain()
+	chain := newMiddlewareChain()
 
 	baseFunc := func(ctx *CommandContext) error {
 		ctx.Set("executed", true)
@@ -229,7 +229,7 @@ func TestMiddlewareChain_NilCommand(t *testing.T) {
 }
 
 func TestMiddlewareChain_MiddlewareErrorHandling(t *testing.T) {
-	chain := NewMiddlewareChain()
+	chain := newMiddlewareChain()
 
 	// Create middleware that returns an error
 	errorMiddleware := func(next CommandFunc) CommandFunc {
@@ -271,7 +271,7 @@ func TestMiddlewareChain_MiddlewareErrorHandling(t *testing.T) {
 }
 
 func TestMiddlewareChain_MiddlewareOrder(t *testing.T) {
-	chain := NewMiddlewareChain()
+	chain := newMiddlewareChain()
 
 	var executionOrder []string
 
@@ -330,7 +330,7 @@ func TestMiddlewareChain_MiddlewareOrder(t *testing.T) {
 
 func TestMiddlewareChain_Integration(t *testing.T) {
 	// Test that MiddlewareChain works correctly with the service factory
-	services := NewCommandServices()
+	services := newCommandServices()
 	chain := services.MiddlewareChain
 
 	// Create timing middleware for testing

@@ -7,7 +7,7 @@ import (
 )
 
 func TestConfigProcessor_ProcessCommandConfig(t *testing.T) {
-	processor := NewConfigProcessor()
+	processor := newConfigProcessor()
 
 	// Create a command with definitions
 	cmd := &Command{
@@ -57,25 +57,25 @@ func TestConfigProcessor_ProcessCommandConfig(t *testing.T) {
 	}
 
 	// Check that flag values were parsed
-	portResult := Get[int64](ctx, "PORT")
-	if portResult.Error != nil {
-		t.Errorf("Failed to get PORT value: %v", portResult.Error)
+	port, err := Get[int64](ctx, "PORT")
+	if err != nil {
+		t.Errorf("Failed to get PORT value: %v", err)
 	}
-	if GetValue[int64](portResult) != 9000 {
-		t.Errorf("Expected PORT=9000, got %d", GetValue[int64](portResult))
+	if port != 9000 {
+		t.Errorf("Expected PORT=9000, got %d", port)
 	}
 
-	envResult := Get[string](ctx, "ENV")
-	if envResult.Error != nil {
-		t.Errorf("Failed to get ENV value: %v", envResult.Error)
+	env, err := Get[string](ctx, "ENV")
+	if err != nil {
+		t.Errorf("Failed to get ENV value: %v", err)
 	}
-	if GetValue[string](envResult) != "prod" {
-		t.Errorf("Expected ENV=prod, got %s", GetValue[string](envResult))
+	if env != "prod" {
+		t.Errorf("Expected ENV=prod, got %s", env)
 	}
 }
 
-func TestConfigProcessor_ProcessCommandConfig_WithError(t *testing.T) {
-	processor := NewConfigProcessor()
+func TestConfigProcessor_ProcessCommandConfig_WitherrorResult(t *testing.T) {
+	processor := newConfigProcessor()
 
 	// Create a command with validation
 	cmd := &Command{
@@ -115,7 +115,7 @@ func TestConfigProcessor_ProcessCommandConfig_WithError(t *testing.T) {
 }
 
 func TestConfigProcessor_ValidateRequiredFlags(t *testing.T) {
-	processor := NewConfigProcessor()
+	processor := newConfigProcessor()
 
 	// Create a command with required flags
 	cmd := &Command{
@@ -170,7 +170,7 @@ func TestConfigProcessor_ValidateRequiredFlags(t *testing.T) {
 }
 
 func TestConfigProcessor_ValidateRequiredFlags_Missing(t *testing.T) {
-	processor := NewConfigProcessor()
+	processor := newConfigProcessor()
 
 	// Create a command with required flags
 	cmd := &Command{
@@ -209,7 +209,7 @@ func TestConfigProcessor_ValidateRequiredFlags_Missing(t *testing.T) {
 }
 
 func TestConfigProcessor_ValidateRequiredFlags_NoDefinitions(t *testing.T) {
-	processor := NewConfigProcessor()
+	processor := newConfigProcessor()
 
 	// Create a command without definitions
 	cmd := &Command{
@@ -229,7 +229,7 @@ func TestConfigProcessor_ValidateRequiredFlags_NoDefinitions(t *testing.T) {
 
 func TestConfigProcessor_Integration(t *testing.T) {
 	// Test that ConfigProcessor works correctly with the service factory
-	services := NewCommandServices()
+	services := newCommandServices()
 	processor := services.ConfigProcessor
 
 	// Create a simple command
@@ -246,7 +246,7 @@ func TestConfigProcessor_Integration(t *testing.T) {
 		},
 	}
 
-	ctx := NewCommandContext([]string{"--debug"}, New(), "test", "")
+	ctx := NewCommandContext([]string{"--debug", "true"}, New(), "test", "")
 
 	// Test ProcessCommandConfig
 	result := processor.ProcessCommandConfig(cmd, ctx)
@@ -262,7 +262,7 @@ func TestConfigProcessor_Integration(t *testing.T) {
 }
 
 func TestConfigProcessor_ErrorHandling(t *testing.T) {
-	processor := NewConfigProcessor()
+	processor := newConfigProcessor()
 
 	// Test with nil command (should not panic)
 	ctx := NewCommandContext([]string{}, New(), "test", "")

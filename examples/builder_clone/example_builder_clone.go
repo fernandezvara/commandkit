@@ -214,17 +214,15 @@ func main() {
 func apiServerCommand(ctx *commandkit.CommandContext) error {
 	fmt.Println("API Server starting...")
 
-	portResult := commandkit.Get[int64](ctx, "PORT")
-	if portResult.Error != nil {
-		return fmt.Errorf("failed to get PORT: %w", portResult.Error)
+	port, err := commandkit.Get[int64](ctx, "PORT")
+	if err != nil {
+		return fmt.Errorf("failed to get PORT: %w", err)
 	}
-	port := commandkit.GetValue[int64](portResult)
 
-	hostResult := commandkit.Get[string](ctx, "HOST")
-	if hostResult.Error != nil {
-		return fmt.Errorf("failed to get HOST: %w", hostResult.Error)
+	host, err := commandkit.Get[string](ctx, "HOST")
+	if err != nil {
+		return fmt.Errorf("failed to get HOST: %w", err)
 	}
-	host := commandkit.GetValue[string](hostResult)
 
 	apiKey := ctx.GlobalConfig.GetSecret("API_KEY")
 
@@ -238,23 +236,20 @@ func apiServerCommand(ctx *commandkit.CommandContext) error {
 func webServerCommand(ctx *commandkit.CommandContext) error {
 	fmt.Println("Web Server starting...")
 
-	portResult := commandkit.Get[int64](ctx, "PORT")
-	if portResult.Error != nil {
-		return fmt.Errorf("failed to get PORT: %w", portResult.Error)
+	port, err := commandkit.Get[int64](ctx, "PORT")
+	if err != nil {
+		return fmt.Errorf("failed to get PORT: %w", err)
 	}
-	port := commandkit.GetValue[int64](portResult)
 
-	hostResult := commandkit.Get[string](ctx, "HOST")
-	if hostResult.Error != nil {
-		return fmt.Errorf("failed to get HOST: %w", hostResult.Error)
+	host, err := commandkit.Get[string](ctx, "HOST")
+	if err != nil {
+		return fmt.Errorf("failed to get HOST: %w", err)
 	}
-	host := commandkit.GetValue[string](hostResult)
 
-	staticDirResult := commandkit.Get[string](ctx, "STATIC_DIR")
-	if staticDirResult.Error != nil {
-		return fmt.Errorf("failed to get STATIC_DIR: %w", staticDirResult.Error)
+	staticDir, err := commandkit.Get[string](ctx, "STATIC_DIR")
+	if err != nil {
+		return fmt.Errorf("failed to get STATIC_DIR: %w", err)
 	}
-	staticDir := commandkit.GetValue[string](staticDirResult)
 
 	fmt.Printf("Web Server starting on %s:%d\n", host, port)
 	fmt.Printf("Serving static files from: %s\n", staticDir)
@@ -264,17 +259,15 @@ func webServerCommand(ctx *commandkit.CommandContext) error {
 func adminUsersCommand(ctx *commandkit.CommandContext) error {
 	fmt.Println("User Administration...")
 
-	configFileResult := commandkit.Get[string](ctx, "CONFIG_FILE")
-	if configFileResult.Error != nil {
-		return fmt.Errorf("failed to get CONFIG_FILE: %w", configFileResult.Error)
+	configFile, err := commandkit.Get[string](ctx, "CONFIG_FILE")
+	if err != nil {
+		return fmt.Errorf("failed to get CONFIG_FILE: %w", err)
 	}
-	configFile := commandkit.GetValue[string](configFileResult)
 
-	userFileResult := commandkit.Get[string](ctx, "USER_FILE")
-	if userFileResult.Error != nil {
-		return fmt.Errorf("failed to get USER_FILE: %w", userFileResult.Error)
+	userFile, err := commandkit.Get[string](ctx, "USER_FILE")
+	if err != nil {
+		return fmt.Errorf("failed to get USER_FILE: %w", err)
 	}
-	userFile := commandkit.GetValue[string](userFileResult)
 
 	fmt.Printf("Config file: %s\n", configFile)
 	fmt.Printf("User file: %s\n", userFile)
@@ -285,17 +278,15 @@ func adminUsersCommand(ctx *commandkit.CommandContext) error {
 func adminDatabaseCommand(ctx *commandkit.CommandContext) error {
 	fmt.Println("Database Administration...")
 
-	configFileResult := commandkit.Get[string](ctx, "CONFIG_FILE")
-	if configFileResult.Error != nil {
-		return fmt.Errorf("failed to get CONFIG_FILE: %w", configFileResult.Error)
+	configFile, err := commandkit.Get[string](ctx, "CONFIG_FILE")
+	if err != nil {
+		return fmt.Errorf("failed to get CONFIG_FILE: %w", err)
 	}
-	configFile := commandkit.GetValue[string](configFileResult)
 
-	backupDirResult := commandkit.Get[string](ctx, "BACKUP_DIR")
-	if backupDirResult.Error != nil {
-		return fmt.Errorf("failed to get BACKUP_DIR: %w", backupDirResult.Error)
+	backupDir, err := commandkit.Get[string](ctx, "BACKUP_DIR")
+	if err != nil {
+		return fmt.Errorf("failed to get BACKUP_DIR: %w", err)
 	}
-	backupDir := commandkit.GetValue[string](backupDirResult)
 
 	dbURL := ctx.GlobalConfig.GetSecret("DATABASE_URL")
 

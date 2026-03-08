@@ -34,7 +34,7 @@ func TestConfigMutationFix(t *testing.T) {
 	originalGlobalConfig := ctx.GlobalConfig
 
 	// Process command configuration (this used to mutate ctx.Config)
-	services := NewCommandServices()
+	services := newCommandServices()
 	processor := services.ConfigProcessor
 	result := processor.ProcessCommandConfig(cmd, ctx)
 
@@ -57,30 +57,30 @@ func TestConfigMutationFix(t *testing.T) {
 	}
 
 	// 3. Verify Get[T]() prioritizes CommandConfig values
-	portResult := Get[int64](ctx, "PORT")
-	if portResult.Error != nil {
-		t.Fatalf("Failed to get PORT: %v", portResult.Error)
+	port, err := Get[int64](ctx, "PORT")
+	if err != nil {
+		t.Fatalf("Failed to get PORT: %v", err)
 	}
-	if GetValue[int64](portResult) != 9000 {
-		t.Errorf("Expected PORT=9000 from CommandConfig, got %d", GetValue[int64](portResult))
+	if port != 9000 {
+		t.Errorf("Expected PORT=9000 from CommandConfig, got %d", port)
 	}
 
 	// 4. Verify Get[T]() falls back to GlobalConfig for keys not in CommandConfig
-	globalModeResult := Get[string](ctx, "GLOBAL_MODE")
-	if globalModeResult.Error != nil {
-		t.Fatalf("Failed to get GLOBAL_MODE: %v", globalModeResult.Error)
+	globalMode, err := Get[string](ctx, "GLOBAL_MODE")
+	if err != nil {
+		t.Fatalf("Failed to get GLOBAL_MODE: %v", err)
 	}
-	if GetValue[string](globalModeResult) != "global" {
-		t.Errorf("Expected GLOBAL_MODE='global' from GlobalConfig, got %s", GetValue[string](globalModeResult))
+	if globalMode != "global" {
+		t.Errorf("Expected GLOBAL_MODE='global' from GlobalConfig, got %s", globalMode)
 	}
 
 	// 5. Verify GlobalConfig values are unchanged
-	globalPortResult := Get[int64](ctx, "GLOBAL_PORT")
-	if globalPortResult.Error != nil {
-		t.Fatalf("Failed to get GLOBAL_PORT: %v", globalPortResult.Error)
+	globalPort, err := Get[int64](ctx, "GLOBAL_PORT")
+	if err != nil {
+		t.Fatalf("Failed to get GLOBAL_PORT: %v", err)
 	}
-	if GetValue[int64](globalPortResult) != 3000 {
-		t.Errorf("Expected GLOBAL_PORT=3000 unchanged, got %d", GetValue[int64](globalPortResult))
+	if globalPort != 3000 {
+		t.Errorf("Expected GLOBAL_PORT=3000 unchanged, got %d", globalPort)
 	}
 
 	// 6. Verify CommandConfig has command-specific definitions
@@ -120,7 +120,7 @@ func TestConfigIsolation(t *testing.T) {
 
 	// Process first command
 	ctx1 := NewCommandContext([]string{"--value", "150"}, globalConfig, "cmd1", "")
-	services := NewCommandServices()
+	services := newCommandServices()
 	processor := services.ConfigProcessor
 	result1 := processor.ProcessCommandConfig(cmd1, ctx1)
 
@@ -137,37 +137,37 @@ func TestConfigIsolation(t *testing.T) {
 	}
 
 	// Verify isolation
-	value1 := Get[int64](ctx1, "VALUE")
-	if value1.Error != nil {
-		t.Fatalf("Failed to get VALUE from ctx1: %v", value1.Error)
+	value1, err := Get[int64](ctx1, "VALUE")
+	if err != nil {
+		t.Fatalf("Failed to get VALUE from ctx1: %v", err)
 	}
-	if GetValue[int64](value1) != 150 {
-		t.Errorf("Expected ctx1 VALUE=150, got %d", GetValue[int64](value1))
+	if value1 != 150 {
+		t.Errorf("Expected ctx1 VALUE=150, got %d", value1)
 	}
 
-	value2 := Get[int64](ctx2, "VALUE")
-	if value2.Error != nil {
-		t.Fatalf("Failed to get VALUE from ctx2: %v", value2.Error)
+	value2, err := Get[int64](ctx2, "VALUE")
+	if err != nil {
+		t.Fatalf("Failed to get VALUE from ctx2: %v", err)
 	}
-	if GetValue[int64](value2) != 250 {
-		t.Errorf("Expected ctx2 VALUE=250, got %d", GetValue[int64](value2))
+	if value2 != 250 {
+		t.Errorf("Expected ctx2 VALUE=250, got %d", value2)
 	}
 
 	// Verify shared config is accessible from both
-	shared1 := Get[string](ctx1, "SHARED")
-	if shared1.Error != nil {
-		t.Fatalf("Failed to get SHARED from ctx1: %v", shared1.Error)
+	shared1, err := Get[string](ctx1, "SHARED")
+	if err != nil {
+		t.Fatalf("Failed to get SHARED from ctx1: %v", err)
 	}
-	if GetValue[string](shared1) != "shared" {
-		t.Errorf("Expected ctx1 SHARED='shared', got %s", GetValue[string](shared1))
+	if shared1 != "shared" {
+		t.Errorf("Expected ctx1 SHARED='shared', got %s", shared1)
 	}
 
-	shared2 := Get[string](ctx2, "SHARED")
-	if shared2.Error != nil {
-		t.Fatalf("Failed to get SHARED from ctx2: %v", shared2.Error)
+	shared2, err := Get[string](ctx2, "SHARED")
+	if err != nil {
+		t.Fatalf("Failed to get SHARED from ctx2: %v", err)
 	}
-	if GetValue[string](shared2) != "shared" {
-		t.Errorf("Expected ctx2 SHARED='shared', got %s", GetValue[string](shared2))
+	if shared2 != "shared" {
+		t.Errorf("Expected ctx2 SHARED='shared', got %s", shared2)
 	}
 
 	// Verify global config is unchanged

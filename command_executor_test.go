@@ -7,8 +7,8 @@ import (
 	"testing"
 )
 
-func TestCommandExecutor_Execute_Success(t *testing.T) {
-	executor := NewCommandExecutor()
+func TestCommandExecutor_Execute_success(t *testing.T) {
+	executor := newCommandExecutor()
 
 	// Create a command with a simple function
 	cmd := &Command{
@@ -20,7 +20,7 @@ func TestCommandExecutor_Execute_Success(t *testing.T) {
 	}
 
 	ctx := NewCommandContext([]string{}, New(), "test", "")
-	services := NewCommandServices()
+	services := newCommandServices()
 
 	// Execute the command
 	result := executor.Execute(cmd, ctx, services)
@@ -37,7 +37,7 @@ func TestCommandExecutor_Execute_Success(t *testing.T) {
 }
 
 func TestCommandExecutor_Execute_HelpRequest(t *testing.T) {
-	executor := NewCommandExecutor()
+	executor := newCommandExecutor()
 
 	// Create a command
 	cmd := &Command{
@@ -50,7 +50,7 @@ func TestCommandExecutor_Execute_HelpRequest(t *testing.T) {
 
 	// Create context with help request (but help should be handled before execution)
 	ctx := NewCommandContext([]string{"--help"}, New(), "test", "")
-	services := NewCommandServices()
+	services := newCommandServices()
 
 	// Execute the command - in the new architecture, help is handled at routing level
 	// so the executor should execute the command normally if it reaches this point
@@ -69,7 +69,7 @@ func TestCommandExecutor_Execute_HelpRequest(t *testing.T) {
 }
 
 func TestCommandExecutor_Execute_SubcommandsOnly(t *testing.T) {
-	executor := NewCommandExecutor()
+	executor := newCommandExecutor()
 
 	// Create a command with subcommands but no function
 	cmd := &Command{
@@ -86,7 +86,7 @@ func TestCommandExecutor_Execute_SubcommandsOnly(t *testing.T) {
 	config := New()
 	config.commands["parent"] = cmd
 	ctx := NewCommandContext([]string{}, config, "parent", "")
-	services := NewCommandServices()
+	services := newCommandServices()
 
 	// Execute the command
 	result := executor.Execute(cmd, ctx, services)
@@ -98,7 +98,7 @@ func TestCommandExecutor_Execute_SubcommandsOnly(t *testing.T) {
 }
 
 func TestCommandExecutor_Execute_NoImplementation(t *testing.T) {
-	executor := NewCommandExecutor()
+	executor := newCommandExecutor()
 
 	// Create a command with no function and no subcommands
 	cmd := &Command{
@@ -106,7 +106,7 @@ func TestCommandExecutor_Execute_NoImplementation(t *testing.T) {
 	}
 
 	ctx := NewCommandContext([]string{}, New(), "empty", "")
-	services := NewCommandServices()
+	services := newCommandServices()
 
 	// Execute the command
 	result := executor.Execute(cmd, ctx, services)
@@ -123,18 +123,17 @@ func TestCommandExecutor_Execute_NoImplementation(t *testing.T) {
 }
 
 func TestCommandExecutor_Execute_ConfigProcessing(t *testing.T) {
-	executor := NewCommandExecutor()
+	executor := newCommandExecutor()
 
 	// Create a command with configuration
 	cmd := &Command{
 		Name: "configured",
 		Func: func(ctx *CommandContext) error {
 			// Check that config was processed
-			portResult := Get[int64](ctx, "PORT")
-			if portResult.Error != nil {
-				return portResult.Error
+			actualPort, err := Get[int64](ctx, "PORT")
+			if err != nil {
+				return err
 			}
-			actualPort := GetValue[int64](portResult)
 			if actualPort != 9000 {
 				return fmt.Errorf("unexpected port value: got %d, expected 9000", actualPort)
 			}
@@ -153,7 +152,7 @@ func TestCommandExecutor_Execute_ConfigProcessing(t *testing.T) {
 
 	// Create context with flag
 	ctx := NewCommandContext([]string{"--port", "9000"}, New(), "configured", "")
-	services := NewCommandServices()
+	services := newCommandServices()
 
 	// Execute the command
 	result := executor.Execute(cmd, ctx, services)
@@ -164,8 +163,8 @@ func TestCommandExecutor_Execute_ConfigProcessing(t *testing.T) {
 	}
 }
 
-func TestCommandExecutor_Execute_ConfigError(t *testing.T) {
-	executor := NewCommandExecutor()
+func TestCommandExecutor_Execute_ConfigerrorResult(t *testing.T) {
+	executor := newCommandExecutor()
 
 	// Create a command with required configuration
 	cmd := &Command{
@@ -186,7 +185,7 @@ func TestCommandExecutor_Execute_ConfigError(t *testing.T) {
 
 	// Create context without required flag
 	ctx := NewCommandContext([]string{}, New(), "required", "")
-	services := NewCommandServices()
+	services := newCommandServices()
 
 	// Execute the command
 	result := executor.Execute(cmd, ctx, services)
@@ -198,7 +197,7 @@ func TestCommandExecutor_Execute_ConfigError(t *testing.T) {
 }
 
 func TestCommandExecutor_Execute_Middleware(t *testing.T) {
-	executor := NewCommandExecutor()
+	executor := newCommandExecutor()
 
 	// Create middleware that tracks execution
 	var middlewareExecuted bool
@@ -221,7 +220,7 @@ func TestCommandExecutor_Execute_Middleware(t *testing.T) {
 	}
 
 	ctx := NewCommandContext([]string{}, New(), "middleware", "")
-	services := NewCommandServices()
+	services := newCommandServices()
 
 	// Execute the command
 	result := executor.Execute(cmd, ctx, services)
@@ -242,8 +241,8 @@ func TestCommandExecutor_Execute_Middleware(t *testing.T) {
 	}
 }
 
-func TestCommandExecutor_Execute_MiddlewareError(t *testing.T) {
-	executor := NewCommandExecutor()
+func TestCommandExecutor_Execute_MiddlewareerrorResult(t *testing.T) {
+	executor := newCommandExecutor()
 
 	// Create middleware that returns an error
 	errorMiddleware := func(next CommandFunc) CommandFunc {
@@ -263,7 +262,7 @@ func TestCommandExecutor_Execute_MiddlewareError(t *testing.T) {
 	}
 
 	ctx := NewCommandContext([]string{}, New(), "error", "")
-	services := NewCommandServices()
+	services := newCommandServices()
 
 	// Execute the command
 	result := executor.Execute(cmd, ctx, services)
@@ -283,8 +282,8 @@ func TestCommandExecutor_Execute_MiddlewareError(t *testing.T) {
 	}
 }
 
-func TestCommandExecutor_Execute_CommandError(t *testing.T) {
-	executor := NewCommandExecutor()
+func TestCommandExecutor_Execute_CommanderrorResult(t *testing.T) {
+	executor := newCommandExecutor()
 
 	// Create a command that returns an error
 	cmd := &Command{
@@ -295,7 +294,7 @@ func TestCommandExecutor_Execute_CommandError(t *testing.T) {
 	}
 
 	ctx := NewCommandContext([]string{}, New(), "error", "")
-	services := NewCommandServices()
+	services := newCommandServices()
 
 	// Execute the command
 	result := executor.Execute(cmd, ctx, services)
@@ -311,7 +310,7 @@ func TestCommandExecutor_Execute_CommandError(t *testing.T) {
 }
 
 func TestCommandExecutor_Execute_CollectedErrors(t *testing.T) {
-	executor := NewCommandExecutor()
+	executor := newCommandExecutor()
 
 	// Create a command that collects errors
 	cmd := &Command{
@@ -325,7 +324,7 @@ func TestCommandExecutor_Execute_CollectedErrors(t *testing.T) {
 	}
 
 	ctx := NewCommandContext([]string{}, New(), "collect", "")
-	services := NewCommandServices()
+	services := newCommandServices()
 
 	// Execute the command
 	result := executor.Execute(cmd, ctx, services)
@@ -349,10 +348,10 @@ func TestCommandExecutor_Execute_CollectedErrors(t *testing.T) {
 }
 
 func TestCommandExecutor_Execute_NilParameters(t *testing.T) {
-	executor := NewCommandExecutor()
+	executor := newCommandExecutor()
 
 	ctx := NewCommandContext([]string{}, New(), "test", "")
-	services := NewCommandServices()
+	services := newCommandServices()
 
 	// Test with nil command
 	result := executor.Execute(nil, ctx, services)
@@ -375,7 +374,7 @@ func TestCommandExecutor_Execute_NilParameters(t *testing.T) {
 }
 
 func TestCommandExecutor_Execute_ExecutionContextInitialization(t *testing.T) {
-	executor := NewCommandExecutor()
+	executor := newCommandExecutor()
 
 	// Create a command
 	cmd := &Command{
@@ -393,7 +392,7 @@ func TestCommandExecutor_Execute_ExecutionContextInitialization(t *testing.T) {
 	ctx := NewCommandContext([]string{}, New(), "context", "")
 	ctx.execution = nil // Ensure it's nil
 
-	services := NewCommandServices()
+	services := newCommandServices()
 
 	// Execute the command
 	result := executor.Execute(cmd, ctx, services)
@@ -406,7 +405,7 @@ func TestCommandExecutor_Execute_ExecutionContextInitialization(t *testing.T) {
 
 func TestCommandExecutor_Integration(t *testing.T) {
 	// Test that CommandExecutor works correctly with the service factory
-	services := NewCommandServices()
+	services := newCommandServices()
 	executor := services.Executor
 
 	// Create a comprehensive command
@@ -414,10 +413,11 @@ func TestCommandExecutor_Integration(t *testing.T) {
 		Name: "integration",
 		Func: func(ctx *CommandContext) error {
 			// Check configuration
-			portResult := Get[int64](ctx, "PORT")
-			if portResult.Error != nil {
-				return portResult.Error
+			port, err := Get[int64](ctx, "PORT")
+			if err != nil {
+				return err
 			}
+			_ = port // Use the variable to avoid unused error
 
 			// Check middleware context
 			if _, exists := ctx.GetData("middleware_ran"); !exists {
@@ -456,8 +456,11 @@ func TestCommandExecutor_Integration(t *testing.T) {
 	}
 
 	// Verify configuration was processed
-	portResult := Get[int64](ctx, "PORT")
-	if GetValue[int64](portResult) != 5000 {
-		t.Errorf("Expected PORT=5000, got %d", GetValue[int64](portResult))
+	port, err := Get[int64](ctx, "PORT")
+	if err != nil {
+		t.Errorf("Failed to get PORT: %v", err)
+	}
+	if port != 5000 {
+		t.Errorf("Expected PORT=5000, got %d", port)
 	}
 }

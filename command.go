@@ -127,7 +127,7 @@ func validateRequiredFlags(cmd *Command, ctx *CommandContext) {
 // Execute executes the command with the given context and returns CommandResult for unified error handling
 func (cmd *Command) Execute(ctx *CommandContext) *CommandResult {
 	// Create services and delegate to CommandExecutor
-	services := NewCommandServices()
+	services := newCommandServices()
 	executor := services.Executor
 	return executor.Execute(cmd, ctx, services)
 }

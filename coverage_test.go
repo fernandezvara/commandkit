@@ -47,36 +47,60 @@ func TestCommandContextHelpers(t *testing.T) {
 		t.Errorf("Expected 'value', got %v", val)
 	}
 
-	// Test ContextGet string
+	// Test GetData string
 	ctx.Set("str_key", "string_value")
-	if str := ContextGet[string](ctx, "str_key"); str != "string_value" {
-		t.Errorf("Expected 'string_value', got %s", str)
+	if value, exists := ctx.GetData("str_key"); exists {
+		if str, ok := value.(string); ok && str == "string_value" {
+			// Good
+		} else {
+			t.Errorf("Expected 'string_value', got %v", value)
+		}
+	} else {
+		t.Error("str_key should exist")
 	}
 
-	// Test ContextGet int
+	// Test GetData int
 	ctx.Set("int_key", 42)
-	if i := ContextGet[int](ctx, "int_key"); i != 42 {
-		t.Errorf("Expected 42, got %d", i)
+	if value, exists := ctx.GetData("int_key"); exists {
+		if i, ok := value.(int); ok && i == 42 {
+			// Good
+		} else {
+			t.Errorf("Expected 42, got %v", value)
+		}
+	} else {
+		t.Error("int_key should exist")
 	}
 
-	// Test ContextGet bool
+	// Test GetData bool
 	ctx.Set("bool_key", true)
-	if b := ContextGet[bool](ctx, "bool_key"); !b {
-		t.Error("Expected true, got false")
+	if value, exists := ctx.GetData("bool_key"); exists {
+		if b, ok := value.(bool); ok && b {
+			// Good
+		} else {
+			t.Error("Expected true, got false")
+		}
+	} else {
+		t.Error("bool_key should exist")
 	}
 
 	// Test non-existent keys
 	if _, exists := ctx.GetData("nonexistent"); exists {
 		t.Error("Non-existent key should not exist")
 	}
-	if str := ContextGet[string](ctx, "nonexistent"); str != "" {
-		t.Errorf("Expected empty string for non-existent key, got %s", str)
+	if value, exists := ctx.GetData("nonexistent"); exists {
+		if str, ok := value.(string); ok && str != "" {
+			t.Errorf("Expected empty string for non-existent key, got %s", str)
+		}
 	}
-	if i := ContextGet[int](ctx, "nonexistent"); i != 0 {
-		t.Errorf("Expected 0 for non-existent key, got %d", i)
+	if value, exists := ctx.GetData("nonexistent"); exists {
+		if i, ok := value.(int); ok && i != 0 {
+			t.Errorf("Expected 0 for non-existent key, got %d", i)
+		}
 	}
-	if b := ContextGet[bool](ctx, "nonexistent"); b {
-		t.Error("Expected false for non-existent key, got true")
+	if value, exists := ctx.GetData("nonexistent"); exists {
+		if b, ok := value.(bool); ok && b {
+			t.Error("Expected false for non-existent key, got true")
+		}
 	}
 }
 
@@ -319,18 +343,18 @@ func TestGetErrorCollectionIntegration(t *testing.T) {
 	// Execute - this should collect errors and exit
 	// We can't test the os.Exit directly, but we can verify error collection
 	// by calling the Get functions directly
-	// Note: Get functions now return CommandResult for missing data
-	result := Get[int64](ctx, "PORT")
-	if result.Error == nil {
+	// Note: Get functions now return (T, error) for missing data
+	_, err := Get[int64](ctx, "PORT")
+	if err == nil {
 		t.Errorf("Expected error for missing PORT, got nil")
 	}
-	hostResult := Get[string](ctx, "HOST")
-	if hostResult.Error == nil {
+	_, err = Get[string](ctx, "HOST")
+	if err == nil {
 		t.Errorf("Expected error for missing HOST, got nil")
 	}
 
-	apiKeyResult := Get[string](ctx, "API_KEY")
-	if apiKeyResult.Error == nil {
+	_, err = Get[string](ctx, "API_KEY")
+	if err == nil {
 		t.Errorf("Expected error for missing API_KEY, got nil")
 	}
 
@@ -339,9 +363,9 @@ func TestGetErrorCollectionIntegration(t *testing.T) {
 	// Only non-required keys collect errors in the execution context
 
 	// Test non-required data still collects errors
-	nonExistentResult := Get[string](ctx, "NONEXISTENT_KEY")
-	if nonExistentResult.Error == nil {
-		t.Error("Expected error for non-required key")
+	_, err = Get[string](ctx, "NONEXISTENT_KEY")
+	if err == nil {
+		t.Error("Expected error for non-existent key")
 	}
 
 	// Now we should have collected errors for the non-required key

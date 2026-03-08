@@ -202,7 +202,7 @@ func TestTemplateHelpFormatter_EmptyTemplate(t *testing.T) {
 	}
 }
 
-func TestTemplateHelpFormatter_TemplateError(t *testing.T) {
+func TestTemplateHelpFormatter_TemplateerrorResult(t *testing.T) {
 	formatter := NewTemplateHelpFormatter()
 
 	help := &GlobalHelp{

@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-func TestCommandRouter_RouteCommand_Success(t *testing.T) {
-	router := NewCommandRouter()
+func TestCommandRouter_RouteCommand_success(t *testing.T) {
+	router := newCommandRouter()
 
 	// Create a config with commands
 	config := New()
@@ -41,7 +41,7 @@ func TestCommandRouter_RouteCommand_Success(t *testing.T) {
 }
 
 func TestCommandRouter_RouteCommand_NoCommand(t *testing.T) {
-	router := NewCommandRouter()
+	router := newCommandRouter()
 
 	config := New()
 
@@ -59,7 +59,7 @@ func TestCommandRouter_RouteCommand_NoCommand(t *testing.T) {
 }
 
 func TestCommandRouter_RouteCommand_HelpCommand(t *testing.T) {
-	router := NewCommandRouter()
+	router := newCommandRouter()
 
 	config := New()
 	config.Command("start").Func(func(ctx *CommandContext) error {
@@ -85,7 +85,7 @@ func TestCommandRouter_RouteCommand_HelpCommand(t *testing.T) {
 }
 
 func TestCommandRouter_RouteCommand_UnknownCommand(t *testing.T) {
-	router := NewCommandRouter()
+	router := newCommandRouter()
 
 	config := New()
 	config.Command("start").Func(func(ctx *CommandContext) error {
@@ -114,7 +114,7 @@ func TestCommandRouter_RouteCommand_UnknownCommand(t *testing.T) {
 }
 
 func TestCommandRouter_RouteCommand_NilConfig(t *testing.T) {
-	router := NewCommandRouter()
+	router := newCommandRouter()
 
 	// Route with nil config
 	_, _, err := router.RouteCommand([]string{"app", "start"}, nil)
@@ -130,7 +130,7 @@ func TestCommandRouter_RouteCommand_NilConfig(t *testing.T) {
 }
 
 func TestCommandRouter_HandleSubcommands_WithSubcommand(t *testing.T) {
-	router := NewCommandRouter()
+	router := newCommandRouter()
 
 	// Create a command with subcommands
 	parentCmd := &Command{
@@ -175,7 +175,7 @@ func TestCommandRouter_HandleSubcommands_WithSubcommand(t *testing.T) {
 }
 
 func TestCommandRouter_HandleSubcommands_NoSubcommand(t *testing.T) {
-	router := NewCommandRouter()
+	router := newCommandRouter()
 
 	// Create a command with subcommands
 	parentCmd := &Command{
@@ -213,7 +213,7 @@ func TestCommandRouter_HandleSubcommands_NoSubcommand(t *testing.T) {
 }
 
 func TestCommandRouter_HandleSubcommands_NilCommand(t *testing.T) {
-	router := NewCommandRouter()
+	router := newCommandRouter()
 
 	ctx := NewCommandContext([]string{"child"}, New(), "parent", "")
 
@@ -231,7 +231,7 @@ func TestCommandRouter_HandleSubcommands_NilCommand(t *testing.T) {
 }
 
 func TestCommandRouter_HandleSubcommands_NilContext(t *testing.T) {
-	router := NewCommandRouter()
+	router := newCommandRouter()
 
 	parentCmd := &Command{Name: "parent"}
 
@@ -248,8 +248,8 @@ func TestCommandRouter_HandleSubcommands_NilContext(t *testing.T) {
 	}
 }
 
-func TestCommandRouter_RouteWithErrorHandling_Error(t *testing.T) {
-	router := NewCommandRouter()
+func TestCommandRouter_RouteWithErrorHandling_errorResult(t *testing.T) {
+	router := newCommandRouter()
 
 	config := New()
 	config.Command("start").Func(func(ctx *CommandContext) error {
@@ -275,7 +275,7 @@ func TestCommandRouter_RouteWithErrorHandling_Error(t *testing.T) {
 
 func TestCommandRouter_Integration(t *testing.T) {
 	// Test that CommandRouter works correctly with the service factory
-	services := NewCommandServices()
+	services := newCommandServices()
 	router := services.CommandRouter
 
 	// Create a comprehensive config
@@ -327,7 +327,7 @@ func TestCommandRouter_Integration(t *testing.T) {
 }
 
 func TestCommandRouter_RouteWithHelpHandling_SubcommandHelp(t *testing.T) {
-	router := NewCommandRouter()
+	router := newCommandRouter()
 
 	// Create a config with commands and subcommands
 	config := New()
@@ -357,7 +357,7 @@ func TestCommandRouter_RouteWithHelpHandling_SubcommandHelp(t *testing.T) {
 }
 
 func TestCommandRouter_RouteWithHelpHandling_CommandHelp(t *testing.T) {
-	router := NewCommandRouter()
+	router := newCommandRouter()
 
 	// Create a config with commands
 	config := New()
@@ -383,7 +383,7 @@ func TestCommandRouter_RouteWithHelpHandling_CommandHelp(t *testing.T) {
 }
 
 func TestCommandRouter_RouteWithHelpHandling_GlobalHelp(t *testing.T) {
-	router := NewCommandRouter()
+	router := newCommandRouter()
 
 	// Create a config with commands
 	config := New()
@@ -409,7 +409,7 @@ func TestCommandRouter_RouteWithHelpHandling_GlobalHelp(t *testing.T) {
 }
 
 func TestCommandRouter_RouteWithHelpHandling_NoHelp(t *testing.T) {
-	router := NewCommandRouter()
+	router := newCommandRouter()
 
 	// Create a config with commands and subcommands
 	config := New()
@@ -448,7 +448,7 @@ func TestCommandRouter_RouteWithHelpHandling_NoHelp(t *testing.T) {
 }
 
 func TestCommandRouter_RouteWithHelpHandling_ShortHelpFlag(t *testing.T) {
-	router := NewCommandRouter()
+	router := newCommandRouter()
 
 	// Create a config with commands and subcommands
 	config := New()

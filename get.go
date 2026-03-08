@@ -43,9 +43,11 @@ func getErrorDisplayName(err GetError, c *Config) string {
 	return fmt.Sprintf("%s string", err.Key)
 }
 
-// Get retrieves a configuration value and returns a CommandResult for unified error handling
-// This function now performs early secret detection to prevent type assertion exposure
-func Get[T any](ctx *CommandContext, key string) *CommandResult {
+// Get retrieves a configuration value with proper error handling
+// This function performs early secret detection to prevent type assertion exposure
+func Get[T any](ctx *CommandContext, key string) (T, error) {
+	var zero T
+
 	// Check command config first (if it exists), then global config
 	var c *Config
 	if ctx.CommandConfig != nil {
@@ -65,10 +67,8 @@ func Get[T any](ctx *CommandContext, key string) *CommandResult {
 	if hasDef && def.secret {
 		// Secure error handling - no secret exposure
 		ctx.execution.CollectError(c, key, "secret", "", "use GetSecret() instead", true)
-		return ValidationError(fmt.Sprintf("configuration '%s' is secret, use GetSecret() instead", key)).
-			WithCommand(ctx.Command, ctx.SubCommand).
-			WithContext("key", key).
-			WithContext("expected_type", fmt.Sprintf("%T", (*new(T))))
+		result := validationError(fmt.Sprintf("configuration '%s' is secret, use GetSecret() instead", key))
+		return zero, result.Error
 	}
 
 	value, exists := c.values[key]
@@ -77,51 +77,38 @@ func Get[T any](ctx *CommandContext, key string) *CommandResult {
 		if hasDef && def.required {
 			// Log warning for designer and return validation error
 			logWarningForDesigner(fmt.Sprintf("Required key '%s' is not provided", key))
-			return ValidationError(fmt.Sprintf("required configuration '%s' not provided", key)).
-				WithCommand(ctx.Command, ctx.SubCommand).
-				WithContext("key", key).
-				WithContext("expected_type", fmt.Sprintf("%T", (*new(T))))
+			return zero, fmt.Errorf("required configuration '%s' not provided", key)
 		}
 		// For non-required keys, collect error and return result
 		ctx.execution.CollectError(c, key, "not found", "", "key not defined", false)
-		return ErrorWithMessage(fmt.Errorf("configuration '%s' not found", key),
-			fmt.Sprintf("configuration '%s' not found", key)).
-			WithCommand(ctx.Command, ctx.SubCommand).
-			WithContext("key", key)
+		return zero, fmt.Errorf("configuration '%s' not found", key)
 	}
 
 	// Additional safety check - ensure value is not a secret placeholder
 	if strVal, ok := value.(string); ok && strVal == "[SECRET]" {
 		// This should not happen with new implementation, but add safety check
 		ctx.execution.CollectError(c, key, "secret", "", "use GetSecret() instead", true)
-		return ValidationError(fmt.Sprintf("configuration '%s' is secret, use GetSecret() instead", key)).
-			WithCommand(ctx.Command, ctx.SubCommand).
-			WithContext("key", key).
-			WithContext("is_secret", true)
+		result := validationError(fmt.Sprintf("configuration '%s' is secret, use GetSecret() instead", key))
+		return zero, result.Error
 	}
 
 	result, ok := value.(T)
 	if !ok {
 		ctx.execution.CollectError(c, key, fmt.Sprintf("%T", (*new(T))), fmt.Sprintf("%T", value), "type mismatch", false)
-		return ErrorWithMessage(fmt.Errorf("configuration '%s' type mismatch: expected %T, got %T", key, (*new(T)), value),
-			fmt.Sprintf("configuration '%s' type mismatch: expected %s, got %s", key, fmt.Sprintf("%T", (*new(T))), fmt.Sprintf("%T", value))).
-			WithCommand(ctx.Command, ctx.SubCommand).
-			WithContext("key", key).
-			WithContext("expected_type", fmt.Sprintf("%T", (*new(T)))).
-			WithContext("actual_type", fmt.Sprintf("%T", value))
+		return zero, fmt.Errorf("configuration '%s' type mismatch: expected %T, got %T", key, (*new(T)), value)
 	}
 
-	return SuccessWithData(result)
+	return result, nil
 }
 
 // MustGet retrieves a configuration value and panics on error
 // Use when you expect the configuration to be valid and want to fail fast
 func MustGet[T any](ctx *CommandContext, key string) T {
-	result := Get[T](ctx, key)
-	if result.Error != nil {
-		panic(result.Error)
+	result, err := Get[T](ctx, key)
+	if err != nil {
+		panic(err)
 	}
-	return GetValue[T](result)
+	return result
 }
 
 // Has checks if a key exists and has a non-nil value

@@ -337,13 +337,13 @@ func TestSecretSecurityViolation(t *testing.T) {
 	}
 
 	// Try to access secret with Get[T] - should fail
-	secretResult := Get[string](ctx, "SECRET_KEY")
-	if secretResult.Error == nil {
+	_, err := Get[string](ctx, "SECRET_KEY")
+	if err == nil {
 		t.Error("Get[string] should fail for secret keys")
 	}
 
-	if secretResult.Error.Error() != "validation error: configuration 'SECRET_KEY' is secret, use GetSecret() instead" {
-		t.Errorf("Unexpected error message: %s", secretResult.Error.Error())
+	if err.Error() != "validation error: configuration 'SECRET_KEY' is secret, use GetSecret() instead" {
+		t.Errorf("Unexpected error message: %s", err.Error())
 	}
 
 	// Access secret properly with GetSecret
@@ -353,13 +353,13 @@ func TestSecretSecurityViolation(t *testing.T) {
 	}
 
 	// Normal key should work with Get[T]
-	normalResult := Get[string](ctx, "NORMAL_KEY")
-	if normalResult.Error != nil {
-		t.Errorf("Get[string] should work for normal keys: %v", normalResult.Error)
+	normalValue, err := Get[string](ctx, "NORMAL_KEY")
+	if err != nil {
+		t.Errorf("Get[string] should work for normal keys: %v", err)
 	}
 
-	if GetValue[string](normalResult) != "normal-value" {
-		t.Errorf("Expected 'normal-value', got '%s'", GetValue[string](normalResult))
+	if normalValue != "normal-value" {
+		t.Errorf("Expected 'normal-value', got '%s'", normalValue)
 	}
 
 	// Test Has method behavior
