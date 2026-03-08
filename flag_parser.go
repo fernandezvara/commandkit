@@ -4,6 +4,7 @@ package commandkit
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 )
@@ -68,6 +69,9 @@ func (fp *flagParser) parseFlags(args []string, defs map[string]*Definition, fla
 	// Create FlagSet with ContinueOnError to collect errors instead of exiting
 	flagSet := flag.NewFlagSet(flagSetName, flag.ContinueOnError)
 
+	// Suppress Go's flag package automatic output to prevent duplication
+	flagSet.SetOutput(io.Discard)
+
 	// Create values map and register flags with correct types
 	values := make(map[string]*string)
 	for key, def := range defs {
@@ -102,6 +106,9 @@ func (fp *flagParser) GenerateHelp(defs map[string]*Definition) string {
 
 	// Create a temporary FlagSet for help generation
 	flagSet := flag.NewFlagSet("", flag.ContinueOnError)
+
+	// Suppress Go's flag package automatic output to prevent duplication
+	flagSet.SetOutput(io.Discard)
 
 	// Register flags with enhanced descriptions
 	for _, def := range defs {
