@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -152,7 +153,7 @@ func (c *Config) Process() *CommandResult {
 				Key:              key,
 				Source:           source.String(),
 				Value:            displayValue,
-				Display:          "",
+				Display:          buildErrorDisplay(def),
 				ErrorDescription: err.Error(),
 			})
 			continue
@@ -175,13 +176,22 @@ func (c *Config) Process() *CommandResult {
 		c.overrideWarnings.LogWarnings()
 	}
 
-	// Convert ConfigError slice to CommandResult
+	// Convert ConfigError slice to CommandResult using templated help
 	if len(errs) > 0 {
-		var errorMessages []string
+		// Create execution context for error display
+		executable := filepath.Base(os.Args[0])
+		ctx := NewExecutionContext(executable)
 		for _, configErr := range errs {
-			errorMessages = append(errorMessages, configErr.Error())
+			ctx.CollectConfigError(c, configErr)
 		}
-		return configErrorResult(formatErrors(errs))
+
+		// Use templated help system for consistent display
+		helpText, err := ctx.renderErrorsWithCommand(nil, c.getHelpService())
+		if err != nil {
+			return errorResult(err)
+		}
+
+		return configErrorResult(helpText)
 	}
 
 	return success()
@@ -259,7 +269,19 @@ func (c *Config) getHelpService() HelpService {
 func (c *Config) createServices() *CommandServices {
 	return newCommandServices()
 }
+
 func (c *Config) Execute(args []string) error {
+	// Check if this is a no-command application
+	if len(c.commands) == 0 {
+		// Handle no-command application directly
+		result := c.Process()
+		if result.Error != nil {
+			// Return the error - let the caller handle display
+			return result.Error
+		}
+		return nil
+	}
+
 	// Create services for routing
 	services := c.createServices()
 	router := services.CommandRouter
@@ -382,6 +404,21 @@ func levenshteinDistance(a, b string) int {
 	}
 
 	return matrix[len(a)][len(b)]
+}
+
+// createSyntheticDefaultCommand creates a default command for no-command applications
+func (c *Config) createSyntheticDefaultCommand() {
+	// Create a default command that includes all global definitions
+	c.Command("default").
+		Func(func(ctx *CommandContext) error {
+			return nil // No-op for synthetic command
+		}).
+		ShortHelp("Run the application").
+		LongHelp("Runs the application with the specified configuration.").
+		Config(func(cc *CommandConfig) {
+			// All global definitions are automatically copied by the Config() method
+			// No additional configuration needed for synthetic command
+		})
 }
 
 func min(a, b, c int) int {

@@ -219,7 +219,7 @@ func TestValidation(t *testing.T) {
 		t.Fatalf("Expected formatted configuration error message, got empty")
 	}
 
-	if !strings.Contains(result.Message, "Configuration errors detected:") {
+	if !strings.Contains(result.Message, "Configuration errors:") {
 		t.Fatalf("Expected formatted config error output, got: %s", result.Message)
 	}
 	if !strings.Contains(result.Message, "99999") || !strings.Contains(result.Message, "0.500000") {

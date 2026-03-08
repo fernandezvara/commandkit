@@ -211,13 +211,15 @@ func (hf *helpFactory) setDefaultTemplates() {
 const (
 	DefaultGlobalTemplate = `Usage: {{.Executable}} <command> [options]
 
-Available commands:
+{{if .Commands}}Available commands:
 
 {{range .Commands}}{{if .Aliases}}  {{printf "%-12s" .Name}} (aliases: {{join .Aliases ", "}}) {{.Description}}
 {{else}}  {{printf "%-12s" .Name}} {{.Description}}
 {{end}}{{end}}
 
-Use '{{.Executable}} <command> --help' for command-specific help`
+Use '{{.Executable}} <command> --help' for command-specific help{{else}}{{if .Description}}{{.Description}}
+
+{{end}}Use '{{.Executable}} --help' for configuration options{{end}}`
 
 	DefaultCommandTemplate = `Usage: {{.Command.Name}} [options]
 

@@ -130,8 +130,15 @@ func (cr *commandRouter) RouteWithHelpHandling(args []string, config *Config) (*
 	// Find command
 	cmd, exists := config.commands[commandName]
 	if !exists {
-		suggestions := config.findSuggestions(commandName)
-		return nil, nil, fmt.Errorf("unknown command: %q\nDid you mean: %s?", commandName, suggestions)
+		// For no-command apps with synthetic default, route unknown commands to default
+		if defaultCmd, hasDefault := config.commands["default"]; hasDefault && len(config.commands) == 1 {
+			// Only default command exists, treat args[1] as a flag, not a command
+			cmd = defaultCmd
+			remainingArgs = args[1:] // Include the "unknown" command as a flag
+		} else {
+			suggestions := config.findSuggestions(commandName)
+			return nil, nil, fmt.Errorf("unknown command: %q\nDid you mean: %s?", commandName, suggestions)
+		}
 	}
 
 	// Create initial command context
