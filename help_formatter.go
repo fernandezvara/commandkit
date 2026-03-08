@@ -23,7 +23,7 @@ type TemplateHelpFormatter struct {
 func NewTemplateHelpFormatter() HelpFormatter {
 	formatter := &TemplateHelpFormatter{
 		templates: make(map[TemplateType]string),
-		renderer:  NewGoTemplateRenderer(),
+		renderer:  NewCachedTemplateRenderer(),
 	}
 
 	// Set default templates

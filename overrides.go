@@ -3,7 +3,6 @@ package commandkit
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strings"
 )
@@ -87,13 +86,6 @@ func (ow *OverrideWarnings) FormatWarnings() string {
 	sb.WriteString(fmt.Sprintf("Total: %d override(s)\n", len(ow.warnings)))
 
 	return sb.String()
-}
-
-// LogWarnings logs all warnings
-func (ow *OverrideWarnings) LogWarnings() {
-	if ow.HasWarnings() {
-		log.Printf("Configuration overrides detected:\n%s", ow.FormatWarnings())
-	}
 }
 
 // checkCommandOverrides checks for command-specific config overriding global config

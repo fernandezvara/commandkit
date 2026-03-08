@@ -88,7 +88,7 @@ func (b *CommandBuilder) mergeCommandConfig(cmdConfig *CommandConfig) {
 		for _, warning := range warnings.GetWarnings() {
 			b.config.overrideWarnings.Add(warning)
 		}
-		warnings.LogWarnings()
+		// Automatic logging removed - overrides work silently as expected
 	}
 
 	// Store command-specific definitions (merge with global)

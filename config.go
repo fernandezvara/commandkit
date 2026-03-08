@@ -142,7 +142,7 @@ func (c *Config) processDefinitions() []ConfigError {
 	overrideWarnings := c.checkSourceOverrides()
 	if overrideWarnings.HasWarnings() {
 		c.overrideWarnings = overrideWarnings
-		c.overrideWarnings.LogWarnings()
+		// Automatic logging removed - overrides work silently as expected
 	}
 
 	return errs

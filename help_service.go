@@ -40,10 +40,11 @@ type helpService struct {
 func NewHelpService() HelpService {
 	factory := NewHelpFactory()
 	formatter := NewTemplateHelpFormatter()
+	cachedFormatter := NewCachedHelpFormatter(formatter)
 
 	return &helpService{
 		factory:   factory,
-		formatter: formatter,
+		formatter: cachedFormatter,
 		output:    NewConsoleHelpOutput(),
 	}
 }
