@@ -1,0 +1,12 @@
+{
+  "PORT": 8080,
+  "HOST": "0.0.0.0",
+  "BASE_URL": "https://api.example.com", 
+  "LOG_LEVEL": "warn",
+  "ENABLE_METRICS": true,
+  "MAX_CONNECTIONS": 100,
+  "CORS_ORIGINS": ["https://app.example.com"],
+  "READ_TIMEOUT": "15s",
+  "WRITE_TIMEOUT": "30s", 
+  "IDLE_TIMEOUT": "60s"
+}

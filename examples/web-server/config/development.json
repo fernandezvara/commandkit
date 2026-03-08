@@ -1,0 +1,12 @@
+{
+  "PORT": 3000,
+  "HOST": "localhost", 
+  "BASE_URL": "http://localhost:3000",
+  "LOG_LEVEL": "debug",
+  "ENABLE_METRICS": true,
+  "MAX_CONNECTIONS": 10,
+  "CORS_ORIGINS": ["http://localhost:3000", "http://localhost:8080"],
+  "READ_TIMEOUT": "30s",
+  "WRITE_TIMEOUT": "60s",
+  "IDLE_TIMEOUT": "120s"
+}

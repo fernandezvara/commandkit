@@ -374,59 +374,66 @@ Options:
 
 ## Examples
 
-### Web Server
+CommandKit includes two comprehensive examples that demonstrate all major features:
 
-```go
-cfg := commandkit.New()
+### Web Server Example
+**Location:** `examples/web-server/`
 
-cfg.Define("PORT").
-    Int64().
-    Env("PORT").
-    Flag("port").
-    Default(8080).
-    Range(1, 65535).
-    Description("HTTP server port")
+A complete production-ready web server demonstrating configuration-only mode:
 
-cfg.Define("DATABASE_URL").
-    String().
-    Env("DATABASE_URL").
-    Required().
-    Secret().
-    Description("Database connection")
+```bash
+cd examples/web-server
 
-if err := cfg.Execute(os.Args); err != nil {
-    log.Fatal(err)
-}
+# Run with defaults
+go run main.go
 
-port := commandkit.MustGet[int64](ctx, "PORT")
-fmt.Printf("Starting server on port %d\n", port)
+# Set environment variables
+DATABASE_URL="postgres://user:pass@localhost/db" \
+JWT_SIGNING_KEY="your-32-character-secret-key-here" \
+go run main.go
+
+# Use configuration file
+ENVIRONMENT=production go run main.go
 ```
 
-### CLI Tool
+**Features demonstrated:**
+- Configuration-only mode (no commands)
+- Comprehensive validation (ports, URLs, secrets, durations)
+- Multiple sources (env, flags, files, defaults)
+- Source priority and builder patterns
+- Secret protection and file-based configuration
+- Professional error handling
 
-```go
-cfg := commandkit.New()
+### CLI Tool Example  
+**Location:** `examples/cli-tool/`
 
-cfg.Command("deploy").
-    Func(deployCommand).
-    ShortHelp("Deploy application").
-    Config(func(cc *commandkit.CommandConfig) {
-        cc.Define("ENVIRONMENT").
-            String().
-            Flag("env").
-            Required().
-            OneOf("dev", "staging", "prod").
-            Description("Target environment")
-    })
+A full-featured command-line application with middleware and commands:
 
-cfg.Command("rollback").
-    Func(rollbackCommand).
-    ShortHelp("Rollback deployment")
+```bash
+cd examples/cli-tool
 
-if err := cfg.Execute(os.Args); err != nil {
-    log.Fatal(err)
-}
+# Show help
+go run main.go help
+
+# Deploy application
+go run main.go deploy --env staging --dry-run=true
+
+# Show system status
+go run main.go status --detailed=true
+
+# Manage configuration
+go run main.go config --show-secrets=true
 ```
+
+**Features demonstrated:**
+- Command system with aliases and subcommands
+- Middleware pipeline (logging, timing, metrics, recovery)
+- Command-specific configuration and validation
+- Professional help system
+- Rate limiting and error handling
+- Unified cfg.Execute() API
+
+Both examples use the current unified API and demonstrate production-ready patterns for building applications with CommandKit.
 
 ## API Reference
 
