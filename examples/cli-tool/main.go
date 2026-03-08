@@ -131,6 +131,114 @@ This command handles the complete deployment process including:
 	// Add deploy-specific middleware
 	cfg.UseMiddlewareForCommands([]string{"deploy"}, commandkit.RateLimitMiddleware(10, time.Minute))
 
+	// Docker command with subcommands example
+	dockerCmd := cfg.Command("docker").
+		Func(dockerCommand).
+		ShortHelp("Docker container operations").
+		LongHelp(`Manage Docker containers for the application.
+
+This command group provides subcommands for container operations:
+- docker run: Start new containers
+- docker stop: Stop running containers
+- docker logs: View container logs
+- docker status: Check container status`)
+
+	// Run subcommand
+	dockerCmd.SubCommand("run").
+		Func(dockerRunCommand).
+		ShortHelp("Run Docker container").
+		LongHelp("Start a new Docker container with the specified configuration.").
+		Config(func(cc *commandkit.CommandConfig) {
+			cc.Define("IMAGE").
+				String().
+				Flag("image").
+				Required().
+				Default("myapp:latest").
+				Description("Docker image to run")
+
+			cc.Define("PORT").
+				Int64().
+				Flag("port").
+				Default(8080).
+				Range(1, 65535).
+				Description("Host port to bind")
+
+			cc.Define("DETACH").
+				Bool().
+				Flag("detach").
+				Default(false).
+				Description("Run container in detached mode")
+
+			cc.Define("ENVIRONMENT").
+				String().
+				Flag("env").
+				Default("dev").
+				OneOf("dev", "staging", "prod").
+				Description("Environment for the container")
+		})
+
+	// Stop subcommand
+	dockerCmd.SubCommand("stop").
+		Func(dockerStopCommand).
+		ShortHelp("Stop Docker container").
+		LongHelp("Stop a running Docker container gracefully.").
+		Config(func(cc *commandkit.CommandConfig) {
+			cc.Define("CONTAINER_ID").
+				String().
+				Flag("container-id").
+				Required().
+				Description("Container ID to stop")
+
+			cc.Define("TIMEOUT").
+				Duration().
+				Flag("timeout").
+				Default(30 * time.Second).
+				Description("Graceful shutdown timeout")
+		})
+
+	// Logs subcommand
+	dockerCmd.SubCommand("logs").
+		Func(dockerLogsCommand).
+		ShortHelp("View container logs").
+		LongHelp("Display logs from a running Docker container.").
+		Config(func(cc *commandkit.CommandConfig) {
+			cc.Define("CONTAINER_ID").
+				String().
+				Flag("container-id").
+				Required().
+				Description("Container ID to view logs from")
+
+			cc.Define("FOLLOW").
+				Bool().
+				Flag("follow").
+				Default(false).
+				Description("Follow log output")
+
+			cc.Define("TAIL").
+				Int64().
+				Flag("tail").
+				Default(100).
+				Description("Number of lines to show from the end")
+		})
+
+	// Status subcommand
+	dockerCmd.SubCommand("status").
+		Func(dockerStatusCommand).
+		ShortHelp("Check container status").
+		LongHelp("Show the status of all application containers.").
+		Config(func(cc *commandkit.CommandConfig) {
+			cc.Define("FILTER").
+				String().
+				Flag("filter").
+				Description("Filter containers by status or name")
+
+			cc.Define("VERBOSE").
+				Bool().
+				Flag("verbose").
+				Default(false).
+				Description("Show detailed container information")
+		})
+
 	// Admin commands with authentication
 	cfg.Command("admin-users").
 		Func(adminUsersCommand).
@@ -225,13 +333,13 @@ View, validate, and manage application configuration.`).
 				Description("Only validate configuration")
 		})
 
-	// Help command with custom help
+		// Help command with custom help
 	cfg.Command("help").
 		Func(helpCommand).
 		ShortHelp("Show help").
 		LongHelp(`Display comprehensive help for the CLI tool.
 
-Use 'cli-tool help <command>' for command-specific help.`).
+	Use 'cli-tool help <command>' for command-specific help.`).
 		Aliases("?", "--help", "-h")
 }
 
@@ -398,11 +506,158 @@ func helpCommand(ctx *commandkit.CommandContext) error {
 	fmt.Printf("CLI Tool - Comprehensive Command Management\n\n")
 	fmt.Printf("Available Commands:\n")
 	fmt.Printf("  deploy        Deploy application\n")
+	fmt.Printf("  docker        Docker container operations\n")
+	fmt.Printf("    run         Run Docker container\n")
+	fmt.Printf("    stop        Stop Docker container\n")
+	fmt.Printf("    logs        View container logs\n")
+	fmt.Printf("    status      Check container status\n")
 	fmt.Printf("  admin-users   Manage users\n")
 	fmt.Printf("  admin-shutdown Shutdown the service\n")
 	fmt.Printf("  status        Show system status\n")
 	fmt.Printf("  config        Manage configuration\n")
 	fmt.Printf("  help          Show this help\n\n")
 	fmt.Printf("Use 'cli-tool <command> --help' for command-specific help\n")
+	fmt.Printf("Use 'cli-tool docker <subcommand> --help' for docker subcommand help\n")
+	return nil
+}
+
+// Docker command implementations
+
+func dockerCommand(ctx *commandkit.CommandContext) error {
+	// This function handles the docker command itself
+	// Subcommands will be handled by their respective functions
+	fmt.Printf("=== Docker Command ===\n")
+	fmt.Printf("Use 'cli-tool docker <subcommand> --help' for available subcommands\n")
+	fmt.Printf("Available subcommands: run, stop, logs, status\n")
+	return nil
+}
+
+func dockerRunCommand(ctx *commandkit.CommandContext) error {
+	image, err := commandkit.Get[string](ctx, "IMAGE")
+	if err != nil {
+		return fmt.Errorf("failed to get IMAGE: %w", err)
+	}
+
+	port, err := commandkit.Get[int64](ctx, "PORT")
+	if err != nil {
+		return fmt.Errorf("failed to get PORT: %w", err)
+	}
+
+	detach, err := commandkit.Get[bool](ctx, "DETACH")
+	if err != nil {
+		return fmt.Errorf("failed to get DETACH: %w", err)
+	}
+
+	environment, err := commandkit.Get[string](ctx, "ENVIRONMENT")
+	if err != nil {
+		return fmt.Errorf("failed to get ENVIRONMENT: %w", err)
+	}
+
+	fmt.Printf("=== Docker Run Command ===\n")
+	fmt.Printf("Image: %s\n", image)
+	fmt.Printf("Port: %d\n", port)
+	fmt.Printf("Detach: %v\n", detach)
+	fmt.Printf("Environment: %s\n", environment)
+
+	if detach {
+		fmt.Printf("🐳 Starting container %s in detached mode on port %d\n", image, port)
+		fmt.Printf("Container ID: abc123def456\n")
+	} else {
+		fmt.Printf("🐳 Starting container %s on port %d (interactive)\n", image, port)
+		fmt.Printf("Container ready! Use 'docker logs abc123def456' to view logs\n")
+	}
+
+	return nil
+}
+
+func dockerStopCommand(ctx *commandkit.CommandContext) error {
+	containerID, err := commandkit.Get[string](ctx, "CONTAINER_ID")
+	if err != nil {
+		return fmt.Errorf("failed to get CONTAINER_ID: %w", err)
+	}
+
+	timeout, err := commandkit.Get[time.Duration](ctx, "TIMEOUT")
+	if err != nil {
+		return fmt.Errorf("failed to get TIMEOUT: %w", err)
+	}
+
+	fmt.Printf("=== Docker Stop Command ===\n")
+	fmt.Printf("Container ID: %s\n", containerID)
+	fmt.Printf("Timeout: %v\n", timeout)
+
+	fmt.Printf("🛑 Stopping container %s gracefully (timeout: %v)\n", containerID, timeout)
+	fmt.Printf("Container stopped successfully\n")
+
+	return nil
+}
+
+func dockerLogsCommand(ctx *commandkit.CommandContext) error {
+	containerID, err := commandkit.Get[string](ctx, "CONTAINER_ID")
+	if err != nil {
+		return fmt.Errorf("failed to get CONTAINER_ID: %w", err)
+	}
+
+	follow, err := commandkit.Get[bool](ctx, "FOLLOW")
+	if err != nil {
+		return fmt.Errorf("failed to get FOLLOW: %w", err)
+	}
+
+	tail, err := commandkit.Get[int64](ctx, "TAIL")
+	if err != nil {
+		return fmt.Errorf("failed to get TAIL: %w", err)
+	}
+
+	fmt.Printf("=== Docker Logs Command ===\n")
+	fmt.Printf("Container ID: %s\n", containerID)
+	fmt.Printf("Follow: %v\n", follow)
+	fmt.Printf("Tail: %d lines\n", tail)
+
+	fmt.Printf("📋 Container logs for %s (showing last %d lines):\n", containerID, tail)
+	fmt.Printf("2024-01-15 10:30:01 [INFO] Application starting on port 8080\n")
+	fmt.Printf("2024-01-15 10:30:02 [INFO] Database connection established\n")
+	fmt.Printf("2024-01-15 10:30:03 [INFO] Server ready to accept connections\n")
+	fmt.Printf("2024-01-15 10:30:04 [INFO] Health check passed\n")
+
+	if follow {
+		fmt.Printf("👁️ Following logs (Ctrl+C to stop)...\n")
+		fmt.Printf("2024-01-15 10:30:05 [INFO] Request processed: GET /health\n")
+		fmt.Printf("2024-01-15 10:30:06 [INFO] Request processed: GET /api/users\n")
+	}
+
+	return nil
+}
+
+func dockerStatusCommand(ctx *commandkit.CommandContext) error {
+	filter, err := commandkit.Get[string](ctx, "FILTER")
+	if err != nil {
+		return fmt.Errorf("failed to get FILTER: %w", err)
+	}
+
+	verbose, err := commandkit.Get[bool](ctx, "VERBOSE")
+	if err != nil {
+		return fmt.Errorf("failed to get VERBOSE: %w", err)
+	}
+
+	fmt.Printf("=== Docker Status Command ===\n")
+	fmt.Printf("Filter: %s\n", filter)
+	fmt.Printf("Verbose: %v\n", verbose)
+
+	fmt.Printf("📊 Container Status:\n")
+	fmt.Printf("CONTAINER ID   IMAGE          STATUS    PORTS\n")
+	fmt.Printf("abc123def456   myapp:latest   Up 2m    0.0.0.0:8080->8080/tcp\n")
+	fmt.Printf("def789ghi012   nginx:latest   Up 5m    0.0.0.0:80->80/tcp\n")
+	fmt.Printf("ghi345jkl678   postgres:13    Up 10m   0.0.0.0:5432->5432/tcp\n")
+
+	if verbose {
+		fmt.Printf("\n🔍 Detailed Container Information:\n")
+		fmt.Printf("Container: abc123def456\n")
+		fmt.Printf("  Image: myapp:latest\n")
+		fmt.Printf("  Status: Up 2 minutes\n")
+		fmt.Printf("  Ports: 8080/tcp -> 0.0.0.0:8080\n")
+		fmt.Printf("  Environment: dev\n")
+		fmt.Printf("  Restart Policy: always\n")
+		fmt.Printf("  Mounts: /app/data -> /var/lib/myapp\n")
+	}
+
 	return nil
 }
