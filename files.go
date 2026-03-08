@@ -161,6 +161,11 @@ func (c *Config) getValueFromSource(key string, def *Definition, sourceType Sour
 
 // resolveValueWithPriority resolves a configuration value using the specified priority order
 func (c *Config) resolveValueWithPriority(key string, def *Definition) (any, SourceType, error) {
+	return c.resolveValueWithPriorityContext(key, def, nil)
+}
+
+// resolveValueWithPriorityContext resolves a configuration value using the specified priority order with context awareness
+func (c *Config) resolveValueWithPriorityContext(key string, def *Definition, ctx *CommandContext) (any, SourceType, error) {
 	// Get the effective priority for this definition
 	priority := def.getEffectivePriority(c.defaultPriority)
 
@@ -169,6 +174,11 @@ func (c *Config) resolveValueWithPriority(key string, def *Definition) (any, Sou
 		if value, exists := c.getValueFromSource(key, def, sourceType); exists {
 			// Handle special case for Default source - no parsing needed
 			if sourceType == SourceDefault {
+				// Skip validation if help is requested
+				if ctx != nil && ctx.IsHelpRequested() {
+					return value, sourceType, nil
+				}
+
 				// Run validations (except required check for defaults)
 				for _, v := range def.validations {
 					if v.Name == "required" {
@@ -203,6 +213,11 @@ func (c *Config) resolveValueWithPriority(key string, def *Definition) (any, Sou
 			parsedValue, err := parseValue(rawValue, def.valueType, def.delimiter)
 			if err != nil {
 				return rawValue, sourceType, err
+			}
+
+			// Skip validation if help is requested
+			if ctx != nil && ctx.IsHelpRequested() {
+				return parsedValue, sourceType, nil
 			}
 
 			// Run validations

@@ -110,10 +110,26 @@ func (c *Config) GetDefaultPriority() SourcePriority {
 // processDefinitions resolves and validates all definitions, storing values into the Config.
 // It assumes c.flagValues is already populated. Returns any ConfigErrors found.
 func (c *Config) processDefinitions() []ConfigError {
+	return c.processDefinitionsWithContext(nil)
+}
+
+// processDefinitionsWithContext resolves and validates all definitions with context awareness.
+// When help is requested, validation is skipped to allow help display.
+func (c *Config) processDefinitionsWithContext(ctx *CommandContext) []ConfigError {
 	var errs []ConfigError
 
 	for key, def := range c.definitions {
-		value, source, err := c.resolveValueWithPriority(key, def)
+		var value any
+		var source SourceType
+		var err error
+
+		// Use context-aware resolution if context is provided
+		if ctx != nil {
+			value, source, err = c.resolveValueWithPriorityContext(key, def, ctx)
+		} else {
+			value, source, err = c.resolveValueWithPriority(key, def)
+		}
+
 		if err != nil {
 			displayValue := ""
 			if value != nil && !def.secret {
@@ -151,6 +167,12 @@ func (c *Config) processDefinitions() []ConfigError {
 // processConfig parses flags from the provided args, validates all definitions,
 // and populates the Config's values and secrets maps. Returns any ConfigErrors found.
 func (c *Config) processConfig(args []string) []ConfigError {
+	return c.processConfigWithContext(args, nil)
+}
+
+// processConfigWithContext parses flags from the provided args, validates all definitions,
+// and populates the Config's values and secrets maps with context awareness.
+func (c *Config) processConfigWithContext(args []string, ctx *CommandContext) []ConfigError {
 	if c.processed {
 		c.values = make(map[string]any)
 		c.secrets.DestroyAll()
@@ -171,6 +193,12 @@ func (c *Config) processConfig(args []string) []ConfigError {
 	}
 
 	c.flagValues = parsedFlags.Values
+
+	// Use context-aware processing if context is provided
+	if ctx != nil {
+		return c.processDefinitionsWithContext(ctx)
+	}
+
 	return c.processDefinitions()
 }
 
@@ -245,8 +273,17 @@ func (c *Config) createServices() *CommandServices {
 func (c *Config) Execute(args []string) error {
 	// Check if this is a no-command application
 	if len(c.commands) == 0 {
-		errs := c.processConfig(args[1:])
+		// Create a temporary context to check for help request
+		tempCtx := NewCommandContext(args[1:], c, "", "")
+
+		errs := c.processConfigWithContext(args[1:], tempCtx)
 		if len(errs) > 0 {
+			// If help is requested, don't show configuration errors
+			if tempCtx.IsHelpRequested() {
+				// Show help instead
+				return c.ShowGlobalHelp()
+			}
+
 			executable := filepath.Base(args[0])
 			execCtx := NewExecutionContext(executable)
 			for _, configErr := range errs {

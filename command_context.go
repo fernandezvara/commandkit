@@ -43,3 +43,19 @@ func (ctx *CommandContext) GetData(key string) (any, bool) {
 	value, exists := ctx.data[key]
 	return value, exists
 }
+
+// IsHelpRequested checks if help is being requested in the current context
+func (ctx *CommandContext) IsHelpRequested() bool {
+	// Check for help flags in the arguments
+	helpFlags := []string{"--help", "-h", "help"}
+
+	for _, arg := range ctx.Args {
+		for _, helpFlag := range helpFlags {
+			if arg == helpFlag {
+				return true
+			}
+		}
+	}
+
+	return false
+}

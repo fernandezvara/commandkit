@@ -10,6 +10,34 @@ import (
 	"github.com/fernandezvara/commandkit"
 )
 
+// Custom validator for log tail lines - ensures reasonable range
+func logTailValidator(value any) error {
+	if tail, ok := value.(int64); ok {
+		if tail < 0 {
+			return fmt.Errorf("tail lines cannot be negative, got %d", tail)
+		}
+		if tail > 10000 {
+			return fmt.Errorf("tail lines too large (max 10000), got %d", tail)
+		}
+		return nil
+	}
+	return fmt.Errorf("tail must be an integer, got %T", value)
+}
+
+// Custom validator for port numbers - ensures non-privileged ports for security
+func portSecurityValidator(value any) error {
+	if port, ok := value.(int64); ok {
+		if port < 1024 {
+			return fmt.Errorf("privileged ports (1-1023) not allowed for security, got %d", port)
+		}
+		if port > 65535 {
+			return fmt.Errorf("port must be between 1 and 65535, got %d", port)
+		}
+		return nil
+	}
+	return fmt.Errorf("port must be an integer, got %T", value)
+}
+
 func main() {
 	cfg := commandkit.New()
 
@@ -161,7 +189,8 @@ This command group provides subcommands for container operations:
 				Flag("port").
 				Default(8080).
 				Range(1, 65535).
-				Description("Host port to bind")
+				Custom("port_security", portSecurityValidator).
+				Description("Port number (non-privileged ports only: 1024-65535)")
 
 			cc.Define("DETACH").
 				Bool().
@@ -218,7 +247,8 @@ This command group provides subcommands for container operations:
 				Int64().
 				Flag("tail").
 				Default(100).
-				Description("Number of lines to show from the end")
+				Custom("log_tail_range", logTailValidator).
+				Description("Number of lines to show from the end (0-10000)")
 		})
 
 	// Status subcommand

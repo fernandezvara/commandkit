@@ -79,13 +79,21 @@ func (cp *configProcessor) ProcessCommandConfig(cmd *Command, ctx *CommandContex
 		ctx.execution.Clear()
 	}
 
-	// Use the shared definition processing loop (no duplication)
-	configErrs := tempConfig.processDefinitions()
+	// Use the shared definition processing loop with context awareness (no duplication)
+	configErrs := tempConfig.processDefinitionsWithContext(ctx)
 
 	if len(configErrs) > 0 {
 		for _, configErr := range configErrs {
 			ctx.execution.CollectConfigError(tempConfig, configErr)
 		}
+
+		// If help is requested, don't return an error even if there are config errors
+		if ctx.IsHelpRequested() {
+			// Still set the command config so help can access definition information
+			ctx.CommandConfig = tempConfig
+			return success()
+		}
+
 		return errorResult(fmt.Errorf("configuration errors detected"))
 	}
 
