@@ -73,6 +73,38 @@ func BenchmarkGetTypeDescription(b *testing.B) {
 	}
 }
 
+// BenchmarkTypeConverter benchmarks the new TypeConverter
+func BenchmarkTypeConverter(b *testing.B) {
+	converter := NewTypeConverter()
+
+	b.Run("string", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, _ = converter.ConvertToString("hello", ",")
+		}
+	})
+
+	b.Run("string_slice", func(b *testing.B) {
+		slice := []string{"a", "b", "c"}
+		for i := 0; i < b.N; i++ {
+			_, _ = converter.ConvertToString(slice, ",")
+		}
+	})
+
+	b.Run("int64_slice", func(b *testing.B) {
+		slice := []int64{1, 2, 3}
+		for i := 0; i < b.N; i++ {
+			_, _ = converter.ConvertToString(slice, ",")
+		}
+	})
+
+	b.Run("int_slice", func(b *testing.B) {
+		slice := []int{1, 2, 3}
+		for i := 0; i < b.N; i++ {
+			_, _ = converter.ConvertToString(slice, ",")
+		}
+	})
+}
+
 // BenchmarkGetInt64 benchmarks Get[int64] performance
 func BenchmarkGetInt64(b *testing.B) {
 	cfg := New()

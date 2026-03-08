@@ -191,22 +191,11 @@ func (c *Config) resolveValueWithPriorityContext(key string, def *Definition, ct
 				return value, sourceType, nil
 			}
 
-			// For non-default sources, convert to string and parse
-			var rawValue string
-			switch v := value.(type) {
-			case string:
-				rawValue = v
-			case bool, int, int64, float64:
-				rawValue = fmt.Sprintf("%v", v)
-			case []any:
-				// Handle arrays from files
-				strs := make([]string, len(v))
-				for i, item := range v {
-					strs[i] = fmt.Sprintf("%v", item)
-				}
-				rawValue = strings.Join(strs, def.delimiter)
-			default:
-				return value, sourceType, fmt.Errorf("unsupported value type: %T", v)
+			// For non-default sources, convert to string and parse using TypeConverter
+			converter := NewTypeConverter()
+			rawValue, err := converter.ConvertToString(value, def.delimiter)
+			if err != nil {
+				return value, sourceType, err
 			}
 
 			// Parse the raw string value into the expected type

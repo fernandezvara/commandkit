@@ -72,7 +72,7 @@ func TestTypeCachingWorks(t *testing.T) {
 			// Call multiple times to test caching
 			result1 := typeDescription(tt.value)
 			result2 := typeDescription(tt.value)
-			
+
 			if result1 != tt.expected {
 				t.Errorf("First call typeDescription(%v) = %q, expected %q", tt.value, result1, tt.expected)
 			}
@@ -89,11 +89,11 @@ func TestTypeCachingWorks(t *testing.T) {
 func TestSliceTypeCachingWorks(t *testing.T) {
 	// Test that type caching works for slice types
 	sliceValue := []string{"a", "b"}
-	
+
 	// Call multiple times to test caching
 	result1 := typeDescription(sliceValue)
 	result2 := typeDescription(sliceValue)
-	
+
 	expected := "[]string"
 	if result1 != expected {
 		t.Errorf("First call typeDescription(%v) = %q, expected %q", sliceValue, result1, expected)
@@ -139,31 +139,163 @@ func TestIntTypeSupport(t *testing.T) {
 	}
 }
 
-func TestParseIntTypes(t *testing.T) {
-	// Test parsing int type
-	result, err := parseValue("123", TypeInt, ",")
+// TestSliceTypeRetrievalFixed tests that the slice regression is fixed
+func TestSliceTypeRetrievalFixed(t *testing.T) {
+	cfg := New()
+
+	cfg.Define("TAGS").
+		StringSlice().
+		Default([]string{"ssh-rsa", "ssh-ed25519"})
+
+	cfg.Define("NUMBERS").
+		Int64Slice().
+		Default([]int64{1, 2, 3})
+
+	cfg.Define("PORTS").
+		IntSlice().
+		Default([]int{8080, 8081})
+
+	// Test configuration processing
+	err := cfg.Execute([]string{"test"})
 	if err != nil {
-		t.Errorf("parseValue(int, \"123\") error: %v", err)
-	}
-	if intValue, ok := result.(int); ok {
-		if intValue != 123 {
-			t.Errorf("parseValue(int, \"123\") = %v, expected 123", intValue)
-		}
-	} else {
-		t.Errorf("parseValue(int, \"123\") returned %T, expected int", result)
+		t.Fatalf("Config execution failed: %v", err)
 	}
 
-	// Test parsing int slice type
-	result, err = parseValue("123,456", TypeIntSlice, ",")
+	ctx := NewCommandContext([]string{}, cfg, "test", "")
+
+	// Test Get[[]string] - should work without workaround
+	tags, err := Get[[]string](ctx, "TAGS")
 	if err != nil {
-		t.Errorf("parseValue(int slice, \"123,456\") error: %v", err)
+		t.Fatalf("Get[[]string] failed: %v", err)
 	}
-	if intSlice, ok := result.([]int); ok {
-		if len(intSlice) != 2 || intSlice[0] != 123 || intSlice[1] != 456 {
-			t.Errorf("parseValue(int slice, \"123,456\") = %v, expected [123, 456]", intSlice)
+	expectedTags := []string{"ssh-rsa", "ssh-ed25519"}
+	if len(tags) != len(expectedTags) {
+		t.Fatalf("Expected %d tags, got %d", len(expectedTags), len(tags))
+	}
+	for i, tag := range expectedTags {
+		if tags[i] != tag {
+			t.Errorf("Expected tag[%d] = %q, got %q", i, tag, tags[i])
 		}
-	} else {
-		t.Errorf("parseValue(int slice, \"123,456\") returned %T, expected []int", result)
+	}
+
+	// Test Get[[]int64]
+	numbers, err := Get[[]int64](ctx, "NUMBERS")
+	if err != nil {
+		t.Fatalf("Get[[]int64] failed: %v", err)
+	}
+	expectedNumbers := []int64{1, 2, 3}
+	if len(numbers) != len(expectedNumbers) {
+		t.Fatalf("Expected %d numbers, got %d", len(expectedNumbers), len(numbers))
+	}
+	for i, num := range expectedNumbers {
+		if numbers[i] != num {
+			t.Errorf("Expected number[%d] = %d, got %d", i, num, numbers[i])
+		}
+	}
+
+	// Test Get[[]int]
+	ports, err := Get[[]int](ctx, "PORTS")
+	if err != nil {
+		t.Fatalf("Get[[]int] failed: %v", err)
+	}
+	expectedPorts := []int{8080, 8081}
+	if len(ports) != len(expectedPorts) {
+		t.Fatalf("Expected %d ports, got %d", len(expectedPorts), len(ports))
+	}
+	for i, port := range expectedPorts {
+		if ports[i] != port {
+			t.Errorf("Expected port[%d] = %d, got %d", i, port, ports[i])
+		}
+	}
+}
+
+// TestNoSliceWorkaroundNeeded ensures users don't need workarounds
+func TestNoSliceWorkaroundNeeded(t *testing.T) {
+	cfg := New()
+
+	cfg.Define("ALGORITHMS").
+		StringSlice().
+		Default([]string{"ssh-rsa", "ssh-ed25519"})
+
+	err := cfg.Execute([]string{"test"})
+	if err != nil {
+		t.Fatalf("Config execution failed: %v", err)
+	}
+
+	ctx := NewCommandContext([]string{}, cfg, "test", "")
+
+	// Should work directly without string splitting workaround
+	algorithms, err := Get[[]string](ctx, "ALGORITHMS")
+	if err != nil {
+		t.Fatalf("Get[[]string] failed: %v", err)
+	}
+
+	expected := []string{"ssh-rsa", "ssh-ed25519"}
+	if len(algorithms) != len(expected) {
+		t.Fatalf("Expected %d algorithms, got %d", len(expected), len(algorithms))
+	}
+	for i, algo := range expected {
+		if algorithms[i] != algo {
+			t.Errorf("Expected algorithm[%d] = %q, got %q", i, algo, algorithms[i])
+		}
+	}
+
+	// Should NOT return string representation when requesting string
+	_, err = Get[string](ctx, "ALGORITHMS")
+	if err == nil {
+		t.Error("Expected type mismatch error when getting string instead of []string")
+	}
+}
+
+// TestAllSourcesSliceConsistency tests slice consistency across all value sources
+func TestAllSourcesSliceConsistency(t *testing.T) {
+	// Test each source type consistently
+	testCases := []struct {
+		name     string
+		args     []string
+		expected []string
+		env      string
+	}{
+		{"default", []string{}, []string{"default1", "default2"}, ""},
+		{"env", []string{}, []string{"env1", "env2", "env3"}, "env1,env2,env3"},
+		{"flag", []string{"--tags", "flag1,flag2"}, []string{"flag1", "flag2"}, ""},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Set environment variable for this test
+			if tc.env != "" {
+				t.Setenv("TEST_TAGS", tc.env)
+			}
+
+			// Create fresh config for each test
+			testCfg := New()
+			testCfg.Define("TAGS").
+				StringSlice().
+				Env("TEST_TAGS").
+				Flag("tags").
+				Default([]string{"default1", "default2"})
+
+			err := testCfg.Execute(append([]string{"test"}, tc.args...))
+			if err != nil {
+				t.Fatalf("Config execution failed: %v", err)
+			}
+
+			ctx := NewCommandContext([]string{}, testCfg, "test", "")
+			tags, err := Get[[]string](ctx, "TAGS")
+			if err != nil {
+				t.Fatalf("Get[[]string] failed: %v", err)
+			}
+
+			if len(tags) != len(tc.expected) {
+				t.Fatalf("Expected %d tags, got %d", len(tc.expected), len(tags))
+			}
+			for i, tag := range tc.expected {
+				if tags[i] != tag {
+					t.Errorf("Expected tag[%d] = %q, got %q", i, tag, tags[i])
+				}
+			}
+		})
 	}
 }
 

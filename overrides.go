@@ -223,23 +223,9 @@ func (c *Config) checkSourceOverridesForDefinition(key string, def *Definition, 
 	// Check each source in priority order to find available values
 	for _, sourceType := range priority {
 		if value, exists := c.getValueFromSource(key, def, sourceType); exists {
-			// Convert value to string for display
-			var displayValue string
-			switch v := value.(type) {
-			case string:
-				displayValue = v
-			case bool, int, int64, float64:
-				displayValue = fmt.Sprintf("%v", v)
-			case []any:
-				// Handle arrays from files
-				strs := make([]string, len(v))
-				for i, item := range v {
-					strs[i] = fmt.Sprintf("%v", item)
-				}
-				displayValue = strings.Join(strs, def.delimiter)
-			default:
-				displayValue = fmt.Sprintf("%v", v)
-			}
+			// Convert value to string for display using TypeConverter
+			converter := NewTypeConverter()
+			displayValue := converter.ConvertToDisplayString(value, def.delimiter)
 
 			foundSources[sourceType] = displayValue
 		}
