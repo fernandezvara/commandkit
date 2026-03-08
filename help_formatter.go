@@ -122,6 +122,8 @@ func (hf *TemplateHelpFormatter) setDefaultTemplates() {
 	hf.templates[TemplateGlobal] = DefaultGlobalTemplate
 	hf.templates[TemplateCommand] = DefaultCommandTemplate
 	hf.templates[TemplateCommandError] = DefaultCommandErrorTemplate
+	hf.templates[TemplateCustomHelp] = DefaultCustomHelpTemplate
+	hf.templates[TemplateCustomHelpError] = DefaultCustomHelpErrorTemplate
 	hf.templates[TemplateSubcommand] = DefaultSubcommandTemplate
 	hf.templates[TemplateFlag] = DefaultFlagTemplate
 }

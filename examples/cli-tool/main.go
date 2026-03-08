@@ -26,6 +26,8 @@ func logTailValidator(value any) error {
 
 // Custom validator for port numbers - ensures non-privileged ports for security
 func portSecurityValidator(value any) error {
+	// this can be achived with Range(1024, 65535) but it will show generic out of bounds error
+	// and this helps us provide more specific error messages
 	if port, ok := value.(int64); ok {
 		if port < 1024 {
 			return fmt.Errorf("privileged ports (1-1023) not allowed for security, got %d", port)
@@ -369,8 +371,49 @@ View, validate, and manage application configuration.`).
 		ShortHelp("Show help").
 		LongHelp(`Display comprehensive help for the CLI tool.
 
-	Use 'cli-tool help <command>' for command-specific help.`).
+This command provides detailed help information for all available commands.
+You can get help for specific commands by using 'cli-tool help <command>'.
+
+Available commands include:
+- deploy: Deploy the application to different environments
+- docker: Manage Docker containers (run, stop, logs, status)
+- admin-users: Manage user accounts and permissions
+- admin-shutdown: Safely shutdown the service
+- status: Show comprehensive system status
+- config: Manage configuration settings
+
+Use 'cli-tool <command> --help' for detailed command-specific help including
+all available options, environment variables, and examples.`).
+		CustomHelp().
 		Aliases("?", "--help", "-h")
+
+	// Test command with custom help
+	cfg.Command("custom-test").
+		Func(func(ctx *commandkit.CommandContext) error {
+			fmt.Println("Custom test command executed!")
+			return nil
+		}).
+		ShortHelp("Test custom help functionality").
+		LongHelp(`This is a test command that demonstrates the custom help functionality.
+
+When you run this command with --help, you'll see this custom LongHelp text
+instead of the standard template-based help output.
+
+The custom help system allows developers to provide detailed, narrative-style
+help that better explains the command's purpose and usage patterns.
+
+Features demonstrated:
+- Custom LongHelp text display
+- Integration with validation errors when present
+- Template-based formatting for consistency`).
+		CustomHelp().
+		Config(func(cc *commandkit.CommandConfig) {
+			cc.Define("TEST_VALUE").
+				String().
+				Flag("test-value").
+				Required().
+				Description("Required test value for validation testing")
+		})
 }
 
 // Command implementations

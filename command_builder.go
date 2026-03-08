@@ -38,6 +38,12 @@ func (b *CommandBuilder) LongHelp(help string) *CommandBuilder {
 	return b
 }
 
+// CustomHelp enables custom help for this command
+func (b *CommandBuilder) CustomHelp() *CommandBuilder {
+	b.cmd.customHelp = true
+	return b
+}
+
 // Aliases sets the command aliases
 func (b *CommandBuilder) Aliases(aliases ...string) *CommandBuilder {
 	b.cmd.Aliases = aliases

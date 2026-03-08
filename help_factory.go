@@ -30,6 +30,8 @@ const (
 	TemplateGlobal TemplateType = iota
 	TemplateCommand
 	TemplateCommandError
+	TemplateCustomHelp      // For custom help (LongHelp only)
+	TemplateCustomHelpError // For custom help with errors (LongHelp + errors)
 	TemplateSubcommand
 	TemplateFlag
 )
@@ -90,13 +92,19 @@ func (hf *helpFactory) CreateGlobalHelp(commands map[string]*Command, executable
 func (hf *helpFactory) CreateCommandHelp(cmd *Command, executable string) *CommandHelp {
 	commandInfo := hf.extractor.ExtractCommandInfo(cmd, executable)
 
+	// Choose template based on customHelp flag
+	templateType := TemplateCommand
+	if cmd.customHelp {
+		templateType = TemplateCustomHelp
+	}
+
 	return &CommandHelp{
 		Command:     cmd,
 		Usage:       commandInfo.Usage,
 		Description: commandInfo.Description,
 		Flags:       commandInfo.Flags,
 		Subcommands: commandInfo.Subcommands,
-		Template:    hf.templates[TemplateCommand],
+		Template:    hf.templates[templateType],
 	}
 }
 
@@ -108,13 +116,19 @@ func (hf *helpFactory) CreateCommandHelpWithErrors(cmd *Command, executable stri
 	flagsWithErrors := hf.matchErrorsToFlags(commandInfo.Flags, errors)
 	orderedErrors := hf.orderErrors(flagsWithErrors, errors)
 
+	// Choose template based on customHelp flag
+	templateType := TemplateCommandError
+	if cmd.customHelp {
+		templateType = TemplateCustomHelpError
+	}
+
 	return &CommandHelp{
 		Command:     cmd,
 		Usage:       commandInfo.Usage,
 		Description: commandInfo.Description,
 		Flags:       flagsWithErrors,
 		Subcommands: commandInfo.Subcommands,
-		Template:    hf.templates[TemplateCommandError],
+		Template:    hf.templates[templateType],
 		Errors:      orderedErrors,
 		HasErrors:   len(errors) > 0,
 	}
@@ -203,6 +217,8 @@ func (hf *helpFactory) setDefaultTemplates() {
 	hf.templates[TemplateGlobal] = DefaultGlobalTemplate
 	hf.templates[TemplateCommand] = DefaultCommandTemplate
 	hf.templates[TemplateCommandError] = DefaultCommandErrorTemplate
+	hf.templates[TemplateCustomHelp] = DefaultCustomHelpTemplate
+	hf.templates[TemplateCustomHelpError] = DefaultCustomHelpErrorTemplate
 	hf.templates[TemplateSubcommand] = DefaultSubcommandTemplate
 	hf.templates[TemplateFlag] = DefaultFlagTemplate
 }
@@ -250,6 +266,18 @@ Use '{{.Executable}} <command> --help' for command-specific help{{else}}{{if .De
 {{if .Subcommands}}Subcommands:
 {{range .Subcommands}}  {{printf "%-12s" .Name}} {{.Description}}{{if .Aliases}} (aliases: {{join .Aliases ", "}}){{end}}
 {{end}}{{end}}`
+
+	DefaultCustomHelpTemplate = `{{.Command.LongHelp}}
+
+{{if .Command.ShortHelp}}Use '{{.Command.Name}} <options>' to {{.Command.ShortHelp}}{{else}}Use '{{.Command.Name}} <options>' to execute the command{{end}}`
+
+	DefaultCustomHelpErrorTemplate = `{{.Command.LongHelp}}
+
+{{if .HasErrors}}Configuration errors:
+{{range .Errors}}  {{.Display}} -> {{.ErrorDescription}}
+{{end}}
+
+{{end}}{{if .Command.ShortHelp}}Use '{{.Command.Name}} <options>' to {{.Command.ShortHelp}}{{else}}Use '{{.Command.Name}} <options>' to execute the command{{end}}`
 
 	DefaultSubcommandTemplate = `Subcommands for {{.Parent}}:
 

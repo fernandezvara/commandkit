@@ -12,6 +12,7 @@ type Command struct {
 	Func        CommandFunc
 	ShortHelp   string
 	LongHelp    string
+	customHelp  bool // Private field for custom help functionality
 	Aliases     []string
 	Definitions map[string]*Definition
 	SubCommands map[string]*Command
@@ -45,6 +46,7 @@ func (cmd *Command) clone() *Command {
 		Func:        cmd.Func,
 		ShortHelp:   cmd.ShortHelp,
 		LongHelp:    cmd.LongHelp,
+		customHelp:  cmd.customHelp,
 		Aliases:     aliases,
 		Definitions: definitions,
 		SubCommands: subCommands,
