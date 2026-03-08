@@ -1,6 +1,6 @@
 {
-  "PORT": 8081,
-  "HOST": "localhost",
+  "port_in_file": 8081,
+  "host_in_file": "localhost",
   "BASE_URL": "http://localhost:8081",
   "LOG_LEVEL": "debug", 
   "ENABLE_METRICS": false,

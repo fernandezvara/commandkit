@@ -19,6 +19,7 @@ func main() {
 		Int64().
 		Env("PORT").
 		Flag("port").
+		File("port_in_file").
 		Default(int64(8080)).
 		Range(1, 65535).
 		Description("HTTP server port")
@@ -27,6 +28,7 @@ func main() {
 		String().
 		Env("HOST").
 		Flag("host").
+		File("host_in_file").
 		Default("localhost").
 		Description("Server host")
 
@@ -222,6 +224,13 @@ func main() {
 
 // setupFileConfig configures file-based settings based on environment
 func setupFileConfig(cfg *commandkit.Config) error {
+	// First check if CONFIG_FILE is set (takes priority)
+	if configFile := os.Getenv("CONFIG_FILE"); configFile != "" {
+		fmt.Printf("Loading configuration from CONFIG_FILE: %s\n", configFile)
+		return cfg.LoadFileFromEnv("CONFIG_FILE")
+	}
+
+	// Fall back to environment-based file loading
 	environment := os.Getenv("ENVIRONMENT")
 	if environment == "" {
 		environment = "development"
@@ -230,8 +239,9 @@ func setupFileConfig(cfg *commandkit.Config) error {
 	// Set config file based on environment
 	configFile := fmt.Sprintf("config/%s.json", environment)
 	if _, err := os.Stat(configFile); err == nil {
-		// File configuration will be automatically loaded by priority system
-		fmt.Printf("Will load configuration from: %s\n", configFile)
+		// Actually load the configuration file
+		fmt.Printf("Loading configuration from: %s\n", configFile)
+		return cfg.LoadFile(configFile)
 	} else {
 		fmt.Printf("Config file not found: %s (using defaults)\n", configFile)
 	}

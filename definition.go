@@ -13,6 +13,7 @@ type Definition struct {
 	valueType    ValueType
 	envVar       string
 	flag         string
+	fileKey      string // Key name to look for in loaded files
 	defaultValue any
 	required     bool
 	secret       bool
@@ -30,6 +31,7 @@ func (d *Definition) clone() *Definition {
 		valueType:    d.valueType,
 		envVar:       d.envVar,
 		flag:         d.flag,
+		fileKey:      d.fileKey,
 		defaultValue: d.defaultValue,
 		required:     d.required,
 		secret:       d.secret,
@@ -260,6 +262,11 @@ func (b *DefinitionBuilder) Env(envVar string) *DefinitionBuilder {
 
 func (b *DefinitionBuilder) Flag(flag string) *DefinitionBuilder {
 	b.def.flag = flag
+	return b
+}
+
+func (b *DefinitionBuilder) File(fileKey string) *DefinitionBuilder {
+	b.def.fileKey = fileKey
 	return b
 }
 

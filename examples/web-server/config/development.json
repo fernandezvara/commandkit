@@ -1,6 +1,6 @@
 {
-  "PORT": 3000,
-  "HOST": "localhost", 
+  "port_in_file": 3000,
+  "host_in_file": "localhost", 
   "BASE_URL": "http://localhost:3000",
   "LOG_LEVEL": "debug",
   "ENABLE_METRICS": true,

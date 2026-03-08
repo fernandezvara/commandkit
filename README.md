@@ -167,6 +167,100 @@ func startCommand(ctx *commandkit.CommandContext) error {
 }
 ```
 
+## File Configuration
+
+CommandKit supports loading configuration from JSON, YAML, and TOML files with flexible key mapping.
+
+### Basic File Loading
+
+```go
+package main
+
+import (
+    "fmt"
+    "os"
+    
+    "github.com/fernandezvara/commandkit"
+)
+
+func main() {
+    cfg := commandkit.New()
+    
+    // Define configuration with file key mapping
+    cfg.Define("PORT").
+        Int64().
+        Env("PORT").
+        Flag("port").
+        File("port_in_file").  // Look for "port_in_file" key in files
+        Default(8080).
+        Description("HTTP server port")
+    
+    cfg.Define("DATABASE_URL").
+        String().
+        File("db_connection_string").
+        Required().
+        Secret().
+        Description("Database connection string")
+    
+    // Load configuration file
+    cfg.LoadFile("config.json")
+    
+    // Execute configuration
+    if err := cfg.Execute(os.Args); err != nil {
+        os.Exit(1)
+    }
+    
+    // Use configuration
+    ctx := commandkit.NewCommandContext([]string{}, cfg, "app", "")
+    port, _ := commandkit.Get[int64](ctx, "PORT")
+    fmt.Printf("Server will start on port %d\n", port)
+}
+```
+
+### Configuration File Format
+
+```json
+{
+  "port_in_file": 3000,
+  "db_connection_string": "postgres://localhost/mydb",
+  "log_level": "debug"
+}
+```
+
+### Loading Files from Environment Variables
+
+```go
+// Load file from environment variable containing the path
+cfg.LoadFileFromEnv("CONFIG_FILE")
+```
+
+Environment variable should contain the file path:
+```bash
+export CONFIG_FILE="/etc/myapp/config.json"
+```
+
+### Multiple Files
+
+```go
+// Load multiple files (later files override earlier ones)
+cfg.LoadFiles("config.json", "secrets.json")
+```
+
+### Priority System
+
+File configuration integrates seamlessly with the existing priority system:
+
+```go
+cfg.Define("PORT").
+    Int64().
+    Env("PORT").
+    Flag("port").
+    File("port_in_file").  // File source
+    Default(8080)         // Default source
+
+// Priority: Flag > Env > File > Default (configurable)
+```
+
 ## Configuration Types
 
 ### Basic Types

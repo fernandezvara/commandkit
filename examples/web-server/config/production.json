@@ -1,6 +1,6 @@
 {
-  "PORT": 8080,
-  "HOST": "0.0.0.0",
+  "port_in_file": 8080,
+  "host_in_file": "0.0.0.0",
   "BASE_URL": "https://api.example.com", 
   "LOG_LEVEL": "warn",
   "ENABLE_METRICS": true,

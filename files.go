@@ -14,9 +14,8 @@ import (
 
 // FileConfig represents configuration loaded from files
 type FileConfig struct {
-	data        map[string]any
-	envPrefix   string
-	environment string
+	data      map[string]any
+	envPrefix string
 }
 
 // LoadFile loads configuration from a single file
@@ -76,22 +75,13 @@ func (c *Config) LoadFromEnv(envVar string) error {
 	return c.LoadFile(filename)
 }
 
-// SetEnvironment sets the environment for environment-specific overrides
-func (c *Config) SetEnvironment(env string) error {
-	if c.fileConfig == nil {
-		return fmt.Errorf("no configuration files loaded")
-	}
-	c.fileConfig.environment = env
-	return nil
-}
-
-// SetEnvironmentFromEnv sets environment from environment variable
-func (c *Config) SetEnvironmentFromEnv(envVar string) error {
-	env := os.Getenv(envVar)
-	if env == "" {
+// LoadFileFromEnv loads configuration file from environment variable containing the file path
+func (c *Config) LoadFileFromEnv(envVar string) error {
+	filename := os.Getenv(envVar)
+	if filename == "" {
 		return nil // No environment variable set
 	}
-	return c.SetEnvironment(env)
+	return c.LoadFile(filename)
 }
 
 // mergeFileData merges new config data with existing file data
@@ -108,40 +98,25 @@ func (c *Config) mergeFileData(newData map[string]any) {
 	}
 }
 
-// getFileValue gets a value from file configuration with environment support
-func (c *Config) getFileValue(key string) (any, bool) {
+// getFileValue gets a value from file configuration using fileKey or fallback to definition key
+func (c *Config) getFileValue(key string, def *Definition) (any, bool) {
 	if c.fileConfig == nil {
 		return nil, false
 	}
 
-	// Check for environment-specific override first
-	if c.fileConfig.environment != "" {
-		// Look for environments.{env}.{key} in nested structure
-		if envs, exists := c.fileConfig.data["environments"]; exists {
-			if envMap, ok := envs.(map[string]any); ok {
-				if currentEnv, exists := envMap[c.fileConfig.environment]; exists {
-					if currentEnvMap, ok := currentEnv.(map[string]any); ok {
-						// Check exact key
-						if value, exists := currentEnvMap[key]; exists {
-							return value, true
-						}
-						// Check lowercase key
-						if value, exists := currentEnvMap[strings.ToLower(key)]; exists {
-							return value, true
-						}
-					}
-				}
-			}
-		}
+	// Use fileKey if specified, otherwise use the definition key
+	searchKey := key
+	if def != nil && def.fileKey != "" {
+		searchKey = def.fileKey
 	}
 
 	// Check for regular value (case-insensitive)
-	if value, exists := c.fileConfig.data[key]; exists {
+	if value, exists := c.fileConfig.data[searchKey]; exists {
 		return value, true
 	}
 
 	// Check lowercase version
-	if value, exists := c.fileConfig.data[strings.ToLower(key)]; exists {
+	if value, exists := c.fileConfig.data[strings.ToLower(searchKey)]; exists {
 		return value, true
 	}
 
@@ -152,7 +127,7 @@ func (c *Config) getFileValue(key string) (any, bool) {
 func (c *Config) getValueFromSource(key string, def *Definition, sourceType SourceType) (any, bool) {
 	switch sourceType {
 	case SourceFile:
-		if fileValue, exists := c.getFileValue(key); exists {
+		if fileValue, exists := c.getFileValue(key, def); exists {
 			return fileValue, true
 		}
 		return nil, false
@@ -247,13 +222,4 @@ func (c *Config) resolveValueWithPriority(key string, def *Definition) (any, Sou
 	}
 
 	return nil, SourceDefault, nil
-}
-
-// resolveValueWithFiles is kept for backward compatibility but delegates to resolveValueWithPriority
-func (c *Config) resolveValueWithFiles(key string, def *Definition) (any, string, error) {
-	value, sourceType, err := c.resolveValueWithPriority(key, def)
-	if err != nil {
-		return value, sourceType.String(), err
-	}
-	return value, sourceType.String(), nil
 }
