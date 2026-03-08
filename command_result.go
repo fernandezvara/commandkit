@@ -30,14 +30,6 @@ func (r *CommandResult) displayAndExit() {
 	os.Exit(r.ExitCode)
 }
 
-// GetValue extracts the value from a successful CommandResult
-func (r *CommandResult) GetValue() any {
-	if r.Error != nil {
-		panic("cannot get value from failed CommandResult")
-	}
-	return r.Data
-}
-
 // success creates a successful command result
 func success() *CommandResult {
 	return &CommandResult{

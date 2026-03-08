@@ -71,19 +71,20 @@ func main() {
     ctx := commandkit.NewCommandContext([]string{}, cfg, "app", "")
 
     // Use configuration with type safety
-    portResult := commandkit.Get[int64](ctx, "PORT")
-    if portResult.Error != nil {
-        fmt.Fprintf(os.Stderr, "Error: %v\n", portResult.Error)
+    port, err := commandkit.Get[int64](ctx, "PORT")
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error: %v\n", err)
         os.Exit(1)
     }
-    port := commandkit.GetValue[int64](portResult)
 
-    logLevelResult := commandkit.Get[string](ctx, "LOG_LEVEL")
-    if logLevelResult.Error != nil {
-        fmt.Fprintf(os.Stderr, "Error: %v\n", logLevelResult.Error)
+    logLevel, err := commandkit.Get[string](ctx, "LOG_LEVEL")
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error: %v\n", err)
         os.Exit(1)
     }
-    logLevel := commandkit.GetValue[string](logLevelResult)
+
+    // Or use MustGet for critical values
+    debug := commandkit.MustGet[bool](ctx, "DEBUG")
 
     // Access secrets safely
     dbURL := cfg.GetSecret("DATABASE_URL")
@@ -358,23 +359,20 @@ func startCommand(ctx *commandkit.CommandContext) error {
     }
 
     // Get configuration values
-    portResult := commandkit.Get[int64](ctx, "PORT")
-    if portResult.Error != nil {
-        return fmt.Errorf("failed to get PORT: %w", portResult.Error)
+    port, err := commandkit.Get[int64](ctx, "PORT")
+    if err != nil {
+        return fmt.Errorf("failed to get PORT: %w", err)
     }
-    port := commandkit.GetValue[int64](portResult)
 
-    daemonResult := commandkit.Get[bool](ctx, "DAEMON")
-    if daemonResult.Error != nil {
-        return fmt.Errorf("failed to get DAEMON: %w", daemonResult.Error)
+    daemon, err := commandkit.Get[bool](ctx, "DAEMON")
+    if err != nil {
+        return fmt.Errorf("failed to get DAEMON: %w", err)
     }
-    daemon := commandkit.GetValue[bool](daemonResult)
 
-    verboseResult := commandkit.Get[bool](ctx, "VERBOSE")
-    if verboseResult.Error != nil {
-        return fmt.Errorf("failed to get VERBOSE: %w", verboseResult.Error)
+    verbose, err := commandkit.Get[bool](ctx, "VERBOSE")
+    if err != nil {
+        return fmt.Errorf("failed to get VERBOSE: %w", err)
     }
-    verbose := commandkit.GetValue[bool](verboseResult)
 
     fmt.Printf("Starting service on port %d\n", port)
     fmt.Printf("Daemon mode: %v\n", daemon)
@@ -492,11 +490,10 @@ cfg.UseMiddlewareForCommands([]string{"admin", "shutdown"},
 
 // Custom authentication
 cfg.UseMiddleware(commandkit.AuthMiddleware(func(ctx *commandkit.CommandContext) error {
-    tokenResult := commandkit.Get[string](ctx, "AUTH_TOKEN")
-    if tokenResult.Error != nil {
-        return tokenResult.Error
+    token, err := commandkit.Get[string](ctx, "AUTH_TOKEN")
+    if err != nil {
+        return err
     }
-    token := commandkit.GetValue[string](tokenResult)
     if token != "secret-token" {
         return fmt.Errorf("invalid token")
     }
@@ -608,15 +605,14 @@ CommandKit provides unified error handling throughout the framework:
 ctx := commandkit.NewCommandContext([]string{}, cfg, "app", "")
 
 // Get configuration with error handling
-portResult := commandkit.Get[int64](ctx, "PORT")
-if portResult.Error != nil {
-    return fmt.Errorf("failed to get PORT: %w", portResult.Error)
+port, err := commandkit.Get[int64](ctx, "PORT")
+if err != nil {
+    return fmt.Errorf("failed to get PORT: %w", err)
 }
-port := commandkit.GetValue[int64](portResult)
 
 // Secret access (blocked for Get[T])
-secretResult := commandkit.Get[string](ctx, "API_KEY")
-if secretResult.Error != nil {
+_, err = commandkit.Get[string](ctx, "API_KEY")
+if err != nil {
     // Expected: "validation error: configuration 'API_KEY' is secret, use GetSecret() instead"
 }
 
@@ -646,13 +642,10 @@ For truly optional configuration, use the Get function and handle errors:
 
 ```go
 // Optional configuration with fallback
-result := commandkit.Get[string](ctx, "OPTIONAL_KEY")
-var value string
-if result.Error != nil {
+value, err := commandkit.Get[string](ctx, "OPTIONAL_KEY")
+if err != nil {
     // Handle missing optional configuration
     value = "fallback-value"  // Your application default
-} else {
-    value = commandkit.GetValue[string](result)
 }
 
 // Required configuration (use Required() in definition)
@@ -817,10 +810,10 @@ output := stringOutput.Get()
 
 ### Generic Getters
 
-| Method                        | Description                             |
-| ----------------------------- | --------------------------------------- |
-| `Get[T](ctx, key)`            | Get value with type T (returns CommandResult) |
-| `GetValue[T](result)`         | Extract value from CommandResult        |
+| Method               | Description                           |
+| -------------------- | ------------------------------------- |
+| `Get[T](ctx, key)`   | Get value with type T (returns T, error) |
+| `MustGet[T](ctx, key)` | Get value or panic on error           |
 
 ### Definition Builder Methods
 

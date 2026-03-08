@@ -4,7 +4,11 @@ package commandkit
 import (
 	"fmt"
 	"log"
+	"sync"
 )
+
+// typeCache provides performance optimization for type descriptions
+var typeCache = sync.Map{}
 
 // GetError represents an error collected from Get functions
 type GetError struct {
@@ -18,6 +22,41 @@ type GetError struct {
 	Display          string
 	ErrorDescription string
 	config           *Config // Reference to config for definition lookup
+}
+
+// typeDescription returns cached type description for performance
+func typeDescription(v any) string {
+	if cached, ok := typeCache.Load(v); ok {
+		return cached.(string)
+	}
+
+	desc := getTypeDescription(v)
+	typeCache.Store(v, desc)
+	return desc
+}
+
+// getTypeDescription converts type to human-readable string
+func getTypeDescription(v any) string {
+	switch v.(type) {
+	case string:
+		return "string"
+	case int64:
+		return "int64"
+	case bool:
+		return "bool"
+	case float64:
+		return "float64"
+	default:
+		return fmt.Sprintf("%T", v)
+	}
+}
+
+// newTypeError creates optimized type mismatch error
+func newTypeError[T any](key string, value any) error {
+	expectedType := typeDescription(*new(T))
+	actualType := typeDescription(value)
+	return fmt.Errorf("configuration '%s' type mismatch: expected %s, got %s",
+		key, expectedType, actualType)
 }
 
 // logWarningForDesigner logs warnings for CLI designers about configuration issues
@@ -94,8 +133,8 @@ func Get[T any](ctx *CommandContext, key string) (T, error) {
 
 	result, ok := value.(T)
 	if !ok {
-		ctx.execution.CollectError(c, key, fmt.Sprintf("%T", (*new(T))), fmt.Sprintf("%T", value), "type mismatch", false)
-		return zero, fmt.Errorf("configuration '%s' type mismatch: expected %T, got %T", key, (*new(T)), value)
+		ctx.execution.CollectError(c, key, typeDescription(*new(T)), typeDescription(value), "type mismatch", false)
+		return zero, newTypeError[T](key, value)
 	}
 
 	return result, nil
