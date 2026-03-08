@@ -64,8 +64,12 @@ func BenchmarkGetTypeDescription(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		typeDescription("test")
 		typeDescription(int64(0))
+		typeDescription(int(0))
 		typeDescription(true)
 		typeDescription(float64(0))
+		typeDescription([]string{"a", "b"})
+		typeDescription([]int64{1, 2})
+		typeDescription([]int{1, 2})
 	}
 }
 
@@ -123,6 +127,86 @@ func BenchmarkGetBool(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, err := Get[bool](ctx, "DEBUG")
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+// BenchmarkGetInt benchmarks Get[int] performance
+func BenchmarkGetInt(b *testing.B) {
+	cfg := New()
+	cfg.Define("PORT").Int().Default(8080)
+
+	if err := cfg.Execute([]string{"test"}); err != nil {
+		b.Fatal(err)
+	}
+
+	ctx := NewCommandContext([]string{}, cfg, "test", "")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := Get[int](ctx, "PORT")
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+// BenchmarkGetStringSlice benchmarks Get[[]string] performance
+func BenchmarkGetStringSlice(b *testing.B) {
+	cfg := New()
+	cfg.Define("TAGS").StringSlice().Default([]string{"tag1", "tag2"})
+
+	if err := cfg.Execute([]string{"test"}); err != nil {
+		b.Fatal(err)
+	}
+
+	ctx := NewCommandContext([]string{}, cfg, "test", "")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := Get[[]string](ctx, "TAGS")
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+// BenchmarkGetInt64Slice benchmarks Get[[]int64] performance
+func BenchmarkGetInt64Slice(b *testing.B) {
+	cfg := New()
+	cfg.Define("NUMBERS").Int64Slice().Default([]int64{1, 2, 3})
+
+	if err := cfg.Execute([]string{"test"}); err != nil {
+		b.Fatal(err)
+	}
+
+	ctx := NewCommandContext([]string{}, cfg, "test", "")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := Get[[]int64](ctx, "NUMBERS")
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+// BenchmarkGetIntSlice benchmarks Get[[]int] performance
+func BenchmarkGetIntSlice(b *testing.B) {
+	cfg := New()
+	cfg.Define("PORTS").IntSlice().Default([]int{8080, 8081})
+
+	if err := cfg.Execute([]string{"test"}); err != nil {
+		b.Fatal(err)
+	}
+
+	ctx := NewCommandContext([]string{}, cfg, "test", "")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := Get[[]int](ctx, "PORTS")
 		if err != nil {
 			b.Fatal(err)
 		}

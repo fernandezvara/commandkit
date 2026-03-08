@@ -15,12 +15,14 @@ type ValueType int
 const (
 	TypeString ValueType = iota
 	TypeInt64
+	TypeInt // Platform-specific int type
 	TypeFloat64
 	TypeBool
 	TypeDuration
 	TypeURL
 	TypeStringSlice
 	TypeInt64Slice
+	TypeIntSlice // Platform-specific int slice type
 )
 
 func (t ValueType) String() string {
@@ -29,6 +31,8 @@ func (t ValueType) String() string {
 		return "string"
 	case TypeInt64:
 		return "int64"
+	case TypeInt: // Platform-specific int type
+		return "int"
 	case TypeFloat64:
 		return "float64"
 	case TypeBool:
@@ -41,6 +45,8 @@ func (t ValueType) String() string {
 		return "[]string"
 	case TypeInt64Slice:
 		return "[]int64"
+	case TypeIntSlice: // Platform-specific int slice type
+		return "[]int"
 	default:
 		return "unknown"
 	}
@@ -105,6 +111,13 @@ func parseValue(raw string, valueType ValueType, delimiter string) (any, error) 
 			return nil, fmt.Errorf("invalid int64: %s", raw)
 		}
 		return v, nil
+
+	case TypeInt:
+		v, err := strconv.ParseInt(raw, 10, 64) // Parse as int64, store as int
+		if err != nil {
+			return nil, fmt.Errorf("invalid int: %s", raw)
+		}
+		return int(v), nil // Convert to int
 
 	case TypeFloat64:
 		v, err := strconv.ParseFloat(raw, 64)
@@ -179,6 +192,25 @@ func parseValue(raw string, valueType ValueType, delimiter string) (any, error) 
 				return nil, fmt.Errorf("invalid int64 in array: %s", trimmed)
 			}
 			result = append(result, v)
+		}
+		return result, nil
+
+	case TypeIntSlice:
+		if raw == "" {
+			return []int{}, nil
+		}
+		parts := strings.Split(raw, delimiter)
+		result := make([]int, 0, len(parts))
+		for _, p := range parts {
+			trimmed := strings.TrimSpace(p)
+			if trimmed == "" {
+				continue
+			}
+			v, err := strconv.ParseInt(trimmed, 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("invalid int in array: %s", trimmed)
+			}
+			result = append(result, int(v)) // Convert to int
 		}
 		return result, nil
 

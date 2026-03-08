@@ -223,6 +223,11 @@ func (b *DefinitionBuilder) Int64() *DefinitionBuilder {
 	return b
 }
 
+func (b *DefinitionBuilder) Int() *DefinitionBuilder {
+	b.def.valueType = TypeInt
+	return b
+}
+
 func (b *DefinitionBuilder) Float64() *DefinitionBuilder {
 	b.def.valueType = TypeFloat64
 	return b
@@ -250,6 +255,11 @@ func (b *DefinitionBuilder) StringSlice() *DefinitionBuilder {
 
 func (b *DefinitionBuilder) Int64Slice() *DefinitionBuilder {
 	b.def.valueType = TypeInt64Slice
+	return b
+}
+
+func (b *DefinitionBuilder) IntSlice() *DefinitionBuilder {
+	b.def.valueType = TypeIntSlice
 	return b
 }
 

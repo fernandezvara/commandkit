@@ -4,6 +4,7 @@ package commandkit
 import (
 	"fmt"
 	"log"
+	"reflect"
 	"sync"
 )
 
@@ -26,12 +27,13 @@ type GetError struct {
 
 // typeDescription returns cached type description for performance
 func typeDescription(v any) string {
-	if cached, ok := typeCache.Load(v); ok {
+	typ := reflect.TypeOf(v)
+	if cached, ok := typeCache.Load(typ); ok {
 		return cached.(string)
 	}
 
 	desc := getTypeDescription(v)
-	typeCache.Store(v, desc)
+	typeCache.Store(typ, desc)
 	return desc
 }
 
@@ -42,10 +44,18 @@ func getTypeDescription(v any) string {
 		return "string"
 	case int64:
 		return "int64"
+	case int: // Handle platform-specific int type
+		return "int"
 	case bool:
 		return "bool"
 	case float64:
 		return "float64"
+	case []string:
+		return "[]string"
+	case []int64:
+		return "[]int64"
+	case []int: // Handle platform-specific int slice type
+		return "[]int"
 	default:
 		return fmt.Sprintf("%T", v)
 	}
