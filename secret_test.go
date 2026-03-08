@@ -325,9 +325,8 @@ func TestSecretSecurityViolation(t *testing.T) {
 	t.Setenv("SECRET_KEY", "secret-value")
 	t.Setenv("NORMAL_KEY", "env-value")
 
-	result := cfg.Process()
-	if result.Error != nil {
-		t.Fatalf("Config processing failed: %v", result.Error)
+	if err := cfg.Execute([]string{"test"}); err != nil {
+		t.Fatalf("Config processing failed: %v", err)
 	}
 
 	// Create command context

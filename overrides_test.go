@@ -97,7 +97,7 @@ func TestSourceOverrideDetection(t *testing.T) {
 	os.Args = []string{"test", "--port", "3000"}
 
 	// Process config to trigger override detection
-	cfg.Process()
+	_ = cfg.Execute(os.Args)
 
 	// Check for warnings
 	if !cfg.HasOverrideWarnings() {

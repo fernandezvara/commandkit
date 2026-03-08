@@ -107,39 +107,11 @@ func (c *Config) GetDefaultPriority() SourcePriority {
 	return append(SourcePriority(nil), c.defaultPriority...)
 }
 
-// Process parses flags and environment variables, validates all definitions,
-// and populates the values map. Returns a CommandResult for unified error handling.
-func (c *Config) Process() *CommandResult {
-	// Clear previous values if re-processing
-	if c.processed {
-		c.values = make(map[string]any)
-		c.secrets.DestroyAll()
-		c.secrets = newSecretStore()
-	}
-	c.processed = true
-
+// processDefinitions resolves and validates all definitions, storing values into the Config.
+// It assumes c.flagValues is already populated. Returns any ConfigErrors found.
+func (c *Config) processDefinitions() []ConfigError {
 	var errs []ConfigError
 
-	// Use centralized FlagParser for consistent flag parsing
-	services := c.createServices()
-	flagParser := services.FlagParser
-
-	// Parse global flags using the centralized service
-	parsedFlags, err := flagParser.ParseGlobal(os.Args[1:], c.definitions)
-	if err != nil {
-		// Collect any parsing errors
-		errs = append(errs, ConfigError{
-			Key:              "flag_parsing",
-			Source:           "flag",
-			Display:          "",
-			ErrorDescription: fmt.Sprintf("Flag parsing error: %v", err),
-		})
-	}
-
-	// Update Config's flag values with parsed results
-	c.flagValues = parsedFlags.Values
-
-	// Process each definition
 	for key, def := range c.definitions {
 		value, source, err := c.resolveValueWithPriority(key, def)
 		if err != nil {
@@ -159,9 +131,7 @@ func (c *Config) Process() *CommandResult {
 			continue
 		}
 
-		// Store the value
 		if def.secret && value != nil {
-			// Store secrets in memguard only - no placeholders in values map
 			strValue := fmt.Sprintf("%v", value)
 			c.secrets.Store(key, strValue)
 		} else {
@@ -169,37 +139,39 @@ func (c *Config) Process() *CommandResult {
 		}
 	}
 
-	// Check for source overrides and store warnings
 	overrideWarnings := c.checkSourceOverrides()
 	if overrideWarnings.HasWarnings() {
 		c.overrideWarnings = overrideWarnings
 		c.overrideWarnings.LogWarnings()
 	}
 
-	// Convert ConfigError slice to CommandResult using templated help
-	if len(errs) > 0 {
-		// Create execution context for error display
-		executable := filepath.Base(os.Args[0])
-		ctx := NewExecutionContext(executable)
-		for _, configErr := range errs {
-			ctx.CollectConfigError(c, configErr)
-		}
-
-		// Use templated help system for consistent display
-		helpText, err := ctx.renderErrorsWithCommand(nil, c.getHelpService())
-		if err != nil {
-			return errorResult(err)
-		}
-
-		return configErrorResult(helpText)
-	}
-
-	return success()
+	return errs
 }
 
-// PrintErrors prints formatted error messages to stderr
-func (c *Config) PrintErrors(errs []ConfigError) {
-	fmt.Fprint(os.Stderr, formatErrors(errs))
+// processConfig parses flags from the provided args, validates all definitions,
+// and populates the Config's values and secrets maps. Returns any ConfigErrors found.
+func (c *Config) processConfig(args []string) []ConfigError {
+	if c.processed {
+		c.values = make(map[string]any)
+		c.secrets.DestroyAll()
+		c.secrets = newSecretStore()
+	}
+	c.processed = true
+
+	services := c.createServices()
+	flagParser := services.FlagParser
+	parsedFlags, err := flagParser.ParseGlobal(args, c.definitions)
+	if err != nil {
+		return []ConfigError{{
+			Key:              "flag_parsing",
+			Source:           "flag",
+			Display:          "",
+			ErrorDescription: fmt.Sprintf("Flag parsing error: %v", err),
+		}}
+	}
+
+	c.flagValues = parsedFlags.Values
+	return c.processDefinitions()
 }
 
 // Destroy cleans up all secrets from memory
@@ -273,11 +245,19 @@ func (c *Config) createServices() *CommandServices {
 func (c *Config) Execute(args []string) error {
 	// Check if this is a no-command application
 	if len(c.commands) == 0 {
-		// Handle no-command application directly
-		result := c.Process()
-		if result.Error != nil {
-			// Return the error - let the caller handle display
-			return result.Error
+		errs := c.processConfig(args[1:])
+		if len(errs) > 0 {
+			executable := filepath.Base(args[0])
+			execCtx := NewExecutionContext(executable)
+			for _, configErr := range errs {
+				execCtx.CollectConfigError(c, configErr)
+			}
+			helpText, err := execCtx.renderErrorsWithCommand(nil, c.getHelpService())
+			if err != nil {
+				return err
+			}
+			fmt.Fprintln(os.Stderr, helpText)
+			return fmt.Errorf("configuration errors")
 		}
 		return nil
 	}

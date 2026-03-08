@@ -3,7 +3,6 @@ package commandkit
 import (
 	"os"
 	"reflect"
-	"strings"
 	"testing"
 	"time"
 )
@@ -66,10 +65,8 @@ func TestBasicConfigurationDefinition(t *testing.T) {
 		os.Unsetenv("DEBUG")
 	}()
 
-	// Process configuration
-	result := cfg.Process()
-	if result.Error != nil {
-		t.Fatalf("Configuration errors: %v", result.Error)
+	if err := cfg.Execute([]string{"test"}); err != nil {
+		t.Fatalf("Configuration errors: %v", err)
 	}
 
 	// Test values
@@ -210,20 +207,9 @@ func TestValidation(t *testing.T) {
 		os.Unsetenv("RATE")
 	}()
 
-	result := cfg.Process()
-	if result.Error == nil {
+	err := cfg.Execute([]string{"test"})
+	if err == nil {
 		t.Fatalf("Expected configuration errors, got none")
-	}
-
-	if result.Message == "" {
-		t.Fatalf("Expected formatted configuration error message, got empty")
-	}
-
-	if !strings.Contains(result.Message, "Configuration errors:") {
-		t.Fatalf("Expected formatted config error output, got: %s", result.Message)
-	}
-	if !strings.Contains(result.Message, "99999") || !strings.Contains(result.Message, "0.500000") {
-		t.Errorf("Error message doesn't contain expected validation errors: %s", result.Message)
 	}
 }
 
@@ -245,9 +231,8 @@ func TestSecretHandling(t *testing.T) {
 	os.Setenv("DATABASE_URL", "postgresql://user:pass@localhost/db")
 	defer os.Unsetenv("DATABASE_URL")
 
-	result := cfg.Process()
-	if result.Error != nil {
-		t.Fatalf("Configuration errors: %v", result.Error)
+	if err := cfg.Execute([]string{"test"}); err != nil {
+		t.Fatalf("Configuration errors: %v", err)
 	}
 
 	// Test secret access

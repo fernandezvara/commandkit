@@ -63,9 +63,7 @@ func main() {
 		Default([]string{"http://localhost:3000"}).
 		Description("Allowed CORS origins")
 
-	// Process configuration
-	if result := cfg.Process(); result.Error != nil {
-		fmt.Fprintln(os.Stderr, result.Message)
+	if err := cfg.Execute(os.Args); err != nil {
 		os.Exit(1)
 	}
 

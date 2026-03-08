@@ -31,14 +31,11 @@ func main() {
 		fmt.Printf("❌ Expected error but got success\n")
 	}
 
-	// Test 2: Config.Process() with CommandResult
-	processResult := cfg.Process()
-	if processResult.Error != nil {
-		fmt.Printf("✅ Config.Process() error caught: %v\n", processResult.Error)
-		fmt.Printf("   Message: %s\n", processResult.Message)
-		fmt.Printf("   ShouldExit: %v\n", processResult.ShouldExit)
+	// Test 2: Config.Execute() unified entry point
+	if err := cfg.Execute([]string{"test"}); err != nil {
+		fmt.Printf("✅ Config.Execute() error caught: %v\n", err)
 	} else {
-		fmt.Printf("❌ Expected Config.Process() error but got success\n")
+		fmt.Printf("❌ Expected Config.Execute() error but got success\n")
 	}
 
 	fmt.Println("Unified error handling test completed!")

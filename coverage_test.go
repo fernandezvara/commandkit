@@ -104,45 +104,13 @@ func TestCommandContextHelpers(t *testing.T) {
 	}
 }
 
-// TestConfigPrintErrors tests the PrintErrors functionality
-func TestConfigPrintErrors(t *testing.T) {
-	cfg := New()
-
-	// Create some config errors
-	errs := []ConfigError{
-		{Key: "TEST_KEY", Source: "none", Display: "", ErrorDescription: "required value not provided"},
-		{Key: "ANOTHER_KEY", Source: "env", Display: "", ErrorDescription: "invalid format"},
-	}
-
-	// Capture stderr output
-	oldStderr := os.Stderr
-	r, w, _ := os.Pipe()
-	os.Stderr = w
-
-	cfg.PrintErrors(errs)
-
-	// Close pipe and read output
-	w.Close()
-	var buf bytes.Buffer
-	buf.ReadFrom(r)
-	os.Stderr = oldStderr
-
-	output := buf.String()
-	if !strings.Contains(output, "TEST_KEY") {
-		t.Error("PrintErrors output should contain TEST_KEY")
-	}
-	if !strings.Contains(output, "ANOTHER_KEY") {
-		t.Error("PrintErrors output should contain ANOTHER_KEY")
-	}
-}
-
 // TestConfigDestroy tests the Destroy functionality
 func TestConfigDestroy(t *testing.T) {
 	cfg := New()
 
 	// Add a secret
 	cfg.Define("SECRET").String().Secret()
-	cfg.Process()
+	_ = cfg.Execute([]string{"test"})
 	secret := cfg.GetSecret("SECRET")
 	cfg.secrets.Store("SECRET", "test_secret_value")
 	secret = cfg.GetSecret("SECRET")
@@ -168,7 +136,7 @@ func TestConfigIsSecret(t *testing.T) {
 	// Define a secret and a regular key
 	cfg.Define("SECRET_KEY").String().Secret()
 	cfg.Define("REGULAR_KEY").String()
-	cfg.Process()
+	_ = cfg.Execute([]string{"test"})
 
 	// Test secret detection
 	if !cfg.IsSecret("SECRET_KEY") {
@@ -233,7 +201,7 @@ func TestConfigGenerateHelp(t *testing.T) {
 	// Add some configuration
 	cfg.Define("PORT").Int64().Default(8080).Description("Server port")
 	cfg.Define("HOST").String().Default("localhost").Description("Server host")
-	cfg.Process()
+	_ = cfg.Execute([]string{"test"})
 
 	// Generate help (now shows command help instead of config help)
 	help := cfg.GenerateHelp()
@@ -291,7 +259,7 @@ func TestConfigDump(t *testing.T) {
 	cfg.Define("PORT").Int64().Default(8080)
 	cfg.Define("HOST").String().Default("localhost")
 	cfg.Define("SECRET").String().Secret()
-	cfg.Process()
+	_ = cfg.Execute([]string{"test"})
 
 	// Set some values
 	cfg.values["PORT"] = int64(3000)
@@ -335,7 +303,7 @@ func TestGetErrorCollectionIntegration(t *testing.T) {
 	cfg.Define("HOST").String().Flag("host").Env("HOST").Required()
 	cfg.Define("API_KEY").String().Flag("api-key").Env("API_KEY").Secret().Required()
 
-	cfg.Process()
+	_ = cfg.Execute([]string{"test"})
 
 	// Clear any previous errors
 	ctx := NewCommandContext([]string{}, cfg, "test", "")

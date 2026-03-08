@@ -12,10 +12,8 @@ func TestGetPerformance(t *testing.T) {
 	cfg.Define("DEBUG").Bool().Default(false)
 	cfg.Define("RATE").Float64().Default(0.5)
 
-	// Process config to populate values
-	result := cfg.Process()
-	if result.Error != nil {
-		t.Fatalf("Failed to process config: %v", result.Error)
+	if err := cfg.Execute([]string{"test"}); err != nil {
+		t.Fatalf("Failed to process config: %v", err)
 	}
 
 	ctx := NewCommandContext([]string{}, cfg, "test", "")
@@ -76,10 +74,8 @@ func BenchmarkGetInt64(b *testing.B) {
 	cfg := New()
 	cfg.Define("PORT").Int64().Default(int64(8080))
 
-	// Process config to populate values
-	result := cfg.Process()
-	if result.Error != nil {
-		b.Fatal(result.Error)
+	if err := cfg.Execute([]string{"test"}); err != nil {
+		b.Fatal(err)
 	}
 
 	ctx := NewCommandContext([]string{}, cfg, "test", "")
@@ -98,10 +94,8 @@ func BenchmarkGetString(b *testing.B) {
 	cfg := New()
 	cfg.Define("HOST").String().Default("localhost")
 
-	// Process config to populate values
-	result := cfg.Process()
-	if result.Error != nil {
-		b.Fatal(result.Error)
+	if err := cfg.Execute([]string{"test"}); err != nil {
+		b.Fatal(err)
 	}
 
 	ctx := NewCommandContext([]string{}, cfg, "test", "")
@@ -120,10 +114,8 @@ func BenchmarkGetBool(b *testing.B) {
 	cfg := New()
 	cfg.Define("DEBUG").Bool().Default(false)
 
-	// Process config to populate values
-	result := cfg.Process()
-	if result.Error != nil {
-		b.Fatal(result.Error)
+	if err := cfg.Execute([]string{"test"}); err != nil {
+		b.Fatal(err)
 	}
 
 	ctx := NewCommandContext([]string{}, cfg, "test", "")

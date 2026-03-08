@@ -44,12 +44,6 @@ func main() {
 		commandkit.RateLimitMiddleware(5, time.Minute),
 	)
 
-	// Process configuration
-	if result := cfg.Process(); result.Error != nil {
-		fmt.Fprintln(os.Stderr, result.Message)
-		os.Exit(1)
-	}
-
 	// Execute commands
 	if err := cfg.Execute(os.Args); err != nil {
 		log.Printf("Command execution failed: %v", err)

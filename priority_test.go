@@ -180,9 +180,8 @@ func TestPriorityResolution(t *testing.T) {
 	// Set flag value
 	os.Args = []string{"test", "--test-flag", "flag_value"}
 
-	result := cfg.Process()
-	if result.Error != nil {
-		t.Fatalf("Process failed: %v", result.Error)
+	if err := cfg.Execute(os.Args); err != nil {
+		t.Fatalf("Process failed: %v", err)
 	}
 
 	// Flag should win with Flag > Env > Default priority
@@ -214,9 +213,8 @@ func TestEnvOverFlagPriority(t *testing.T) {
 	// Set flag value
 	os.Args = []string{"test", "--test-flag2", "flag_value"}
 
-	result := cfg.Process()
-	if result.Error != nil {
-		t.Fatalf("Process failed: %v", result.Error)
+	if err := cfg.Execute(os.Args); err != nil {
+		t.Fatalf("Process failed: %v", err)
 	}
 
 	// Env should win with Env > Flag > Default priority
@@ -250,9 +248,8 @@ func TestConfigLevelPriority(t *testing.T) {
 	// Set flag value
 	os.Args = []string{"test", "--test-config-flag", "flag_value"}
 
-	result := cfg.Process()
-	if result.Error != nil {
-		t.Fatalf("Process failed: %v", result.Error)
+	if err := cfg.Execute(os.Args); err != nil {
+		t.Fatalf("Process failed: %v", err)
 	}
 
 	// Env should win with config-level Env > Flag > Default priority
@@ -284,9 +281,8 @@ func TestOverrideDetectionWithCustomPriority(t *testing.T) {
 	// Set flag value
 	os.Args = []string{"test", "--override-flag", "flag_value"}
 
-	result := cfg.Process()
-	if result.Error != nil {
-		t.Fatalf("Process failed: %v", result.Error)
+	if err := cfg.Execute(os.Args); err != nil {
+		t.Fatalf("Process failed: %v", err)
 	}
 
 	// Check for override warnings

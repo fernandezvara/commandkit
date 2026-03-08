@@ -16,10 +16,8 @@ func TestConfigMutationFix(t *testing.T) {
 	globalConfig.Define("GLOBAL_PORT").Int64().Default(int64(3000))
 	globalConfig.Define("GLOBAL_MODE").String().Default("global")
 
-	// Process the global config to populate values
-	globalResult := globalConfig.Process()
-	if globalResult.Error != nil {
-		t.Fatalf("Global config processing failed: %v", globalResult.Error)
+	if err := globalConfig.Execute([]string{"test"}); err != nil {
+		t.Fatalf("Global config processing failed: %v", err)
 	}
 
 	// Create a command with its own definitions
@@ -105,10 +103,8 @@ func TestConfigIsolation(t *testing.T) {
 	globalConfig := New()
 	globalConfig.Define("SHARED").String().Default("shared")
 
-	// Process the global config to populate values
-	globalResult := globalConfig.Process()
-	if globalResult.Error != nil {
-		t.Fatalf("Global config processing failed: %v", globalResult.Error)
+	if err := globalConfig.Execute([]string{"test"}); err != nil {
+		t.Fatalf("Global config processing failed: %v", err)
 	}
 
 	// Create two different commands

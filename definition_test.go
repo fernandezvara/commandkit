@@ -177,9 +177,8 @@ func TestDefinitionBuilderDurationSecValidation(t *testing.T) {
 	defer os.Unsetenv("MIN_DUR_SEC")
 
 	cfg.definitions["MIN_DUR_SEC"].envVar = "MIN_DUR_SEC"
-	result := cfg.Process()
-	if result.Error != nil {
-		t.Errorf("Unexpected errors: %v", result.Error)
+	if err := cfg.Execute([]string{"test"}); err != nil {
+		t.Errorf("Unexpected errors: %v", err)
 	}
 }
 
@@ -218,15 +217,13 @@ func TestDefinitionBuilderCustomValidation(t *testing.T) {
 	}
 
 	// Test that custom validation works
-	result := cfg.Process()
-	if result.Error != nil {
-		t.Errorf("Unexpected errors for valid value: %v", result.Error)
+	if err := cfg.Execute([]string{"test"}); err != nil {
+		t.Errorf("Unexpected errors for valid value: %v", err)
 	}
 
 	cfg2 := New()
 	cfg2.Define("CUSTOM").String().Custom("even-length", evenLength).Default("abc")
-	result2 := cfg2.Process()
-	if result2.Error == nil {
+	if err := cfg2.Execute([]string{"test"}); err == nil {
 		t.Errorf("Expected error for odd-length string, got none")
 	}
 }

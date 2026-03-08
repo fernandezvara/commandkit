@@ -12,9 +12,8 @@ func TestMustGet(t *testing.T) {
 	cfg.Define("PORT").Int64().Default(int64(8080))
 	cfg.Define("HOST").String() // No default, not required
 
-	result := cfg.Process()
-	if result.Error != nil {
-		t.Fatalf("Unexpected errors: %v", result.Error)
+	if err := cfg.Execute([]string{"test"}); err != nil {
+		t.Fatalf("Unexpected errors: %v", err)
 	}
 
 	// Create context for new API
@@ -41,9 +40,8 @@ func TestGetWithMissingKey(t *testing.T) {
 
 	cfg.Define("MISSING_KEY").String()
 
-	result := cfg.Process()
-	if result.Error != nil {
-		t.Fatalf("Unexpected errors: %v", result.Error)
+	if err := cfg.Execute([]string{"test"}); err != nil {
+		t.Fatalf("Unexpected errors: %v", err)
 	}
 
 	// Create context for new API
@@ -75,9 +73,8 @@ func TestGetWithTypeMismatch(t *testing.T) {
 
 	cfg.Define("PORT").String().Default("8080") // String but we'll try to get as int64
 
-	result := cfg.Process()
-	if result.Error != nil {
-		t.Fatalf("Unexpected errors: %v", result.Error)
+	if err := cfg.Execute([]string{"test"}); err != nil {
+		t.Fatalf("Unexpected errors: %v", err)
 	}
 
 	// Create context for new API
@@ -117,9 +114,8 @@ func TestGetWithSecret(t *testing.T) {
 
 	cfg.Define("API_KEY").String().Secret()
 
-	result := cfg.Process()
-	if result.Error != nil {
-		t.Fatalf("Unexpected errors: %v", result.Error)
+	if err := cfg.Execute([]string{"test"}); err != nil {
+		t.Fatalf("Unexpected errors: %v", err)
 	}
 
 	// Create context for new API

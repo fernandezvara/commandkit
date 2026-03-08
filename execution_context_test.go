@@ -78,10 +78,8 @@ func TestMustGetWithExecutionContext(t *testing.T) {
 	cfg := New()
 	cfg.Define("TEST_VALUE").String().Default("test")
 
-	// Process the configuration to set the default value
-	result := cfg.Process()
-	if result.Error != nil {
-		t.Fatalf("Configuration errors: %v", result.Error)
+	if err := cfg.Execute([]string{"test"}); err != nil {
+		t.Fatalf("Configuration errors: %v", err)
 	}
 
 	ctx := NewCommandContext([]string{}, cfg, "test", "")

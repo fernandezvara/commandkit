@@ -70,9 +70,7 @@ func main() {
 		fmt.Printf("Warning: Could not set environment: %v\n", err)
 	}
 
-	// Process configuration
-	if result := cfg.Process(); result.Error != nil {
-		fmt.Fprintln(os.Stderr, result.Message)
+	if err := cfg.Execute(os.Args); err != nil {
 		os.Exit(1)
 	}
 

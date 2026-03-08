@@ -139,38 +139,6 @@ func newConfigError(key string, def *Definition, source string, rawValue string,
 	}
 }
 
-// formatErrors formats configuration errors for display
-func formatErrors(errs []ConfigError) string {
-	if len(errs) == 0 {
-		return ""
-	}
-
-	var sb strings.Builder
-	sb.Grow(len(errs) * 200) // Pre-allocate estimated capacity
-
-	sb.WriteString("Configuration errors detected:\n")
-	sb.WriteString(strings.Repeat("=", 50) + "\n")
-
-	for i, err := range errs {
-		if i > 0 {
-			sb.WriteString("\n")
-		}
-		sb.WriteString(fmt.Sprintf("ERROR: %s\n", err.Key))
-		if err.Source != "none" {
-			sb.WriteString(fmt.Sprintf("  Source: %s\n", err.Source))
-		}
-		if err.Value != "" {
-			sb.WriteString(fmt.Sprintf("  Value: %s\n", err.Value))
-		}
-		sb.WriteString(fmt.Sprintf("  Error: %s\n", err.ErrorDescription))
-	}
-
-	sb.WriteString(strings.Repeat("=", 50) + "\n")
-	sb.WriteString(fmt.Sprintf("Total: %d error(s)\n", len(errs)))
-
-	return sb.String()
-}
-
 // maskSecret masks a secret value for display
 func maskSecret(value string) string {
 	if len(value) <= 4 {

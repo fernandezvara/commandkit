@@ -112,7 +112,7 @@ func TestAuthMiddlewareFailure(t *testing.T) {
 func TestTokenAuthMiddleware(t *testing.T) {
 	cfg := New()
 	cfg.Define("TOKEN").String().Default("valid-token")
-	cfg.Process()
+	_ = cfg.Execute([]string{"test"})
 
 	middleware := TokenAuthMiddleware("TOKEN")
 
@@ -136,7 +136,7 @@ func TestTokenAuthMiddleware(t *testing.T) {
 func TestTokenAuthMiddlewareMissingToken(t *testing.T) {
 	cfg := New()
 	cfg.Define("TOKEN").String() // No default value
-	cfg.Process()
+	_ = cfg.Execute([]string{"test"})
 
 	middleware := TokenAuthMiddleware("TOKEN")
 
@@ -220,8 +220,8 @@ func TestDefaultErrorHandlingMiddleware(t *testing.T) {
 func TestAdminOnlyMiddlewareAllowsAuthorizedAdmin(t *testing.T) {
 	cfg := New()
 	cfg.Define("ADMIN_TOKEN").String().Default("admin-secret")
-	if result := cfg.Process(); result.Error != nil {
-		t.Fatalf("unexpected process errors: %v", result.Error)
+	if err := cfg.Execute([]string{"test"}); err != nil {
+		t.Fatalf("unexpected process errors: %v", err)
 	}
 
 	ctx := NewCommandContext([]string{}, cfg, "admin-users", "")
@@ -243,8 +243,8 @@ func TestAdminOnlyMiddlewareAllowsAuthorizedAdmin(t *testing.T) {
 func TestAdminOnlyMiddlewareRejectsInvalidToken(t *testing.T) {
 	cfg := New()
 	cfg.Define("ADMIN_TOKEN").String().Default("wrong-token")
-	if result := cfg.Process(); result.Error != nil {
-		t.Fatalf("unexpected process errors: %v", result.Error)
+	if err := cfg.Execute([]string{"test"}); err != nil {
+		t.Fatalf("unexpected process errors: %v", err)
 	}
 
 	ctx := NewCommandContext([]string{}, cfg, "admin-users", "")

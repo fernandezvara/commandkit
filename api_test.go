@@ -10,9 +10,8 @@ func TestAPIChanges(t *testing.T) {
 	cfg := New()
 	cfg.Define("PORT").Int64().Default(int64(8080))
 
-	result := cfg.Process()
-	if result.Error != nil {
-		t.Fatalf("Config processing failed: %v", result.Error)
+	if err := cfg.Execute([]string{"test"}); err != nil {
+		t.Fatalf("Config processing failed: %v", err)
 	}
 
 	ctx := NewCommandContext([]string{}, cfg, "test", "")
