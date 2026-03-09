@@ -3,7 +3,12 @@ package commandkit
 
 import (
 	"fmt"
+	"net"
+	"os"
 	"strings"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 // TypeConverter handles type-to-string conversions consistently across all value sources
@@ -22,6 +27,14 @@ func (tc *TypeConverter) ConvertToString(value any, delimiter string) (string, e
 		return v, nil
 	case bool, int, int64, float64:
 		return fmt.Sprintf("%v", v), nil
+	case uint, uint8, uint16, uint32:
+		return fmt.Sprintf("%v", v), nil
+	case uint64:
+		return fmt.Sprintf("%d", v), nil
+	case float32:
+		return fmt.Sprintf("%g", v), nil
+	case time.Time:
+		return v.Format(time.RFC3339), nil
 	case []string:
 		// Handle string slices - join with delimiter
 		return strings.Join(v, delimiter), nil
@@ -39,6 +52,20 @@ func (tc *TypeConverter) ConvertToString(value any, delimiter string) (string, e
 			strs[i] = fmt.Sprintf("%d", item)
 		}
 		return strings.Join(strs, delimiter), nil
+	case []float64:
+		// Handle float64 slices - convert to strings and join
+		strs := make([]string, len(v))
+		for i, item := range v {
+			strs[i] = fmt.Sprintf("%g", item)
+		}
+		return strings.Join(strs, delimiter), nil
+	case []bool:
+		// Handle bool slices - convert to strings and join
+		strs := make([]string, len(v))
+		for i, item := range v {
+			strs[i] = fmt.Sprintf("%t", item)
+		}
+		return strings.Join(strs, delimiter), nil
 	case []any:
 		// Handle arrays from files - convert to strings and join
 		strs := make([]string, len(v))
@@ -46,6 +73,15 @@ func (tc *TypeConverter) ConvertToString(value any, delimiter string) (string, e
 			strs[i] = fmt.Sprintf("%v", item)
 		}
 		return strings.Join(strs, delimiter), nil
+	case os.FileMode:
+		// Display FileMode in octal format
+		return fmt.Sprintf("0%o", v), nil
+	case net.IP:
+		// Display IP address in standard format
+		return v.String(), nil
+	case uuid.UUID:
+		// Display UUID in standard format
+		return v.String(), nil
 	default:
 		return "", fmt.Errorf("unsupported value type: %T", v)
 	}
@@ -67,7 +103,21 @@ func (tc *TypeConverter) IsSupportedType(value any) bool {
 	switch value.(type) {
 	case string, bool, int, int64, float64:
 		return true
+	case uint, uint8, uint16, uint32, uint64:
+		return true
+	case float32:
+		return true
+	case time.Time:
+		return true
 	case []string, []int64, []int, []any:
+		return true
+	case []float64, []bool:
+		return true
+	case os.FileMode:
+		return true
+	case net.IP:
+		return true
+	case uuid.UUID:
 		return true
 	default:
 		return false

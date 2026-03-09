@@ -3,6 +3,7 @@ package commandkit
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 )
@@ -263,6 +264,75 @@ func (b *DefinitionBuilder) IntSlice() *DefinitionBuilder {
 	return b
 }
 
+// Unsigned integer methods
+
+func (b *DefinitionBuilder) Uint() *DefinitionBuilder {
+	b.def.valueType = TypeUint
+	return b
+}
+
+func (b *DefinitionBuilder) Uint8() *DefinitionBuilder {
+	b.def.valueType = TypeUint8
+	return b
+}
+
+func (b *DefinitionBuilder) Uint16() *DefinitionBuilder {
+	b.def.valueType = TypeUint16
+	return b
+}
+
+func (b *DefinitionBuilder) Uint32() *DefinitionBuilder {
+	b.def.valueType = TypeUint32
+	return b
+}
+
+func (b *DefinitionBuilder) Uint64() *DefinitionBuilder {
+	b.def.valueType = TypeUint64
+	return b
+}
+
+// Additional types
+
+func (b *DefinitionBuilder) Float32() *DefinitionBuilder {
+	b.def.valueType = TypeFloat32
+	return b
+}
+
+func (b *DefinitionBuilder) Time() *DefinitionBuilder {
+	b.def.valueType = TypeTime
+	return b
+}
+
+func (b *DefinitionBuilder) Float64Slice() *DefinitionBuilder {
+	b.def.valueType = TypeFloat64Slice
+	return b
+}
+
+func (b *DefinitionBuilder) BoolSlice() *DefinitionBuilder {
+	b.def.valueType = TypeBoolSlice
+	return b
+}
+
+func (b *DefinitionBuilder) FileMode() *DefinitionBuilder {
+	b.def.valueType = TypeFileMode
+	return b
+}
+
+func (b *DefinitionBuilder) IP() *DefinitionBuilder {
+	b.def.valueType = TypeIP
+	return b
+}
+
+func (b *DefinitionBuilder) UUID() *DefinitionBuilder {
+	b.def.valueType = TypeUUID
+	return b
+}
+
+func (b *DefinitionBuilder) Path() *DefinitionBuilder {
+	b.def.valueType = TypePath
+	return b
+}
+
 // Source setters
 
 func (b *DefinitionBuilder) Env(envVar string) *DefinitionBuilder {
@@ -439,6 +509,75 @@ func (b *DefinitionBuilder) MaxItems(max int) *DefinitionBuilder {
 func (b *DefinitionBuilder) ItemsRange(min, max int) *DefinitionBuilder {
 	b.def.validations = append(b.def.validations, validateMinItems(min))
 	b.def.validations = append(b.def.validations, validateMaxItems(max))
+	return b
+}
+
+// FileMode validation methods
+func (b *DefinitionBuilder) ValidFilePermission() *DefinitionBuilder {
+	b.def.validations = append(b.def.validations, validateValidFilePermission())
+	return b
+}
+
+func (b *DefinitionBuilder) FileModeRange(min, max os.FileMode) *DefinitionBuilder {
+	b.def.validations = append(b.def.validations, validateFileModeRange(min, max))
+	return b
+}
+
+// Path validation methods
+func (b *DefinitionBuilder) PathExists() *DefinitionBuilder {
+	b.def.validations = append(b.def.validations, validatePathExists())
+	return b
+}
+
+func (b *DefinitionBuilder) PathIsFile() *DefinitionBuilder {
+	b.def.validations = append(b.def.validations, validatePathIsFile())
+	return b
+}
+
+func (b *DefinitionBuilder) PathIsDir() *DefinitionBuilder {
+	b.def.validations = append(b.def.validations, validatePathIsDir())
+	return b
+}
+
+func (b *DefinitionBuilder) PathReadable() *DefinitionBuilder {
+	b.def.validations = append(b.def.validations, validatePathReadable())
+	return b
+}
+
+func (b *DefinitionBuilder) PathWritable() *DefinitionBuilder {
+	b.def.validations = append(b.def.validations, validatePathWritable())
+	return b
+}
+
+// IP validation methods
+func (b *DefinitionBuilder) IPVersion(version int) *DefinitionBuilder {
+	b.def.validations = append(b.def.validations, validateIPVersion(version))
+	return b
+}
+
+func (b *DefinitionBuilder) IPPrivate() *DefinitionBuilder {
+	b.def.validations = append(b.def.validations, validateIPPrivate())
+	return b
+}
+
+func (b *DefinitionBuilder) IPLoopback() *DefinitionBuilder {
+	b.def.validations = append(b.def.validations, validateIPLoopback())
+	return b
+}
+
+// Time validation methods
+func (b *DefinitionBuilder) TimeAfter(after time.Time) *DefinitionBuilder {
+	b.def.validations = append(b.def.validations, validateTimeAfter(after))
+	return b
+}
+
+func (b *DefinitionBuilder) TimeBefore(before time.Time) *DefinitionBuilder {
+	b.def.validations = append(b.def.validations, validateTimeBefore(before))
+	return b
+}
+
+func (b *DefinitionBuilder) TimeRange(min, max time.Time) *DefinitionBuilder {
+	b.def.validations = append(b.def.validations, validateTimeRange(min, max))
 	return b
 }
 
