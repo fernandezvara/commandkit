@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -147,6 +148,15 @@ func convertValue(value any, targetType reflect.Type) (any, error) {
 			return nil, fmt.Errorf("invalid IP address: %s", sourceValue.String())
 		}
 		return ip, nil
+	}
+
+	// Handle string to int64 conversion
+	if targetType == reflect.TypeOf(int64(0)) && sourceType == reflect.TypeOf("") {
+		parsed, err := strconv.ParseInt(sourceValue.String(), 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid int64: %s", sourceValue.String())
+		}
+		return parsed, nil
 	}
 
 	// Handle string to uuid.UUID conversion
