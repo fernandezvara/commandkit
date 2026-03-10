@@ -172,11 +172,18 @@ func (c *Config) resolveValueWithPriorityContext(key string, def *Definition, ct
 	// Check sources in priority order
 	for _, sourceType := range priority {
 		if value, exists := c.getValueFromSource(key, def, sourceType); exists {
-			// Handle special case for Default source - no parsing needed
+			// Handle special case for Default source - use type conversion
 			if sourceType == SourceDefault {
+				// Convert default value to target type
+				converter := NewTypeConverter()
+				convertedValue, err := converter.ConvertDefaultValue(value, def.valueType)
+				if err != nil {
+					return value, sourceType, err
+				}
+
 				// Skip validation if help is requested
 				if ctx != nil && ctx.IsHelpRequested() {
-					return value, sourceType, nil
+					return convertedValue, sourceType, nil
 				}
 
 				// Run validations (except required check for defaults)
@@ -184,11 +191,11 @@ func (c *Config) resolveValueWithPriorityContext(key string, def *Definition, ct
 					if v.Name == "required" {
 						continue // Skip required check for defaults
 					}
-					if err := v.Check(value); err != nil {
-						return value, sourceType, err
+					if err := v.Check(convertedValue); err != nil {
+						return convertedValue, sourceType, err
 					}
 				}
-				return value, sourceType, nil
+				return convertedValue, sourceType, nil
 			}
 
 			// For non-default sources, convert to string and parse using TypeConverter

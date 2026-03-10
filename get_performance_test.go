@@ -7,7 +7,7 @@ import (
 // TestGetPerformance tests the performance optimizations in Get[T]
 func TestGetPerformance(t *testing.T) {
 	cfg := New()
-	cfg.Define("PORT").Int64().Default(int64(8080))
+	cfg.Define("PORT").Int64().Default(8080)
 	cfg.Define("HOST").String().Default("localhost")
 	cfg.Define("DEBUG").Bool().Default(false)
 	cfg.Define("RATE").Float64().Default(0.5)
@@ -108,7 +108,7 @@ func BenchmarkTypeConverter(b *testing.B) {
 // BenchmarkGetInt64 benchmarks Get[int64] performance
 func BenchmarkGetInt64(b *testing.B) {
 	cfg := New()
-	cfg.Define("PORT").Int64().Default(int64(8080))
+	cfg.Define("PORT").Int64().Default(8080)
 
 	if err := cfg.Execute([]string{"test"}); err != nil {
 		b.Fatal(err)

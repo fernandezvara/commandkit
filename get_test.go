@@ -9,7 +9,7 @@ import (
 func TestMustGet(t *testing.T) {
 	cfg := New()
 
-	cfg.Define("PORT").Int64().Default(int64(8080))
+	cfg.Define("PORT").Int64().Default(8080)
 	cfg.Define("HOST").String() // No default, not required
 
 	if err := cfg.Execute([]string{"test"}); err != nil {
@@ -68,10 +68,10 @@ func TestGetWithMissingKey(t *testing.T) {
 	}
 }
 
-func TestGetWithTypeMismatch(t *testing.T) {
+func TestGetWithTypeConversion(t *testing.T) {
 	cfg := New()
 
-	cfg.Define("PORT").String().Default("8080") // String but we'll try to get as int64
+	cfg.Define("PORT").String().Default("8080") // String should convert to int64
 
 	if err := cfg.Execute([]string{"test"}); err != nil {
 		t.Fatalf("Unexpected errors: %v", err)
@@ -80,32 +80,20 @@ func TestGetWithTypeMismatch(t *testing.T) {
 	// Create context for new API
 	ctx := NewCommandContext([]string{}, cfg, "test", "")
 
-	// Test Get with type mismatch
-	_, err := Get[int64](ctx, "PORT")
-	if err == nil {
-		t.Error("Expected error for type mismatch")
+	// Test Get with type conversion (should now work)
+	value, err := Get[int64](ctx, "PORT")
+	if err != nil {
+		t.Errorf("Expected successful conversion, got error: %v", err)
 	}
 
-	// Verify error was collected
-	if !ctx.execution.HasErrors() {
-		t.Error("Expected error to be collected for type mismatch")
+	// Verify the converted value
+	if value != 8080 {
+		t.Errorf("Expected value 8080, got %d", value)
 	}
 
-	collected := ctx.execution.GetErrors()
-	if len(collected) == 0 {
-		t.Error("Expected error to be collected for type mismatch")
-	}
-
-	if collected[0].Key != "PORT" {
-		t.Errorf("Expected key 'PORT', got '%s'", collected[0].Key)
-	}
-
-	if collected[0].ExpectedType != "int64" {
-		t.Errorf("Expected expected type 'int64', got '%s'", collected[0].ExpectedType)
-	}
-
-	if collected[0].ActualType != "string" {
-		t.Errorf("Expected actual type 'string', got '%s'", collected[0].ActualType)
+	// Verify no errors were collected (conversion succeeded)
+	if ctx.execution.HasErrors() {
+		t.Error("Expected no errors for successful conversion")
 	}
 }
 

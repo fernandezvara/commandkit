@@ -13,7 +13,7 @@ func TestDefinitionBuilderClone(t *testing.T) {
 		Int64().
 		Env("PORT").
 		Flag("port").
-		Default(int64(8080)).
+		Default(8080).
 		Range(1, 65535).
 		Required().
 		Description("HTTP server port")

@@ -17,7 +17,7 @@ func BenchmarkConfigProcessing_Large(b *testing.B) {
 				Int64().
 				Env("PORT").
 				Flag("port").
-				Default(int64(8080))
+				Default(8080)
 
 			cfg.Define("HOST").
 				String().
@@ -62,7 +62,7 @@ func BenchmarkConfigProcessing_Small(b *testing.B) {
 			Int64().
 			Env("PORT").
 			Flag("port").
-			Default(int64(8080))
+			Default(8080)
 
 		cfg.Define("HOST").
 			String().
@@ -128,7 +128,7 @@ func BenchmarkHelpGeneration_Command(b *testing.B) {
 				cc.Define("PORT").
 					Int64().
 					Flag("port").
-					Default(int64(8080))
+					Default(8080)
 
 				cc.Define("ENV").
 					String().

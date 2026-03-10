@@ -15,7 +15,7 @@ func TestBasicConfigurationDefinition(t *testing.T) {
 		Int64().
 		Env("PORT").
 		Flag("port").
-		Default(int64(8080)).
+		Default(8080).
 		Range(1, 65535).
 		Description("HTTP server port")
 
@@ -183,7 +183,7 @@ func TestValidation(t *testing.T) {
 	cfg.Define("PORT").
 		Int64().
 		Env("PORT").
-		Default(int64(8080)).
+		Default(8080).
 		Range(1, 65535)
 
 	cfg.Define("RATE").

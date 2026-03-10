@@ -13,7 +13,7 @@ import (
 func TestConfigMutationFix(t *testing.T) {
 	// Create a global config with some definitions
 	globalConfig := New()
-	globalConfig.Define("GLOBAL_PORT").Int64().Default(int64(3000))
+	globalConfig.Define("GLOBAL_PORT").Int64().Default(3000)
 	globalConfig.Define("GLOBAL_MODE").String().Default("global")
 
 	if err := globalConfig.Execute([]string{"test"}); err != nil {

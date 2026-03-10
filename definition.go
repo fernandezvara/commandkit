@@ -401,6 +401,21 @@ func (b *DefinitionBuilder) Secret() *DefinitionBuilder {
 }
 
 func (b *DefinitionBuilder) Default(value any) *DefinitionBuilder {
+	// If we know the target type, try to convert immediately for better error detection
+	if b.def.valueType != TypeString && b.def.valueType != 0 {
+		converter := NewTypeConverter()
+		convertedValue, err := converter.ConvertDefaultValue(value, b.def.valueType)
+		if err != nil {
+			// Store original value but the error will be caught during processing
+			// This allows for better error messages at processing time
+		} else {
+			// Store the converted value for immediate type correctness
+			b.def.defaultValue = convertedValue
+			return b
+		}
+	}
+
+	// Store original value if conversion failed or type is unknown
 	b.def.defaultValue = value
 	return b
 }

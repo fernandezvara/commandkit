@@ -87,7 +87,7 @@ func TestSourceOverrideDetection(t *testing.T) {
 	cfg := New()
 
 	// Define config with flag, env, and default
-	cfg.Define("TEST_PORT").Int64().Env("TEST_PORT").Flag("port").Default(int64(8080))
+	cfg.Define("TEST_PORT").Int64().Env("TEST_PORT").Flag("port").Default(8080)
 
 	// Save original os.Args and restore after test
 	originalArgs := os.Args

@@ -109,17 +109,17 @@ func defineAllTypes(cc *commandkit.CommandConfig, withEnv, withFlag, withFile bo
 	d("TEST_BOOL").Bool().Default(true)
 
 	// Integer types
-	d("TEST_INT64").Int64().Default(int64(1))
+	d("TEST_INT64").Int64().Default(1)
 	d("TEST_INT").Int().Default(2)
-	d("TEST_UINT").Uint().Default(uint(3))
-	d("TEST_UINT8").Uint8().Default(uint8(4))
-	d("TEST_UINT16").Uint16().Default(uint16(5))
-	d("TEST_UINT32").Uint32().Default(uint32(6))
-	d("TEST_UINT64").Uint64().Default(uint64(7))
+	d("TEST_UINT").Uint().Default(3)
+	d("TEST_UINT8").Uint8().Default(4)
+	d("TEST_UINT16").Uint16().Default(5)
+	d("TEST_UINT32").Uint32().Default(6)
+	d("TEST_UINT64").Uint64().Default(7)
 
 	// Float types
 	d("TEST_FLOAT64").Float64().Default(1.1)
-	d("TEST_FLOAT32").Float32().Default(float32(2.2))
+	d("TEST_FLOAT32").Float32().Default(2.2)
 
 	// Time types
 	d("TEST_DURATION").Duration().Default(time.Minute)

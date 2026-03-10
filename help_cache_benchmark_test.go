@@ -97,7 +97,7 @@ func BenchmarkCommandHelp_Cached(b *testing.B) {
 				cc.Define("PORT").
 					Int64().
 					Flag("port").
-					Default(int64(8080))
+					Default(8080)
 
 				cc.Define("ENV").
 					String().
@@ -140,7 +140,7 @@ func BenchmarkCommandHelp_Uncached(b *testing.B) {
 				cc.Define("PORT").
 					Int64().
 					Flag("port").
-					Default(int64(8080))
+					Default(8080)
 
 				cc.Define("ENV").
 					String().

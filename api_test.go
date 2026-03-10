@@ -8,7 +8,7 @@ import (
 func TestAPIChanges(t *testing.T) {
 	// Test that new Get[T] API works
 	cfg := New()
-	cfg.Define("PORT").Int64().Default(int64(8080))
+	cfg.Define("PORT").Int64().Default(8080)
 
 	if err := cfg.Execute([]string{"test"}); err != nil {
 		t.Fatalf("Config processing failed: %v", err)

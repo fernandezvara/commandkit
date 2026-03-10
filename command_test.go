@@ -49,7 +49,7 @@ func TestCommandDefinition(t *testing.T) {
 
 	if portDef, exists := cmd.Definitions["PORT"]; !exists {
 		t.Error("PORT definition not found in command")
-	} else if portDef.defaultValue != 8080 {
+	} else if portDef.defaultValue != int64(8080) {
 		t.Errorf("Expected PORT default 8080, got %v", portDef.defaultValue)
 	}
 }
