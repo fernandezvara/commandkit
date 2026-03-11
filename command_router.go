@@ -113,7 +113,7 @@ func (cr *commandRouter) RouteWithHelpHandling(args []string, config *Config) (*
 
 	// Handle no command case - show global help
 	if len(args) < 2 {
-		err := config.getHelpService().ShowHelp([]string{"--help"}, config.commands)
+		err := config.getHelpService().ShowHelpUnified("", "", false, []GetError{}, config.commands)
 		return nil, nil, err // Help shown, no command to execute
 	}
 
@@ -123,7 +123,7 @@ func (cr *commandRouter) RouteWithHelpHandling(args []string, config *Config) (*
 
 	// Check if the command name is actually a help flag
 	if commandName == "--help" || commandName == "-h" || commandName == "help" {
-		err := config.getHelpService().ShowHelp([]string{"--help"}, config.commands)
+		err := config.getHelpService().ShowHelpUnified("", "", false, []GetError{}, config.commands)
 		return nil, nil, err // Help shown, no command to execute
 	}
 
@@ -157,32 +157,29 @@ func (cr *commandRouter) RouteWithHelpHandling(args []string, config *Config) (*
 		commandPath = append(commandPath, finalCtx.SubCommand)
 	}
 
-	// Check for help requests using context-aware detection
+	// Check for help requests using unified system
 	helpService := config.getHelpService()
-	helpFactory := helpService.GetFactory()
 
-	// Use the remaining args after subcommand routing for help detection
-	helpRequest := helpFactory.DetectHelpRequestWithContext(finalCtx.Args, commandPath)
+	// Detect help mode from args
+	full := false
+	for _, arg := range finalCtx.Args {
+		if arg == "--full-help" {
+			full = true
+			break
+		}
+	}
 
-	if helpRequest.Type != HelpTypeNone {
-		// Show appropriate help based on the detected type
-		switch helpRequest.Type {
-		case HelpTypeGlobal:
-			err := helpService.ShowHelp([]string{"--help"}, config.commands)
-			return nil, nil, err
-		case HelpTypeCommand:
-			// Preserve the original help flag from the request
-			helpArgs := []string{helpRequest.Command}
-			if len(helpRequest.Args) > 0 {
-				helpArgs = append(helpArgs, helpRequest.Args[0])
-			} else {
-				helpArgs = append(helpArgs, "--help")
+	// Check if help is requested
+	if len(finalCtx.Args) > 0 {
+		lastArg := finalCtx.Args[len(finalCtx.Args)-1]
+		if lastArg == "--help" || lastArg == "-h" || lastArg == "help" || lastArg == "--full-help" {
+			// Show subcommand help using unified system
+			err := helpService.ShowHelpUnified(finalCtx.Command, finalCtx.SubCommand, full, []GetError{}, config.commands)
+			if err != nil {
+				return nil, nil, err
 			}
-			err := helpService.ShowHelp(helpArgs, config.commands)
-			return nil, nil, err
-		case HelpTypeSubcommand:
-			err := cr.showSubcommandHelp(helpRequest.Command, helpRequest.Subcommand, config)
-			return nil, nil, err
+			// Help was shown successfully, return nil to prevent command execution
+			return nil, nil, nil
 		}
 	}
 
@@ -191,31 +188,7 @@ func (cr *commandRouter) RouteWithHelpHandling(args []string, config *Config) (*
 
 // showSubcommandHelp displays help for a specific subcommand
 func (cr *commandRouter) showSubcommandHelp(parentCommand, subcommandName string, config *Config) error {
-	parentCmd, exists := config.commands[parentCommand]
-	if !exists {
-		return fmt.Errorf("parent command %s not found", parentCommand)
-	}
-
-	subCmd := parentCmd.FindSubCommand(subcommandName)
-	if subCmd == nil {
-		return fmt.Errorf("subcommand %s not found in command %s", subcommandName, parentCommand)
-	}
-
-	// Use the help service directly to generate command help for the subcommand
+	// Use the unified help system
 	helpService := config.getHelpService()
-
-	// Generate command help for the subcommand
-	executable := "example_commands" // This should be dynamic but for now it's ok
-	commandHelp := helpService.GetFactory().CreateCommandHelp(subCmd, executable)
-
-	// Format the help using the command help formatter
-	formatter := helpService.GetFormatter()
-	helpText, err := formatter.FormatCommandHelp(commandHelp)
-	if err != nil {
-		return err
-	}
-
-	// Print the help
-	output := helpService.GetOutput()
-	return output.Print(helpText)
+	return helpService.ShowHelpUnified(parentCommand, subcommandName, false, []GetError{}, config.commands)
 }

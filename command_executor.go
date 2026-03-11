@@ -71,9 +71,8 @@ func (ce *commandExecutor) validateCommand(cmd *Command, ctx *CommandContext) *C
 			}
 		}
 
-		// Show subcommand help
-		args := []string{ctx.Command, "--help"}
-		err := helpService.ShowHelp(args, commands)
+		// Show subcommand help using unified system
+		err := helpService.ShowHelpUnified(ctx.Command, ctx.SubCommand, false, []GetError{}, commands)
 		if err != nil {
 			return errorResult(err)
 		}

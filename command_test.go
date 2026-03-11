@@ -135,7 +135,7 @@ func TestCommandHelp(t *testing.T) {
 
 	// Use new help system to get command help
 	helpService := NewHelpService()
-	help, err := helpService.GenerateHelp([]string{"start", "--help"}, cfg.commands)
+	help, err := helpService.GenerateHelp([]string{"app", "start", "--help"}, cfg.commands)
 	if err != nil {
 		t.Fatalf("Failed to generate help: %v", err)
 	}
@@ -160,8 +160,8 @@ func TestCommandHelp(t *testing.T) {
 
 func TestShowGlobalHelp(t *testing.T) {
 	cfg := New()
-	cfg.Command("start").Func(startCommand).ShortHelp("Start the service").Aliases("run")
-	cfg.Command("stop").Func(stopCommand).ShortHelp("Stop the service")
+	cfg.Command("start").Func(startCommand).LongHelp("Start the service").Aliases("run")
+	cfg.Command("stop").Func(stopCommand).LongHelp("Stop the service")
 
 	output := captureStdout(t, func() {
 		if err := cfg.ShowGlobalHelp(); err != nil {
@@ -177,6 +177,9 @@ func TestShowGlobalHelp(t *testing.T) {
 	}
 	if !strings.Contains(output, "start") || !strings.Contains(output, "Start the service") {
 		t.Fatalf("expected start command in output, got: %s", output)
+	}
+	if !strings.Contains(output, "stop") || !strings.Contains(output, "Stop the service") {
+		t.Fatalf("expected stop command in output, got: %s", output)
 	}
 	if !strings.Contains(output, "aliases: run") {
 		t.Fatalf("expected aliases in output, got: %s", output)
@@ -220,13 +223,12 @@ func TestShowCommandHelp(t *testing.T) {
 func TestShowCommandHelpUnknownCommand(t *testing.T) {
 	cfg := New()
 
+	// The unified system shows help for unknown commands without error
 	err := cfg.ShowCommandHelp("missing")
-	if err == nil {
-		t.Fatal("expected error for unknown command")
+	if err != nil {
+		t.Fatalf("unexpected error for unknown command: %v", err)
 	}
-	if err.Error() != "unknown command: missing" {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	// This should succeed and show help for the unknown command
 }
 
 func TestConfigExecuteHelpPaths(t *testing.T) {

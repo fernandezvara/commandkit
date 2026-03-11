@@ -363,7 +363,7 @@ func (c *Config) ShowGlobalHelp() error {
 
 // ShowCommandHelp displays help for a specific command using the new template-based help system
 func (c *Config) ShowCommandHelp(commandName string) error {
-	return c.getHelpService().ShowHelp([]string{commandName, "--help"}, c.commands)
+	return c.getHelpService().ShowHelp([]string{"app", commandName, "--help"}, c.commands)
 }
 
 // findSuggestions finds similar command names for suggestions

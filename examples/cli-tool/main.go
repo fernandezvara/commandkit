@@ -386,7 +386,7 @@ Available commands include:
 Use 'cli-tool <command> --help' for detailed command-specific help including
 all available options, environment variables, and examples.`).
 		CustomHelp().
-		Aliases("?", "--help", "-h")
+		Aliases("--help", "-h")
 
 	// Test command with custom help
 	cfg.Command("custom-test").

@@ -4,7 +4,6 @@ package commandkit
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 )
@@ -150,9 +149,24 @@ func (ctx *ExecutionContext) renderErrorsWithCommand(cmd *Command, helpService H
 		cmd = ctx.synthesizeCommand(errs)
 	}
 
-	executable := filepath.Base(os.Args[0])
-	commandHelp := helpService.GetFactory().CreateCommandHelpWithErrors(cmd, executable, errs)
-	return helpService.GetFormatter().FormatCommandHelp(commandHelp)
+	// Create a simple help display for errors
+	var builder strings.Builder
+	builder.WriteString(fmt.Sprintf("Usage: %s [options]\n\n", ctx.command))
+
+	if cmd != nil && cmd.LongHelp != "" {
+		builder.WriteString(cmd.LongHelp)
+		builder.WriteString("\n\n")
+	}
+
+	if len(errs) > 0 {
+		builder.WriteString("Configuration errors:\n")
+		for _, err := range errs {
+			builder.WriteString(fmt.Sprintf("  %s -> %s\n", err.Display, err.ErrorDescription))
+		}
+		builder.WriteString("\n")
+	}
+
+	return builder.String(), nil
 }
 
 // GetFormattedErrors returns all collected errors as a simplified fallback string
