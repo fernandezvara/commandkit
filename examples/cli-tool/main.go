@@ -70,6 +70,7 @@ func main() {
 		String().
 		Env("ADMIN_TOKEN").
 		Secret().
+		Required().
 		Description("Admin authentication token")
 
 	cfg.Define("API_KEY").

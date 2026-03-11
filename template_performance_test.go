@@ -18,7 +18,7 @@ Commands:
 {{end}}
 
 {{if .Flags}}
-Options:
+Flags:
 {{range .Flags}}
   --{{.Name}} {{.Type}} (default: {{.Default}})
 {{end}}
@@ -64,7 +64,7 @@ Commands:
 {{end}}
 
 {{if .Flags}}
-Options:
+Flags:
 {{range .Flags}}
   --{{.Name}} {{.Type}} (default: {{.Default}})
 {{end}}

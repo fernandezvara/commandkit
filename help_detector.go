@@ -3,6 +3,7 @@ package commandkit
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -10,6 +11,7 @@ import (
 type HelpDetector interface {
 	IsHelpRequested(args []string) bool
 	GetHelpType(args []string) HelpType
+	GetHelpMode(args []string) HelpMode
 	ExtractCommandFromArgs(args []string) (string, []string)
 	ParseHelpRequest(args []string) *HelpRequest
 	GetExecutableName(args []string) string
@@ -28,17 +30,15 @@ type helpDetector struct {
 // NewHelpDetector creates a new help detector
 func NewHelpDetector() HelpDetector {
 	return &helpDetector{
-		helpFlags: []string{"--help", "-h", "help"},
+		helpFlags: []string{"--help", "-h", "help", "--full-help"},
 	}
 }
 
 // IsHelpRequested checks if help is requested in the arguments
 func (hd *helpDetector) IsHelpRequested(args []string) bool {
 	for _, arg := range args {
-		for _, helpFlag := range hd.helpFlags {
-			if arg == helpFlag {
-				return true
-			}
+		if slices.Contains(hd.helpFlags, arg) {
+			return true
 		}
 	}
 	return false
@@ -75,6 +75,14 @@ func (hd *helpDetector) GetHelpType(args []string) HelpType {
 	return HelpTypeCommand
 }
 
+// GetHelpMode determines if help is essential or full
+func (hd *helpDetector) GetHelpMode(args []string) HelpMode {
+	if slices.Contains(args, "--full-help") {
+		return HelpModeFull
+	}
+	return HelpModeEssential
+}
+
 // ExtractCommandFromArgs extracts the command name from arguments
 func (hd *helpDetector) ExtractCommandFromArgs(args []string) (string, []string) {
 	if len(args) == 0 {
@@ -99,9 +107,11 @@ func (hd *helpDetector) ExtractCommandFromArgs(args []string) (string, []string)
 // ParseHelpRequest parses a complete help request
 func (hd *helpDetector) ParseHelpRequest(args []string) *HelpRequest {
 	helpType := hd.GetHelpType(args)
+	helpMode := hd.GetHelpMode(args)
 
 	request := &HelpRequest{
 		Type:     helpType,
+		Mode:     helpMode,
 		Args:     args,
 		Original: args,
 	}
@@ -116,6 +126,10 @@ func (hd *helpDetector) ParseHelpRequest(args []string) *HelpRequest {
 		command, remaining := hd.ExtractCommandFromArgs(args)
 		request.Command = command
 		request.Args = remaining
+		// IMPORTANT: Preserve the original mode, don't re-detect on remaining args
+		if helpMode == HelpModeFull {
+			request.Mode = HelpModeFull
+		}
 
 	case HelpTypeSubcommand:
 		// Extract command and subcommand
@@ -132,12 +146,7 @@ func (hd *helpDetector) ParseHelpRequest(args []string) *HelpRequest {
 
 // isHelpFlag checks if an argument is a help flag
 func (hd *helpDetector) isHelpFlag(arg string) bool {
-	for _, helpFlag := range hd.helpFlags {
-		if arg == helpFlag {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(hd.helpFlags, arg)
 }
 
 // GetExecutableName returns the executable name from arguments or a default
@@ -167,6 +176,7 @@ func (hd *helpDetector) ParseHelpRequestWithContext(args []string, commandPath [
 	if !hd.IsHelpRequested(args) {
 		return &HelpRequest{
 			Type:     HelpTypeNone,
+			Mode:     HelpModeEssential,
 			Args:     args,
 			Original: args,
 		}
@@ -184,12 +194,14 @@ func (hd *helpDetector) ParseHelpRequestWithContext(args []string, commandPath [
 	if helpIndex == -1 {
 		return &HelpRequest{
 			Type:     HelpTypeNone,
+			Mode:     HelpModeEssential,
 			Args:     args,
 			Original: args,
 		}
 	}
 
 	request := &HelpRequest{
+		Mode:     hd.GetHelpMode(args),
 		Args:     args,
 		Original: args,
 	}

@@ -89,7 +89,7 @@ These options apply to all commands:
 cli-tool deploy [options] [subcommand]
 ```
 
-**Options:**
+**Flags:**
 - `--env` (required): Target environment (dev/staging/prod)
 - `--dry-run`: Perform dry run without changes
 - `--skip-tests`: Skip running tests
@@ -111,9 +111,9 @@ cli-tool admin [subcommand]
 **Subcommands:**
 - `users --action <action>`: Manage users
   - Actions: list, create, delete, update
-  - Options: `--username`, `--role`
+  - Flags: `--username`, `--role`
 - `shutdown`: Shutdown service
-  - Options: `--graceful`, `--delay`
+  - Flags: `--graceful`, `--delay`
 
 ### Status Command
 ```bash
@@ -122,14 +122,14 @@ cli-tool status [subcommand]
 
 **Requires:** `API_KEY` environment variable
 
-**Options:**
+**Flags:**
 - `--detailed`: Show detailed status
 - `--format`: Output format (text/json/yaml)
 
 **Subcommands:**
 - `api --endpoint <path>`: API service status
 - `database`: Database status
-  - Options: `--check-connection`, `--show-stats`
+  - Flags: `--check-connection`, `--show-stats`
 
 ## Middleware Pipeline
 

@@ -171,7 +171,14 @@ func (cr *commandRouter) RouteWithHelpHandling(args []string, config *Config) (*
 			err := helpService.ShowHelp([]string{"--help"}, config.commands)
 			return nil, nil, err
 		case HelpTypeCommand:
-			err := helpService.ShowHelp([]string{helpRequest.Command, "--help"}, config.commands)
+			// Preserve the original help flag from the request
+			helpArgs := []string{helpRequest.Command}
+			if len(helpRequest.Args) > 0 {
+				helpArgs = append(helpArgs, helpRequest.Args[0])
+			} else {
+				helpArgs = append(helpArgs, "--help")
+			}
+			err := helpService.ShowHelp(helpArgs, config.commands)
 			return nil, nil, err
 		case HelpTypeSubcommand:
 			err := cr.showSubcommandHelp(helpRequest.Command, helpRequest.Subcommand, config)

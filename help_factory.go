@@ -1,12 +1,15 @@
 // commandkit/help_factory.go
 package commandkit
 
+import "fmt"
+
 // HelpFactory creates help objects for different contexts
 type HelpFactory interface {
 	// Core help creation methods
 	CreateGlobalHelp(commands map[string]*Command, executable string) *GlobalHelp
 	CreateCommandHelp(cmd *Command, executable string) *CommandHelp
 	CreateCommandHelpWithErrors(cmd *Command, executable string, errors []GetError) *CommandHelp
+	CreateCommandHelpWithMode(cmd *Command, executable string, mode HelpMode) (*CommandHelp, error)
 	CreateSubcommandHelp(parent string, subcommands map[string]*Command) *SubcommandHelp
 	CreateFlagHelp(command string, defs map[string]*Definition) *FlagHelp
 
@@ -14,6 +17,7 @@ type HelpFactory interface {
 	DetectHelpRequest(args []string) *HelpRequest
 	IsHelpRequested(args []string) bool
 	GetHelpType(args []string) HelpType
+	GetHelpMode(args []string) HelpMode
 
 	// Context-aware help detection methods
 	DetectHelpRequestWithContext(args []string, commandPath []string) *HelpRequest
@@ -34,6 +38,9 @@ const (
 	TemplateCustomHelpError // For custom help with errors (LongHelp + errors)
 	TemplateSubcommand
 	TemplateFlag
+	TemplateEssential      // For essential help (all flags + required env vars)
+	TemplateEssentialError // For essential help with errors
+	TemplateFull           // For full help (all flags + all env vars)
 )
 
 // helpFactory implements HelpFactory
@@ -63,6 +70,7 @@ func (hf *helpFactory) DetectHelpRequest(args []string) *HelpRequest {
 }
 
 // IsHelpRequested checks if help is requested
+// Delegates to HelpDetector for centralized help flag detection
 func (hf *helpFactory) IsHelpRequested(args []string) bool {
 	return hf.detector.IsHelpRequested(args)
 }
@@ -70,6 +78,11 @@ func (hf *helpFactory) IsHelpRequested(args []string) bool {
 // GetHelpType gets the type of help request
 func (hf *helpFactory) GetHelpType(args []string) HelpType {
 	return hf.detector.GetHelpType(args)
+}
+
+// GetHelpMode gets the help mode (essential vs full)
+func (hf *helpFactory) GetHelpMode(args []string) HelpMode {
+	return hf.detector.GetHelpMode(args)
 }
 
 // DetectHelpRequestWithContext detects and parses a help request with command path context
@@ -132,6 +145,48 @@ func (hf *helpFactory) CreateCommandHelpWithErrors(cmd *Command, executable stri
 		Errors:      orderedErrors,
 		HasErrors:   len(errors) > 0,
 	}
+}
+
+// CreateCommandHelpWithMode creates command help with filtering mode (essential vs full)
+func (hf *helpFactory) CreateCommandHelpWithMode(cmd *Command, executable string, mode HelpMode) (*CommandHelp, error) {
+	// Build usage string
+	usage := fmt.Sprintf("%s %s [options]", executable, cmd.Name)
+
+	// Build description
+	description := cmd.LongHelp
+	if description == "" {
+		description = cmd.ShortHelp
+	}
+
+	// Extract filtered flag information
+	filteredHelp, err := hf.extractor.ExtractFlagInfoFiltered(cmd.Definitions, mode)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract subcommand information
+	subcommands := hf.extractor.ExtractSubcommandInfo(cmd.SubCommands)
+
+	// Choose template based on mode and customHelp flag
+	var templateType TemplateType
+	if cmd.customHelp {
+		templateType = TemplateCustomHelp
+	} else if mode == HelpModeEssential {
+		templateType = TemplateEssential
+	} else {
+		templateType = TemplateFull
+	}
+
+	return &CommandHelp{
+		Command:         cmd,
+		Usage:           usage,
+		Description:     description,
+		Flags:           filteredHelp.Flags,
+		RequiredEnvVars: filteredHelp.RequiredEnvVars,
+		AllEnvVars:      filteredHelp.AllEnvVars,
+		Subcommands:     subcommands,
+		Template:        hf.templates[templateType],
+	}, nil
 }
 
 func (hf *helpFactory) orderErrors(flags []FlagInfo, errors []GetError) []GetError {
@@ -221,6 +276,9 @@ func (hf *helpFactory) setDefaultTemplates() {
 	hf.templates[TemplateCustomHelpError] = DefaultCustomHelpErrorTemplate
 	hf.templates[TemplateSubcommand] = DefaultSubcommandTemplate
 	hf.templates[TemplateFlag] = DefaultFlagTemplate
+	hf.templates[TemplateEssential] = DefaultEssentialTemplate
+	hf.templates[TemplateEssentialError] = DefaultEssentialErrorTemplate
+	hf.templates[TemplateFull] = DefaultFullTemplate
 }
 
 // Default templates (can be overridden)
@@ -241,7 +299,7 @@ Use '{{.Executable}} <command> --help' for command-specific help{{else}}{{if .De
 
 {{.Description}}
 
-{{if .Flags}}Options:
+{{if .Flags}}Flags:
 {{range .Flags}}  {{.DisplayLine}}
 {{if .Description}}        {{.Description}}
 {{end}}{{end}}{{end}}
@@ -258,7 +316,7 @@ Use '{{.Executable}} <command> --help' for command-specific help{{else}}{{if .De
 {{range .Errors}}  {{.Display}} -> {{.ErrorDescription}}
 {{end}}
 
-{{end}}{{if .Flags}}Options:
+{{end}}{{if .Flags}}Flags:
 {{range .Flags}}  {{.DisplayLine}}
 {{if .Description}}        {{.Description}}
 {{end}}{{end}}{{end}}
@@ -291,5 +349,63 @@ Use '{{.Parent}} <subcommand> --help' for more information on a specific subcomm
         {{.Description}}
 {{else}}  --{{.Name}} {{.Type}}{{if .Required}} (required){{end}}{{if .Default}} (default: {{.Default}}){{end}}{{if .EnvVar}} (env: {{.EnvVar}}){{end}}{{if .Validations}} ({{join .Validations ", "}}){{end}}{{if .Secret}} (secret){{end}}
         {{.Description}}
+{{end}}{{end}}`
+
+	DefaultEssentialTemplate = `Usage: {{.Command.Name}} [options]
+
+{{.Description}}
+
+{{if .Flags}}Flags:
+{{range .Flags}}  {{.DisplayLine}}
+{{if .Description}}        {{.Description}}
+{{end}}{{end}}{{end}}
+
+{{if .RequiredEnvVars}}Environment Variables:
+{{range .RequiredEnvVars}}  {{.EnvVarDisplay}}
+        {{.Description}}
+{{end}}{{end}}
+
+{{if .Subcommands}}Subcommands:
+{{range .Subcommands}}  {{printf "%-12s" .Name}} {{.Description}}{{if .Aliases}} (aliases: {{join .Aliases ", "}}){{end}}
+{{end}}{{end}}`
+
+	DefaultFullTemplate = `Usage: {{.Command.Name}} [options]
+
+{{.Description}}
+
+{{if .Flags}}Flags:
+{{range .Flags}}  {{.DisplayLine}}
+{{if .Description}}        {{.Description}}
+{{end}}{{end}}{{end}}
+
+{{if .AllEnvVars}}Environment Variables:
+{{range .AllEnvVars}}  {{.EnvVarDisplay}}
+        {{.Description}}
+{{end}}{{end}}
+
+{{if .Subcommands}}Subcommands:
+{{range .Subcommands}}  {{printf "%-12s" .Name}} {{.Description}}{{if .Aliases}} (aliases: {{join .Aliases ", "}}){{end}}
+{{end}}{{end}}`
+
+	DefaultEssentialErrorTemplate = `Usage: {{.Command.Name}} [options]
+
+{{.Description}}
+
+{{if .HasErrors}}Configuration errors:
+{{range .Errors}}  {{.Display}} -> {{.ErrorDescription}}
+{{end}}
+
+{{end}}{{if .Flags}}Flags:
+{{range .Flags}}  {{.DisplayLine}}
+{{if .Description}}        {{.Description}}
+{{end}}{{end}}{{end}}
+
+{{if .RequiredEnvVars}}Environment Variables:
+{{range .RequiredEnvVars}}  {{.EnvVarDisplay}}
+        {{.Description}}
+{{end}}{{end}}
+
+{{if .Subcommands}}Subcommands:
+{{range .Subcommands}}  {{printf "%-12s" .Name}} {{.Description}}{{if .Aliases}} (aliases: {{join .Aliases ", "}}){{end}}
 {{end}}{{end}}`
 )

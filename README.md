@@ -145,7 +145,7 @@ Usage: app [options]
 Configuration errors:
   --port int64 (default: 8080) -> value 99999 is greater than maximum 65535
 
-Options:
+Flags:
   --port int64 (default: 8080) (valid: 1-65535)
         HTTP server port
 ```
@@ -365,7 +365,7 @@ Usage: deploy [options]
 
 Deploy the application to the specified environment.
 
-Options:
+Flags:
   --env string (required) (oneOf: dev staging prod)
         Target environment
   --dry-run bool (default: false)

@@ -13,11 +13,13 @@ type HelpService interface {
 	GenerateHelp(args []string, commands map[string]*Command) (string, error)
 	ShowGlobalHelp(commands map[string]*Command) error
 	ShowCommandHelp(commandName string, commands map[string]*Command) error
+	ShowCommandHelpWithMode(commandName string, commands map[string]*Command, mode HelpMode) error
 	ShowSubcommandHelp(parent string, subcommands map[string]*Command) error
 	SetOutput(output HelpOutput)
 	GetOutput() HelpOutput
 	IsHelpRequested(args []string) bool
 	GetHelpType(args []string) HelpType
+	GetHelpMode(args []string) HelpMode
 	GetFormatter() HelpFormatter
 	GetFactory() HelpFactory
 }
@@ -59,7 +61,7 @@ func (hs *helpService) ShowHelp(args []string, commands map[string]*Command) err
 	case HelpTypeGlobal:
 		return hs.ShowGlobalHelp(commands)
 	case HelpTypeCommand:
-		return hs.ShowCommandHelp(request.Command, commands)
+		return hs.ShowCommandHelpWithMode(request.Command, commands, request.Mode)
 	case HelpTypeSubcommand:
 		return hs.ShowSubcommandHelp(request.Command, commands)
 	default:
@@ -77,7 +79,7 @@ func (hs *helpService) GenerateHelp(args []string, commands map[string]*Command)
 	case HelpTypeGlobal:
 		return hs.generateGlobalHelp(commands)
 	case HelpTypeCommand:
-		return hs.generateCommandHelp(request.Command, commands)
+		return hs.generateCommandHelpWithMode(request.Command, commands, request.Mode)
 	case HelpTypeSubcommand:
 		return hs.generateSubcommandHelp(request.Command, commands)
 	default:
@@ -98,6 +100,31 @@ func (hs *helpService) ShowGlobalHelp(commands map[string]*Command) error {
 // ShowCommandHelp displays help for a specific command
 func (hs *helpService) ShowCommandHelp(commandName string, commands map[string]*Command) error {
 	text, err := hs.generateCommandHelp(commandName, commands)
+	if err != nil {
+		return err
+	}
+
+	return hs.output.Print(text)
+}
+
+// ShowCommandHelpWithMode displays command help with filtering mode (essential vs full)
+func (hs *helpService) ShowCommandHelpWithMode(commandName string, commands map[string]*Command, mode HelpMode) error {
+	cmd, exists := commands[commandName]
+	if !exists {
+		return fmt.Errorf("unknown command: %s", commandName)
+	}
+
+	// Get executable name
+	executable := hs.getExecutableName()
+
+	// Create command help with mode filtering
+	commandHelp, err := hs.factory.CreateCommandHelpWithMode(cmd, executable, mode)
+	if err != nil {
+		return err
+	}
+
+	// Format using template
+	text, err := hs.formatter.FormatCommandHelp(commandHelp)
 	if err != nil {
 		return err
 	}
@@ -144,6 +171,26 @@ func (hs *helpService) generateCommandHelp(commandName string, commands map[stri
 	return hs.formatter.FormatCommandHelp(commandHelp)
 }
 
+// generateCommandHelpWithMode generates command help text with filtering mode
+func (hs *helpService) generateCommandHelpWithMode(commandName string, commands map[string]*Command, mode HelpMode) (string, error) {
+	cmd, exists := commands[commandName]
+	if !exists {
+		return "", fmt.Errorf("unknown command: %s", commandName)
+	}
+
+	// Get executable name
+	executable := hs.getExecutableName()
+
+	// Create command help data with mode filtering
+	commandHelp, err := hs.factory.CreateCommandHelpWithMode(cmd, executable, mode)
+	if err != nil {
+		return "", err
+	}
+
+	// Format using template
+	return hs.formatter.FormatCommandHelp(commandHelp)
+}
+
 // generateSubcommandHelp generates subcommand help text
 func (hs *helpService) generateSubcommandHelp(parent string, commands map[string]*Command) (string, error) {
 	parentCmd, exists := commands[parent]
@@ -180,6 +227,7 @@ func (hs *helpService) GetOutput() HelpOutput {
 }
 
 // IsHelpRequested checks if help is requested in arguments
+// Delegates to HelpFactory -> HelpDetector for centralized help flag detection
 func (hs *helpService) IsHelpRequested(args []string) bool {
 	return hs.factory.IsHelpRequested(args)
 }
@@ -187,6 +235,11 @@ func (hs *helpService) IsHelpRequested(args []string) bool {
 // GetHelpType gets the type of help request
 func (hs *helpService) GetHelpType(args []string) HelpType {
 	return hs.factory.GetHelpType(args)
+}
+
+// GetHelpMode gets the help mode (essential vs full)
+func (hs *helpService) GetHelpMode(args []string) HelpMode {
+	return hs.factory.GetHelpMode(args)
 }
 
 // GetFormatter returns the help formatter

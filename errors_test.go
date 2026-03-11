@@ -110,7 +110,7 @@ func TestBuildErrorDisplay(t *testing.T) {
 		required:  true,
 	}
 
-	if got := buildErrorDisplay(envDef); got != "(no flag) string (env: DATABASE_URL, required)" {
+	if got := buildErrorDisplay(envDef); got != "DATABASE_URL string (required)" {
 		t.Fatalf("unexpected env-only error display: %q", got)
 	}
 }

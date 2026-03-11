@@ -11,6 +11,14 @@ const (
 	HelpTypeSubcommand
 )
 
+// HelpMode represents the help mode (essential vs full)
+type HelpMode int
+
+const (
+	HelpModeEssential HelpMode = iota
+	HelpModeFull
+)
+
 // GlobalHelp represents help for all commands
 type GlobalHelp struct {
 	Executable string
@@ -27,12 +35,14 @@ type CommandSummary struct {
 
 // CommandHelp represents detailed help for a specific command
 type CommandHelp struct {
-	Command     *Command
-	Usage       string
-	Description string
-	Flags       []FlagInfo
-	Subcommands []SubcommandInfo
-	Template    string
+	Command         *Command
+	Usage           string
+	Description     string
+	Flags           []FlagInfo // All flags (including those with env vars)
+	RequiredEnvVars []FlagInfo // Only required env-only vars (essential mode)
+	AllEnvVars      []FlagInfo // All env-only vars (full mode)
+	Subcommands     []SubcommandInfo
+	Template        string
 	// NEW: Error information
 	Errors    []GetError
 	HasErrors bool
@@ -40,17 +50,18 @@ type CommandHelp struct {
 
 // FlagInfo represents information about a configuration flag
 type FlagInfo struct {
-	Key         string
-	Name        string
-	DisplayLine string
-	Description string
-	Type        string
-	Required    bool
-	Default     interface{}
-	EnvVar      string
-	Validations []string
-	Secret      bool
-	NoFlag      bool // Environment-only configuration
+	Key           string
+	Name          string
+	DisplayLine   string // For flags: "--flag type (default: value)"
+	EnvVarDisplay string // For env-only vars: "ENV_VAR type (attributes)"
+	Description   string
+	Type          string
+	Required      bool
+	Default       interface{}
+	EnvVar        string
+	Validations   []string
+	Secret        bool
+	NoFlag        bool // Environment-only configuration
 	// NEW: Error information
 	HasError bool
 	ErrorMsg string
@@ -80,6 +91,7 @@ type FlagHelp struct {
 // HelpRequest represents a parsed help request
 type HelpRequest struct {
 	Type       HelpType
+	Mode       HelpMode
 	Command    string
 	Subcommand string
 	Args       []string

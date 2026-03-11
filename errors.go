@@ -60,22 +60,21 @@ func buildErrorDisplay(def *Definition) string {
 	var base string
 	if def.flag != "" {
 		base = fmt.Sprintf("--%s %s", def.flag, valueType)
+	} else if def.envVar != "" {
+		// Use new layout for environment-only variables
+		return buildEnvVarDisplay(def)
 	} else {
-		base = fmt.Sprintf("(no flag) %s", valueType)
+		base = fmt.Sprintf("%s %s", def.key, valueType)
 	}
 
 	if len(indicators) == 0 {
 		return base
 	}
 
-	if def.flag != "" {
-		for _, indicator := range indicators {
-			base += fmt.Sprintf(" (%s)", indicator)
-		}
-		return base
+	for _, indicator := range indicators {
+		base += fmt.Sprintf(" (%s)", indicator)
 	}
-
-	return fmt.Sprintf("%s (%s)", base, strings.Join(indicators, ", "))
+	return base
 }
 
 func buildFlagDisplay(def *Definition) string {
@@ -120,6 +119,30 @@ func buildFlagDisplay(def *Definition) string {
 	}
 
 	base := fmt.Sprintf("(no flag) %s", valueType)
+
+	if len(indicators) == 0 {
+		return base
+	}
+
+	return fmt.Sprintf("%s (%s)", base, strings.Join(indicators, ", "))
+}
+
+// buildEnvVarDisplay creates display for environment-only variables
+func buildEnvVarDisplay(def *Definition) string {
+	valueType := def.valueType.String()
+	var indicators []string
+
+	if def.required {
+		indicators = append(indicators, "required")
+	}
+	if def.secret {
+		indicators = append(indicators, "secret")
+	}
+
+	validations := formatValidation(def.validations)
+	indicators = append(indicators, validations...)
+
+	base := fmt.Sprintf("%s %s", def.envVar, valueType)
 
 	if len(indicators) == 0 {
 		return base

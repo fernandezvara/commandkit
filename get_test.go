@@ -166,13 +166,13 @@ func TestGetErrorDisplayName(t *testing.T) {
 	}
 
 	dbDisplayName := getErrorDisplayName(collected[1], cfg)
-	if dbDisplayName != "(no flag) string (env: DATABASE_URL)" {
-		t.Errorf("Expected '(no flag) string (env: DATABASE_URL)', got '%s'", dbDisplayName)
+	if dbDisplayName != "DATABASE_URL string (secret)" {
+		t.Errorf("Expected 'DATABASE_URL string (secret)', got '%s'", dbDisplayName)
 	}
 
 	debugDisplayName := getErrorDisplayName(collected[2], cfg)
-	if debugDisplayName != "(no flag) bool (env: DEBUG)" {
-		t.Errorf("Expected '(no flag) bool (env: DEBUG)', got '%s'", debugDisplayName)
+	if debugDisplayName != "DEBUG bool" {
+		t.Errorf("Expected 'DEBUG bool', got '%s'", debugDisplayName)
 	}
 }
 
@@ -204,7 +204,7 @@ func TestDisplayGetErrorsAndExit(t *testing.T) {
 	if !contains(outputStr, "Configuration errors:") {
 		t.Error("Expected templated output to contain configuration errors section")
 	}
-	if !contains(outputStr, "(no flag) string (env: DATABASE_URL, required) -> key not defined") {
+	if !contains(outputStr, "DATABASE_URL string (required, secret) -> key not defined") {
 		t.Error("Expected templated output to contain DATABASE_URL error")
 	}
 	if !contains(outputStr, "--port int64 -> value 99999 is greater than maximum 65535") {

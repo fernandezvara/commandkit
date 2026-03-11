@@ -163,7 +163,7 @@ func BenchmarkTemplateRendering_Cached(b *testing.B) {
 
 	templateStr := `Usage: {{.Executable}} [options]
 
-Options:
+Flags:
 {{range .Commands}}
   {{.Name}} - {{.ShortHelp}}
 {{end}}`
@@ -190,7 +190,7 @@ Options:
 func BenchmarkTemplateRendering_Uncached(b *testing.B) {
 	templateStr := `Usage: {{.Executable}} [options]
 
-Options:
+Flags:
 {{range .Commands}}
   {{.Name}} - {{.ShortHelp}}
 {{end}}`

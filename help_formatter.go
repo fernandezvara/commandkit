@@ -55,13 +55,15 @@ func (hf *TemplateHelpFormatter) FormatCommandHelp(help *CommandHelp) (string, e
 	}
 
 	data := map[string]interface{}{
-		"Command":     help.Command,
-		"Usage":       help.Usage,
-		"Description": help.Description,
-		"Flags":       help.Flags,
-		"Subcommands": help.Subcommands,
-		"Errors":      help.Errors,
-		"HasErrors":   help.HasErrors,
+		"Command":         help.Command,
+		"Usage":           help.Usage,
+		"Description":     help.Description,
+		"Flags":           help.Flags,
+		"RequiredEnvVars": help.RequiredEnvVars,
+		"AllEnvVars":      help.AllEnvVars,
+		"Subcommands":     help.Subcommands,
+		"Errors":          help.Errors,
+		"HasErrors":       help.HasErrors,
 	}
 
 	return hf.renderer.Render(templateStr, data)
@@ -126,4 +128,7 @@ func (hf *TemplateHelpFormatter) setDefaultTemplates() {
 	hf.templates[TemplateCustomHelpError] = DefaultCustomHelpErrorTemplate
 	hf.templates[TemplateSubcommand] = DefaultSubcommandTemplate
 	hf.templates[TemplateFlag] = DefaultFlagTemplate
+	hf.templates[TemplateEssential] = DefaultEssentialTemplate
+	hf.templates[TemplateEssentialError] = DefaultEssentialErrorTemplate
+	hf.templates[TemplateFull] = DefaultFullTemplate
 }

@@ -12,6 +12,7 @@ type HelpExtractor interface {
 	ExtractGlobalSummary(commands map[string]*Command) []CommandSummary
 	ExtractCommandInfo(cmd *Command, executable string) *CommandHelp
 	ExtractFlagInfo(defs map[string]*Definition) []FlagInfo
+	ExtractFlagInfoFiltered(defs map[string]*Definition, mode HelpMode) (*CommandHelp, error)
 	ExtractSubcommandInfo(subcommands map[string]*Command) []SubcommandInfo
 }
 
@@ -90,7 +91,6 @@ func (he *helpExtractor) ExtractFlagInfo(defs map[string]*Definition) []FlagInfo
 		flag := FlagInfo{
 			Key:         key,
 			Name:        def.flag,
-			DisplayLine: buildFlagDisplay(def),
 			Description: def.description,
 			Type:        def.valueType.String(),
 			Required:    def.required,
@@ -100,8 +100,26 @@ func (he *helpExtractor) ExtractFlagInfo(defs map[string]*Definition) []FlagInfo
 			NoFlag:      def.flag == "",
 		}
 
+		// Set DisplayLine based on whether it's a flag or environment-only variable
+		if def.flag != "" {
+			// This is a flag - use traditional flag display
+			flag.DisplayLine = buildFlagDisplay(def)
+		} else if def.envVar != "" {
+			// This is environment-only - use new layout format
+			flag.DisplayLine = buildEnvVarDisplay(def)
+			flag.EnvVarDisplay = buildEnvVarDisplay(def)
+		} else {
+			// Fallback - shouldn't normally happen
+			flag.DisplayLine = buildFlagDisplay(def)
+		}
+
 		// Extract validations
 		flag.Validations = he.extractValidations(def.validations)
+
+		// Set EnvVarDisplay for environment-only variables (redundant but safe)
+		if def.flag == "" && def.envVar != "" {
+			flag.EnvVarDisplay = buildEnvVarDisplay(def)
+		}
 
 		// Mask secret defaults
 		if flag.Secret && flag.Default != nil {
@@ -221,5 +239,84 @@ func (he *helpExtractor) extractOneOfValues(name string) string {
 	values = strings.ReplaceAll(values, "'", "")
 	values = strings.ReplaceAll(values, `"`, "")
 
-	return values
+	return strings.TrimSpace(values)
+}
+
+// ExtractFlagInfoFiltered extracts flag information with filtering for essential vs full help
+func (he *helpExtractor) ExtractFlagInfoFiltered(defs map[string]*Definition, mode HelpMode) (*CommandHelp, error) {
+	var allFlags []FlagInfo
+	var requiredEnvVars []FlagInfo
+	var allEnvVars []FlagInfo
+
+	// Sort definitions for consistent display
+	keys := make([]string, 0, len(defs))
+	for key := range defs {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		def := defs[key]
+
+		flag := FlagInfo{
+			Key:         key,
+			Name:        def.flag,
+			Description: def.description,
+			Type:        def.valueType.String(),
+			Required:    def.required,
+			Default:     def.defaultValue,
+			EnvVar:      def.envVar,
+			Secret:      def.secret,
+			NoFlag:      def.flag == "",
+		}
+
+		// Set DisplayLine based on whether it's a flag or environment-only variable
+		if def.flag != "" {
+			// This is a flag - use traditional flag display
+			flag.DisplayLine = buildFlagDisplay(def)
+		} else if def.envVar != "" {
+			// This is environment-only - use new layout format
+			flag.DisplayLine = buildEnvVarDisplay(def)
+			flag.EnvVarDisplay = buildEnvVarDisplay(def)
+		} else {
+			// Fallback - shouldn't normally happen
+			flag.DisplayLine = buildFlagDisplay(def)
+		}
+
+		// Extract validations
+		flag.Validations = he.extractValidations(def.validations)
+
+		// Set EnvVarDisplay for environment-only variables
+		if def.flag == "" && def.envVar != "" {
+			flag.EnvVarDisplay = buildEnvVarDisplay(def)
+		}
+
+		// Mask secret defaults
+		if flag.Secret && flag.Default != nil {
+			flag.Default = "[hidden]"
+		}
+
+		// Handle flag name for environment-only configurations
+		if flag.NoFlag && flag.Name == "" {
+			flag.Name = key
+		}
+
+		// Separate flags from environment-only variables
+		if def.flag != "" {
+			// This is a flag (may have associated env var)
+			allFlags = append(allFlags, flag)
+		} else if def.envVar != "" {
+			// This is an environment-only variable
+			allEnvVars = append(allEnvVars, flag)
+			if def.required {
+				requiredEnvVars = append(requiredEnvVars, flag)
+			}
+		}
+	}
+
+	return &CommandHelp{
+		Flags:           allFlags,
+		RequiredEnvVars: requiredEnvVars,
+		AllEnvVars:      allEnvVars,
+	}, nil
 }
