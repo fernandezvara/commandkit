@@ -164,12 +164,6 @@ func (c *Config) processDefinitionsWithContext(ctx *CommandContext) []ConfigErro
 	return errs
 }
 
-// processConfig parses flags from the provided args, validates all definitions,
-// and populates the Config's values and secrets maps. Returns any ConfigErrors found.
-func (c *Config) processConfig(args []string) []ConfigError {
-	return c.processConfigWithContext(args, nil)
-}
-
 // processConfigWithContext parses flags from the provided args, validates all definitions,
 // and populates the Config's values and secrets maps with context awareness.
 func (c *Config) processConfigWithContext(args []string, ctx *CommandContext) []ConfigError {
@@ -421,21 +415,6 @@ func levenshteinDistance(a, b string) int {
 	}
 
 	return matrix[len(a)][len(b)]
-}
-
-// createSyntheticDefaultCommand creates a default command for no-command applications
-func (c *Config) createSyntheticDefaultCommand() {
-	// Create a default command that includes all global definitions
-	c.Command("default").
-		Func(func(ctx *CommandContext) error {
-			return nil // No-op for synthetic command
-		}).
-		ShortHelp("Run the application").
-		LongHelp("Runs the application with the specified configuration.").
-		Config(func(cc *CommandConfig) {
-			// All global definitions are automatically copied by the Config() method
-			// No additional configuration needed for synthetic command
-		})
 }
 
 func min(a, b, c int) int {
