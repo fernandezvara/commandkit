@@ -88,12 +88,12 @@ func (hc *HelpCoordinator) ShowHelpWithCommands(command, subcommand string, full
 			cmd, exists = commands[command]
 			if !exists {
 				// Fall back to simple command help for unknown commands
-				return hc.showSimpleCommandHelp(command, subcommand, full, errors)
+				return hc.showSimpleCommandHelp(command, subcommand, errors)
 			}
 		}
 	} else {
 		// Fallback to simple command help without full details
-		return hc.showSimpleCommandHelp(command, subcommand, full, errors)
+		return hc.showSimpleCommandHelp(command, subcommand, errors)
 	}
 
 	// Determine help mode
@@ -118,7 +118,7 @@ func (hc *HelpCoordinator) ShowHelpWithCommands(command, subcommand string, full
 }
 
 // showSimpleCommandHelp shows basic help when commands map is not available
-func (hc *HelpCoordinator) showSimpleCommandHelp(command, subcommand string, full bool, errors []GetError) error {
+func (hc *HelpCoordinator) showSimpleCommandHelp(command, subcommand string, errors []GetError) error {
 	// For now, fall back to a simple format
 	var builder strings.Builder
 
@@ -140,7 +140,7 @@ func (hc *HelpCoordinator) showSimpleCommandHelp(command, subcommand string, ful
 	if subcommand != "" {
 		fmt.Fprintf(&builder, " %s", subcommand)
 	}
-	fmt.Fprintf(&builder, " --help' for more information\n")
+	fmt.Fprintf(&builder, " --help' or '--full-help' for more information\n")
 
 	return hc.output.Print(builder.String())
 }

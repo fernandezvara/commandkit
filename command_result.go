@@ -38,50 +38,12 @@ func success() *CommandResult {
 	}
 }
 
-// successWithData creates a successful command result with data
-func successWithData(data any) *CommandResult {
-	return &CommandResult{
-		ExitCode:   0,
-		ShouldExit: false,
-		Data:       data,
-	}
-}
-
-// successWithMessage creates a successful command result with a message
-func successWithMessage(message string) *CommandResult {
-	return &CommandResult{
-		ExitCode:   0,
-		ShouldExit: false,
-		Message:    message,
-	}
-}
-
 // errorResult creates an error command result
 func errorResult(err error) *CommandResult {
 	return &CommandResult{
 		Error:      err,
 		ExitCode:   1,
 		ShouldExit: false,
-	}
-}
-
-// errorWithMessage creates an error command result with a custom message
-func errorWithMessage(err error, message string) *CommandResult {
-	return &CommandResult{
-		Error:      err,
-		ExitCode:   1,
-		ShouldExit: false,
-		Message:    message,
-	}
-}
-
-// errorWithExit creates an error command result that should exit
-func errorWithExit(err error, message string) *CommandResult {
-	return &CommandResult{
-		Error:      err,
-		ExitCode:   1,
-		ShouldExit: true,
-		Message:    message,
 	}
 }
 

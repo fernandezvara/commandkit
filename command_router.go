@@ -185,10 +185,3 @@ func (cr *commandRouter) RouteWithHelpHandling(args []string, config *Config) (*
 
 	return finalCmd, finalCtx, nil
 }
-
-// showSubcommandHelp displays help for a specific subcommand
-func (cr *commandRouter) showSubcommandHelp(parentCommand, subcommandName string, config *Config) error {
-	// Use the unified help system
-	helpService := config.getHelpService()
-	return helpService.ShowHelpUnified(parentCommand, subcommandName, false, []GetError{}, config.commands)
-}

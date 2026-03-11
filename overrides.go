@@ -3,7 +3,6 @@ package commandkit
 
 import (
 	"fmt"
-	"os"
 	"strings"
 )
 
@@ -279,11 +278,6 @@ func (c *Config) generateOverrideWarnings(key string, foundSources map[SourceTyp
 			warnings.Add(warning)
 		}
 	}
-}
-
-// getValueFromEnv gets value from environment variable
-func (c *Config) getValueFromEnv(envVar string) string {
-	return os.Getenv(envVar)
 }
 
 // maskValueIfNeeded masks a value if it's a secret

@@ -8,17 +8,6 @@ import (
 	"time"
 )
 
-func getAvailableKeys(c *Config) []string {
-	if c == nil {
-		return []string{}
-	}
-	var keys []string
-	for k := range c.definitions {
-		keys = append(keys, k)
-	}
-	return keys
-}
-
 func TestHelpWithCustomValidationAndEnvironment(t *testing.T) {
 	// Test that help works even when environment variables have validation issues
 
