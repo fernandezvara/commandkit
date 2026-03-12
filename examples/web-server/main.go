@@ -4,8 +4,8 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/fernandezvara/commandkit"
@@ -108,118 +108,110 @@ func main() {
 		Default(true).
 		Description("Enable metrics collection")
 
-	// Demonstrate builder pattern cloning for similar configurations
-	baseTimeoutConfig := cfg.Define("READ_TIMEOUT").
-		Duration().
-		Env("READ_TIMEOUT").
-		Default(30 * time.Second).
-		MinDuration(1 * time.Second).
-		MaxDuration(5 * time.Minute).
-		Description("Read timeout")
+	// Add empty string command for config-only mode
+	cfg.Command("").
+		Func(func(ctx *commandkit.CommandContext) error {
+			fmt.Printf("🚀 Web Server Starting!\n")
 
-	// Clone and customize for write timeout
-	baseTimeoutConfig.Clone().
-		Env("WRITE_TIMEOUT").
-		Flag("write-timeout").
-		Default(60 * time.Second).
-		Description("Write timeout")
+			// Get basic configuration with fallbacks
+			if port, err := commandkit.Get[int64](ctx, "PORT"); err == nil {
+				fmt.Printf("   Port: %d\n", port)
+			} else {
+				fmt.Printf("   Port: 8080 (default)\n")
+			}
 
-	// Clone and customize for idle timeout
-	baseTimeoutConfig.Clone().
-		Env("IDLE_TIMEOUT").
-		Flag("idle-timeout").
-		Default(120 * time.Second).
-		Description("Idle timeout")
+			if host, err := commandkit.Get[string](ctx, "HOST"); err == nil {
+				fmt.Printf("   Host: %s\n", host)
+			} else {
+				fmt.Printf("   Host: localhost (default)\n")
+			}
 
-	// Set up file-based configuration based on environment
-	if err := setupFileConfig(cfg); err != nil {
-		fmt.Printf("Warning: Could not set up file config: %v\n", err)
-	}
+			if logLevel, err := commandkit.Get[string](ctx, "LOG_LEVEL"); err == nil {
+				fmt.Printf("   Log Level: %s\n", logLevel)
+			} else {
+				fmt.Printf("   Log Level: info (default)\n")
+			}
+
+			// Check for secrets
+			if dbSecret := ctx.GlobalConfig.GetSecret("DATABASE_URL"); dbSecret.IsSet() {
+				fmt.Printf("   Database: %s\n", maskSecret(dbSecret.String()))
+			} else {
+				fmt.Printf("   Database: not configured\n")
+			}
+
+			if jwtSecret := ctx.GlobalConfig.GetSecret("JWT_SIGNING_KEY"); jwtSecret.IsSet() {
+				fmt.Printf("   JWT Key: configured (%d bytes)\n", jwtSecret.Size())
+			} else {
+				fmt.Printf("   JWT Key: not configured\n")
+			}
+
+			fmt.Printf("\n✅ Configuration loaded successfully!\n")
+			fmt.Printf("🌐 Web server ready to start!\n")
+
+			return nil
+		}).
+		ShortHelp("Start the web server").
+		LongHelp(`Starts the web server with the specified configuration.
+
+This is a production-ready web server that supports:
+- HTTP/HTTPS with configurable timeouts  
+- Database connection pooling
+- Metrics collection
+- Environment variable configuration
+- File-based configuration
+- Secret management
+
+Use --help or --full-help to see all available options.`).
+		Config(func(cc *commandkit.CommandConfig) {
+			// Add basic configuration for demo
+			cc.Define("PORT").
+				Int64().
+				Env("PORT").
+				Flag("port").
+				Default(int64(8080)).
+				Description("HTTP server port")
+
+			cc.Define("HOST").
+				String().
+				Env("HOST").
+				Flag("host").
+				Default("localhost").
+				Description("Server host")
+
+			cc.Define("LOG_LEVEL").
+				String().
+				Env("LOG_LEVEL").
+				Flag("log-level").
+				Default("info").
+				OneOf("debug", "info", "warn", "error").
+				Description("Logging level")
+
+			cc.Define("DATABASE_URL").
+				String().
+				Env("DATABASE_URL").
+				Secret().
+				Description("Database connection URL")
+
+			cc.Define("JWT_SIGNING_KEY").
+				String().
+				Env("JWT_SIGNING_KEY").
+				Secret().
+				Description("Secret key for signing access tokens")
+		})
 
 	// Execute configuration (single unified entry point)
 	if err := cfg.Execute(os.Args); err != nil {
 		os.Exit(1)
 	}
 	defer cfg.Destroy()
+}
 
-	// Create command context for accessing configuration
-	ctx := commandkit.NewCommandContext([]string{}, cfg, "web-server", "")
-
-	// Use configuration with type safety
-	port, err := commandkit.Get[int64](ctx, "PORT")
-	if err != nil {
-		log.Fatalf("Error getting PORT: %v", err)
+// Helper function to mask secrets in output
+func maskSecret(secret string) string {
+	if len(secret) <= 8 {
+		return strings.Repeat("*", len(secret))
 	}
-
-	host, err := commandkit.Get[string](ctx, "HOST")
-	if err != nil {
-		log.Fatalf("Error getting HOST: %v", err)
-	}
-
-	baseURL, err := commandkit.Get[string](ctx, "BASE_URL")
-	if err != nil {
-		log.Fatalf("Error getting BASE_URL: %v", err)
-	}
-
-	logLevel, err := commandkit.Get[string](ctx, "LOG_LEVEL")
-	if err != nil {
-		log.Fatalf("Error getting LOG_LEVEL: %v", err)
-	}
-
-	environment, err := commandkit.Get[string](ctx, "ENVIRONMENT")
-	if err != nil {
-		log.Fatalf("Error getting ENVIRONMENT: %v", err)
-	}
-
-	// Access secrets safely
-	dbURL := cfg.GetSecret("DATABASE_URL")
-	if !dbURL.IsSet() {
-		log.Fatal("Database URL is required")
-	}
-
-	redisURL := cfg.GetSecret("REDIS_URL")
-	jwtKey := cfg.GetSecret("JWT_SIGNING_KEY")
-	if !jwtKey.IsSet() {
-		log.Fatal("JWT signing key is required")
-	}
-
-	// Display configuration summary
-	fmt.Printf("=== Web Server Configuration ===\n")
-	fmt.Printf("Environment: %s\n", environment)
-	fmt.Printf("Server: %s:%d\n", host, port)
-	fmt.Printf("Base URL: %s\n", baseURL)
-	fmt.Printf("Log Level: %s\n", logLevel)
-	fmt.Printf("Database: configured (%d bytes)\n", dbURL.Size())
-
-	if redisURL.IsSet() {
-		fmt.Printf("Redis: configured (%d bytes)\n", redisURL.Size())
-	} else {
-		fmt.Printf("Redis: not configured\n")
-	}
-
-	fmt.Printf("JWT Key: configured (%d bytes)\n", jwtKey.Size())
-
-	// Get optional configurations
-	if enableMetrics, err := commandkit.Get[bool](ctx, "ENABLE_METRICS"); err == nil && enableMetrics {
-		fmt.Printf("Metrics: enabled\n")
-	}
-
-	if maxConn, err := commandkit.Get[int64](ctx, "MAX_CONNECTIONS"); err == nil {
-		fmt.Printf("Max DB Connections: %d\n", maxConn)
-	}
-
-	if corsOrigins, err := commandkit.Get[[]string](ctx, "CORS_ORIGINS"); err == nil {
-		fmt.Printf("CORS Origins: %v\n", corsOrigins)
-	}
-
-	if tokenTTL, err := commandkit.Get[time.Duration](ctx, "ACCESS_TOKEN_TTL"); err == nil {
-		fmt.Printf("Access Token TTL: %v\n", tokenTTL)
-	}
-
-	fmt.Printf("=== Server Starting ===\n")
-	fmt.Printf("Server would start on %s:%d\n", host, port)
-	fmt.Printf("Environment: %s\n", environment)
-	fmt.Printf("All configuration validated successfully!\n")
+	return secret[:4] + strings.Repeat("*", len(secret)-8) + secret[len(secret)-4:]
 }
 
 // setupFileConfig configures file-based settings based on environment

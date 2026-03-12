@@ -476,3 +476,87 @@ func TestCommandRouter_RouteWithHelpHandling_ShortHelpFlag(t *testing.T) {
 		t.Errorf("RouteWithHelpHandling() should not return error when showing help, got: %v", err)
 	}
 }
+
+func TestCommandRouter_EmptyStringCommand(t *testing.T) {
+	router := newCommandRouter()
+	cfg := New()
+
+	// Add empty string command
+	cfg.Command("").
+		Func(func(ctx *CommandContext) error {
+			return nil
+		}).
+		ShortHelp("Default command")
+
+	// Test routing to empty string command
+	cmd, ctx, err := router.RouteCommand([]string{"app"}, cfg)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	if cmd == nil {
+		t.Fatal("Expected command to be routed to empty string command")
+	}
+
+	if ctx.Command != "" {
+		t.Fatalf("Expected empty command name, got: %s", ctx.Command)
+	}
+}
+
+func TestCommandRouter_EmptyStringCommandWithFlags(t *testing.T) {
+	router := newCommandRouter()
+	cfg := New()
+
+	// Add empty string command
+	cfg.Command("").
+		Func(func(ctx *CommandContext) error {
+			return nil
+		}).
+		ShortHelp("Default command")
+
+	// Test routing with flags - this should work because all args after program name are treated as flags
+	cmd, ctx, err := router.RouteCommand([]string{"app", "--verbose", "--debug"}, cfg)
+
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	if cmd == nil {
+		t.Fatal("Expected command to be routed to empty string command")
+	}
+
+	// The empty string command should receive all args as flags
+	if len(ctx.Args) != 2 {
+		t.Fatalf("Expected 2 args, got: %d", len(ctx.Args))
+	}
+
+	if ctx.Args[0] != "--verbose" || ctx.Args[1] != "--debug" {
+		t.Fatalf("Expected args to contain --verbose and --debug, got: %v", ctx.Args)
+	}
+}
+
+func TestCommandRouter_EmptyStringCommandFallback(t *testing.T) {
+	router := newCommandRouter()
+	cfg := New()
+
+	// No empty string command defined
+	cfg.Command("test").
+		Func(func(ctx *CommandContext) error {
+			return nil
+		}).
+		ShortHelp("Test command")
+
+	// Test routing falls back to global help
+	cmd, ctx, err := router.RouteCommand([]string{"app"}, cfg)
+
+	// Should return nil for command and context, and help error
+	if cmd != nil || ctx != nil {
+		t.Fatal("Expected nil command and context when no default command exists")
+	}
+
+	// err should be nil because help was shown successfully
+	if err != nil {
+		t.Fatalf("Expected no error when help is shown, got: %v", err)
+	}
+}
