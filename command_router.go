@@ -47,6 +47,17 @@ func (cr *commandRouter) RouteCommand(args []string, config *Config) (*Command, 
 		return nil, nil, err // Help shown, no command to execute
 	}
 
+	// Additional check: if we have an empty string command and any arg is a help flag
+	if len(args) > 1 {
+		for _, arg := range args[1:] {
+			if arg == "--help" || arg == "-h" || arg == "help" || arg == "--full-help" {
+				isFull := arg == "--full-help"
+				err := helpService.ShowHelpUnified("", "", isFull, []GetError{}, config.commands)
+				return nil, nil, err // Help shown, no command to execute
+			}
+		}
+	}
+
 	// Handle no command case - check for empty string default command
 	if len(args) < 2 {
 		if defaultCmd, exists := config.commands[""]; exists {
@@ -153,8 +164,9 @@ func (cr *commandRouter) RouteWithHelpHandling(args []string, config *Config) (*
 	remainingArgs := args[2:]
 
 	// Check if the command name is actually a help flag
-	if commandName == "--help" || commandName == "-h" || commandName == "help" {
-		err := config.getHelpService().ShowHelpUnified("", "", false, []GetError{}, config.commands)
+	if commandName == "--help" || commandName == "-h" || commandName == "help" || commandName == "--full-help" {
+		isFull := commandName == "--full-help"
+		err := config.getHelpService().ShowHelpUnified("", "", isFull, []GetError{}, config.commands)
 		return nil, nil, err // Help shown, no command to execute
 	}
 

@@ -108,6 +108,12 @@ func main() {
 		Default(true).
 		Description("Enable metrics collection")
 
+	cfg.Define("LOG_PERMS").
+		FileMode().
+		Env("LOG_PERMS").
+		Default(0640).
+		Description("Log file assigned permissions")
+
 	// Add empty string command for config-only mode
 	cfg.Command("").
 		Func(func(ctx *commandkit.CommandContext) error {
@@ -212,31 +218,4 @@ func maskSecret(secret string) string {
 		return strings.Repeat("*", len(secret))
 	}
 	return secret[:4] + strings.Repeat("*", len(secret)-8) + secret[len(secret)-4:]
-}
-
-// setupFileConfig configures file-based settings based on environment
-func setupFileConfig(cfg *commandkit.Config) error {
-	// First check if CONFIG_FILE is set (takes priority)
-	if configFile := os.Getenv("CONFIG_FILE"); configFile != "" {
-		fmt.Printf("Loading configuration from CONFIG_FILE: %s\n", configFile)
-		return cfg.LoadFileFromEnv("CONFIG_FILE")
-	}
-
-	// Fall back to environment-based file loading
-	environment := os.Getenv("ENVIRONMENT")
-	if environment == "" {
-		environment = "development"
-	}
-
-	// Set config file based on environment
-	configFile := fmt.Sprintf("config/%s.json", environment)
-	if _, err := os.Stat(configFile); err == nil {
-		// Actually load the configuration file
-		fmt.Printf("Loading configuration from: %s\n", configFile)
-		return cfg.LoadFile(configFile)
-	} else {
-		fmt.Printf("Config file not found: %s (using defaults)\n", configFile)
-	}
-
-	return nil
 }

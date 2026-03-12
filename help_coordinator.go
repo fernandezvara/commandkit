@@ -64,8 +64,19 @@ func (hc *HelpCoordinator) ShowHelpWithCommands(command, subcommand string, full
 	var cmd *Command
 
 	if command == "" {
-		// Global help - pass commands to showGlobalHelp
-		return hc.showGlobalHelp(commands)
+		// Check if there's an empty string command first
+		if commands != nil {
+			if emptyCmd, exists := commands[""]; exists {
+				// Show help for the empty string command
+				cmd = emptyCmd
+			} else {
+				// No empty string command, show global help
+				return hc.showGlobalHelp(commands)
+			}
+		} else {
+			// No commands map available, show global help without commands
+			return hc.showGlobalHelp(nil)
+		}
 	}
 
 	if commands != nil {
@@ -212,11 +223,30 @@ func (hc *HelpCoordinator) showGlobalHelp(commands map[string]*Command) error {
 	var builder strings.Builder
 	fmt.Fprintf(&builder, "Usage: %s <command> [options]\n\n", executable)
 
-	if len(commands) > 0 {
+	// Count non-empty commands and filter them
+	var nonEmptyCommands []struct {
+		name string
+		cmd  *Command
+	}
+
+	if commands != nil {
+		for name, cmd := range commands {
+			if name != "" { // Skip empty string command
+				nonEmptyCommands = append(nonEmptyCommands, struct {
+					name string
+					cmd  *Command
+				}{name: name, cmd: cmd})
+			}
+		}
+	}
+
+	if len(nonEmptyCommands) > 0 {
 		fmt.Fprintf(&builder, "Available commands:\n\n")
 
 		// List commands with descriptions
-		for name, cmd := range commands {
+		for _, item := range nonEmptyCommands {
+			name := item.name
+			cmd := item.cmd
 			fmt.Fprintf(&builder, "  %-12s", name)
 			if cmd.LongHelp != "" {
 				// Get first line of description

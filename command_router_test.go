@@ -560,3 +560,28 @@ func TestCommandRouter_EmptyStringCommandFallback(t *testing.T) {
 		t.Fatalf("Expected no error when help is shown, got: %v", err)
 	}
 }
+
+func TestCommandRouter_EmptyStringCommandWithFullHelp(t *testing.T) {
+	router := newCommandRouter()
+	cfg := New()
+
+	// Add empty string command
+	cfg.Command("").
+		Func(func(ctx *CommandContext) error {
+			return nil
+		}).
+		ShortHelp("Default command")
+
+	// Test --full-help with empty string command using RouteWithHelpHandling
+	cmd, ctx, err := router.RouteWithHelpHandling([]string{"app", "--full-help"}, cfg)
+
+	// Should return nil for command and context, and help error
+	if cmd != nil || ctx != nil {
+		t.Fatal("Expected nil command and context when help is shown")
+	}
+
+	// err should be nil because help was shown successfully
+	if err != nil {
+		t.Fatalf("Expected no error when full help is shown, got: %v", err)
+	}
+}

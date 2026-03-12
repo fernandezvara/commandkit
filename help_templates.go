@@ -18,7 +18,7 @@ func NewTemplateComposer() *TemplateComposer {
 		partials: make(map[string]string),
 		cache:    make(map[string]string),
 	}
-	
+
 	// Register default partials
 	tc.registerDefaultPartials()
 	return tc
@@ -68,29 +68,29 @@ func (tc *TemplateComposer) RegisterPartial(name, template string) {
 // ComposeTemplate builds a complete template from partials based on context
 func (tc *TemplateComposer) ComposeTemplate(hasErrors, isFull bool) string {
 	cacheKey := fmt.Sprintf("cmd_%t_%t", hasErrors, isFull)
-	
+
 	if cached, exists := tc.cache[cacheKey]; exists {
 		return cached
 	}
-	
+
 	var builder strings.Builder
-	
+
 	// Always include usage and description
 	builder.WriteString(tc.partials["usage"])
 	builder.WriteString("\n\n")
 	builder.WriteString(tc.partials["description"])
 	builder.WriteString("\n\n")
-	
+
 	// Include errors if present
 	if hasErrors {
 		builder.WriteString(tc.partials["errors"])
 		builder.WriteString("\n\n")
 	}
-	
+
 	// Always include flags
 	builder.WriteString(tc.partials["flags"])
 	builder.WriteString("\n\n")
-	
+
 	// Include environment variables (basic or full)
 	if isFull {
 		builder.WriteString(tc.partials["envvars_full"])
@@ -98,10 +98,10 @@ func (tc *TemplateComposer) ComposeTemplate(hasErrors, isFull bool) string {
 		builder.WriteString(tc.partials["envvars_basic"])
 	}
 	builder.WriteString("\n\n")
-	
+
 	// Include subcommands if any
 	builder.WriteString(tc.partials["subcommands"])
-	
+
 	template := builder.String()
 	tc.cache[cacheKey] = template
 	return template
@@ -112,7 +112,7 @@ func (tc *TemplateComposer) ComposeGlobalTemplate() string {
 	if cached, exists := tc.cache["global"]; exists {
 		return cached
 	}
-	
+
 	template := tc.partials["usage"] + "\n\n" + tc.partials["global_commands"]
 	tc.cache["global"] = template
 	return template
@@ -123,30 +123,30 @@ func (tc *TemplateComposer) ComposeErrorTemplate() string {
 	if cached, exists := tc.cache["error"]; exists {
 		return cached
 	}
-	
+
 	var builder strings.Builder
-	
+
 	// Usage and description
 	builder.WriteString(tc.partials["usage"])
 	builder.WriteString("\n\n")
 	builder.WriteString(tc.partials["description"])
 	builder.WriteString("\n\n")
-	
+
 	// Errors section
 	builder.WriteString(tc.partials["errors"])
 	builder.WriteString("\n\n")
-	
+
 	// Flags section
 	builder.WriteString(tc.partials["flags"])
 	builder.WriteString("\n\n")
-	
+
 	// Basic environment variables
 	builder.WriteString(tc.partials["envvars_basic"])
 	builder.WriteString("\n\n")
-	
+
 	// Subcommands
 	builder.WriteString(tc.partials["subcommands"])
-	
+
 	template := builder.String()
 	tc.cache["error"] = template
 	return template
@@ -177,7 +177,7 @@ func (tc *TemplateComposer) ClearCache() {
 // ValidatePartials checks if all required partials are present
 func (tc *TemplateComposer) ValidatePartials() error {
 	required := []string{"usage", "description", "flags", "envvars_basic", "envvars_full", "errors", "subcommands", "global_commands"}
-	
+
 	for _, name := range required {
 		if _, exists := tc.partials[name]; !exists {
 			return fmt.Errorf("required partial '%s' is missing", name)
