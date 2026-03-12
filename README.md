@@ -49,19 +49,86 @@ func main() {
         Secret().
         Description("Database connection string")
 
+    // Add empty string command for config-only mode
+    cfg.Command("").
+        Func(func(ctx *commandkit.CommandContext) error {
+            // Type-safe access to configuration
+            port := commandkit.MustGet[int64](ctx, "PORT")
+            dbURL := commandkit.MustGet[string](ctx, "DATABASE_URL")
+            
+            fmt.Printf("🚀 Server starting on port %d\n", port)
+            fmt.Printf("📊 Database: %s\n", maskSecret(dbURL))
+            return nil
+        }).
+        ShortHelp("Start the server").
+        LongHelp("Starts the web server with the specified configuration.").
+        Config(func(cc *commandkit.CommandConfig) {
+            // Add configuration to the default command
+            cc.Define("PORT").
+                Int64().
+                Env("PORT").
+                Flag("port").
+                Default(8080).
+                Range(1, 65535).
+                Description("HTTP server port")
+
+            cc.Define("DATABASE_URL").
+                String().
+                Env("DATABASE_URL").
+                Required().
+                Secret().
+                Description("Database connection string")
+        })
+
     // One line to process everything
     if err := cfg.Execute(os.Args); err != nil {
         os.Exit(1)
     }
     defer cfg.Destroy()
+}
 
-    // Type-safe access with zero boilerplate
-    ctx := commandkit.NewCommandContext([]string{}, cfg, "app", "")
-    port := commandkit.MustGet[int64](ctx, "PORT")
-    
-    fmt.Printf("🚀 Server starting on port %d\n", port)
+func maskSecret(secret string) string {
+    if len(secret) <= 8 {
+        return strings.Repeat("*", len(secret))
+    }
+    return secret[:4] + strings.Repeat("*", len(secret)-8) + secret[len(secret)-4:]
 }
 ```
+
+**Usage:**
+```bash
+./app                           # Starts with defaults
+./app --port 9000               # Starts on port 9000
+./app --help                    # Shows help for default command
+DATABASE_URL=... ./app          # Starts with environment variable
+```
+
+## 🎯 **Empty String Command - The Magic**
+
+CommandKit introduces an elegant solution for configuration-only applications: the **empty string command** (`cfg.Command("")`). 
+
+When you define an empty string command, it becomes the **default action** that executes when no command is provided. This creates a seamless experience for:
+
+- **Services & Daemons** - Run directly with configuration flags
+- **Simple Tools** - No need for subcommands, just configure and run  
+- **Configuration Management** - Perfect for apps that just need to load config and start
+
+**How it works:**
+```bash
+./app                    # Runs empty string command
+./app --port 9000        # Empty string command gets the flag
+./app --help             # Shows help for empty string command
+```
+
+The empty string command has access to all CommandKit features:
+- ✅ Type-safe configuration access
+- ✅ Environment variable support  
+- ✅ Flag parsing and validation
+- ✅ Secret management
+- ✅ Help generation
+- ✅ Error handling
+
+This approach eliminates the need for separate APIs or special cases - configuration-only apps use the exact same command system as complex CLIs!
 
 ### Command-Based Applications
 
@@ -379,21 +446,36 @@ CommandKit includes complete examples:
 ### Web Server Example
 **Location:** `examples/web-server/`
 
-A complete web server demonstrating configuration-only mode:
+A production-ready web server demonstrating the **empty string command** approach for configuration-only applications:
+
 ```bash
 cd examples/web-server
 
-# Run with environment variables
+# Run with defaults (empty string command executes)
+go run main.go
+
+# Use environment variables
 DATABASE_URL="postgres://user:pass@localhost/db" \
 JWT_SIGNING_KEY="your-32-character-secret-key-here" \
 go run main.go
 
-# Use configuration file
-ENVIRONMENT=production go run main.go
-
 # Override with flags
-go run main.go --port 3000 --base-url http://localhost:3000
+go run main.go --port 3000 --host 0.0.0.0 --log-level debug
+
+# Get help for the default command
+go run main.go --help
+
+# Full help with all options
+go run main.go --full-help
 ```
+
+**Features demonstrated:**
+- ✅ Empty string command for config-only mode
+- ✅ Environment variable configuration
+- ✅ Flag-based configuration
+- ✅ Secret management
+- ✅ Validation and error handling
+- ✅ Help generation
 
 ### CLI Tool Example  
 **Location:** `examples/cli-tool/`
