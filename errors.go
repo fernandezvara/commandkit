@@ -3,6 +3,7 @@ package commandkit
 
 import (
 	"fmt"
+	"io/fs"
 	"strings"
 )
 
@@ -61,8 +62,8 @@ func buildErrorDisplay(def *Definition) string {
 	if def.flag != "" {
 		base = fmt.Sprintf("--%s %s", def.flag, valueType)
 	} else if def.envVar != "" {
-		// Use new layout for environment-only variables
-		return buildEnvVarDisplay(def)
+		// Use unified display for environment-only variables
+		return buildDefinitionDisplay(def)
 	} else {
 		base = fmt.Sprintf("%s %s", def.key, valueType)
 	}
@@ -77,61 +78,32 @@ func buildErrorDisplay(def *Definition) string {
 	return base
 }
 
-func buildFlagDisplay(def *Definition) string {
+// buildDefinitionDisplay creates unified display for both flags and environment variables
+func buildDefinitionDisplay(def *Definition) string {
 	valueType := def.valueType.String()
 	var indicators []string
 
-	if def.envVar != "" {
-		indicators = append(indicators, fmt.Sprintf("env: %s", def.envVar))
-	}
-	if def.required {
-		indicators = append(indicators, "required")
-	}
+	// Collect all indicators
 	if shouldDisplayDefault(def) {
-		indicators = append(indicators, fmt.Sprintf("default: %v", def.defaultValue))
+		var defaultDisplay string
+		if def.valueType == TypeFileMode {
+			// Special handling for FileMode - display in octal format with leading zero
+			if mode, ok := def.defaultValue.(fs.FileMode); ok {
+				defaultDisplay = fmt.Sprintf("default: %#o", mode)
+			} else if intValue, ok := def.defaultValue.(int); ok {
+				// Handle case where FileMode is stored as int (e.g., from 0640 literal)
+				defaultDisplay = fmt.Sprintf("default: %#o", intValue)
+			} else if intValue64, ok := def.defaultValue.(int64); ok {
+				// Handle case where FileMode is stored as int64
+				defaultDisplay = fmt.Sprintf("default: %#o", intValue64)
+			} else {
+				defaultDisplay = fmt.Sprintf("default: %v", def.defaultValue)
+			}
+		} else {
+			defaultDisplay = fmt.Sprintf("default: %v", def.defaultValue)
+		}
+		indicators = append(indicators, defaultDisplay)
 	}
-	validations := formatValidation(def.validations)
-	if def.flag != "" {
-		// For flags, emit each indicator as its own group to match help output.
-		var base string
-		base = fmt.Sprintf("--%s %s", def.flag, valueType)
-		if def.required {
-			base += " (required)"
-		}
-		if shouldDisplayDefault(def) {
-			base += fmt.Sprintf(" (default: %v)", def.defaultValue)
-		}
-		for _, validation := range validations {
-			base += fmt.Sprintf(" (%s)", cleanValidationDisplay(validation))
-		}
-		if def.envVar != "" {
-			base += fmt.Sprintf(" (env: %s)", def.envVar)
-		}
-		if def.secret {
-			base += " (secret)"
-		}
-		return base
-	}
-
-	indicators = append(indicators, validations...)
-	if def.secret {
-		indicators = append(indicators, "secret")
-	}
-
-	base := fmt.Sprintf("(no flag) %s", valueType)
-
-	if len(indicators) == 0 {
-		return base
-	}
-
-	return fmt.Sprintf("%s (%s)", base, strings.Join(indicators, ", "))
-}
-
-// buildEnvVarDisplay creates display for environment-only variables
-func buildEnvVarDisplay(def *Definition) string {
-	valueType := def.valueType.String()
-	var indicators []string
-
 	if def.required {
 		indicators = append(indicators, "required")
 	}
@@ -139,11 +111,30 @@ func buildEnvVarDisplay(def *Definition) string {
 		indicators = append(indicators, "secret")
 	}
 
+	// Add validations
 	validations := formatValidation(def.validations)
 	indicators = append(indicators, validations...)
 
-	base := fmt.Sprintf("%s %s", def.envVar, valueType)
+	// Determine the base format based on what type of display this is
+	var base string
+	if def.flag != "" {
+		// This is a flag display
+		base = fmt.Sprintf("--%s %s", def.flag, valueType)
 
+		// Add env indicator if it also has an environment variable
+		if def.envVar != "" {
+			indicators = append(indicators, fmt.Sprintf("env: %s", def.envVar))
+		}
+	} else if def.envVar != "" {
+		// This is an environment-only variable display
+		base = fmt.Sprintf("%s %s", def.envVar, valueType)
+		// Note: Don't add "env: VARNAME" since this IS the env var display
+	} else {
+		// No flag or env var (fallback case)
+		base = fmt.Sprintf("(no flag) %s", valueType)
+	}
+
+	// Return with indicators if any
 	if len(indicators) == 0 {
 		return base
 	}

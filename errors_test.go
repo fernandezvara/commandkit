@@ -115,7 +115,7 @@ func TestBuildErrorDisplay(t *testing.T) {
 	}
 }
 
-func TestBuildFlagDisplay(t *testing.T) {
+func TestBuildDefinitionDisplay(t *testing.T) {
 	def := &Definition{
 		key:          "LOG_LEVEL",
 		valueType:    TypeString,
@@ -127,12 +127,10 @@ func TestBuildFlagDisplay(t *testing.T) {
 		},
 	}
 
-	got := buildFlagDisplay(def)
+	got := buildDefinitionDisplay(def)
 	expectedParts := []string{
 		"--log-level string",
-		"(default: info)",
-		"(oneOf: debug info warn error)",
-		"(env: LOG_LEVEL)",
+		"(default: info, oneOf: ['debug', 'info', 'warn', 'error'], env: LOG_LEVEL)",
 	}
 
 	for _, part := range expectedParts {

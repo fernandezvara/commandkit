@@ -99,11 +99,11 @@ func (ue *unifiedExtractor) ExtractFlags(defs map[string]*Definition) []flagInfo
 		}
 
 		// Set DisplayLine for flags
-		flag.DisplayLine = buildFlagDisplay(def)
+		flag.DisplayLine = buildDefinitionDisplay(def)
 
 		// Also set EnvVarDisplay if it has an environment variable
 		if def.envVar != "" {
-			flag.EnvVarDisplay = buildEnvVarDisplay(def)
+			flag.EnvVarDisplay = buildDefinitionDisplay(def)
 		}
 
 		flags = append(flags, flag)
@@ -145,7 +145,10 @@ func (ue *unifiedExtractor) ExtractEnvVars(defs map[string]*Definition, mode hel
 		}
 
 		// Set DisplayLine for environment variables
-		envVar.DisplayLine = buildEnvVarDisplay(def)
+		// For environment variable display, create a modified definition without flag
+		envDef := *def   // Copy the definition
+		envDef.flag = "" // Clear flag to force environment variable display format
+		envVar.DisplayLine = buildDefinitionDisplay(&envDef)
 		envVar.EnvVarDisplay = envVar.DisplayLine
 
 		envVars = append(envVars, envVar)

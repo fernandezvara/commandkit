@@ -7,7 +7,7 @@ import (
 )
 
 func TestNewTemplateComposer(t *testing.T) {
-	composer := NewTemplateComposer()
+	composer := newTemplateComposer()
 
 	if composer == nil {
 		t.Fatal("Expected non-nil composer")
@@ -23,7 +23,7 @@ func TestNewTemplateComposer(t *testing.T) {
 }
 
 func TestTemplateComposer_RegisterPartial(t *testing.T) {
-	composer := NewTemplateComposer()
+	composer := newTemplateComposer()
 
 	// Test registering a new partial
 	composer.RegisterPartial("test", "test template")
@@ -44,7 +44,7 @@ func TestTemplateComposer_RegisterPartial(t *testing.T) {
 }
 
 func TestTemplateComposer_GetPartial(t *testing.T) {
-	composer := NewTemplateComposer()
+	composer := newTemplateComposer()
 
 	// Test getting existing partial
 	partial, err := composer.GetPartial("usage")
@@ -69,7 +69,7 @@ func TestTemplateComposer_GetPartial(t *testing.T) {
 }
 
 func TestTemplateComposer_ComposeTemplate(t *testing.T) {
-	composer := NewTemplateComposer()
+	composer := newTemplateComposer()
 
 	// Test basic template composition (no errors, essential mode)
 	template := composer.ComposeTemplate(false, false)
@@ -97,7 +97,7 @@ func TestTemplateComposer_ComposeTemplate(t *testing.T) {
 }
 
 func TestTemplateComposer_ComposeTemplate_WithErrors(t *testing.T) {
-	composer := NewTemplateComposer()
+	composer := newTemplateComposer()
 
 	// Test template composition with errors
 	template := composer.ComposeTemplate(true, false)
@@ -108,7 +108,7 @@ func TestTemplateComposer_ComposeTemplate_WithErrors(t *testing.T) {
 }
 
 func TestTemplateComposer_ComposeTemplate_FullMode(t *testing.T) {
-	composer := NewTemplateComposer()
+	composer := newTemplateComposer()
 
 	// Test template composition in full mode
 	template := composer.ComposeTemplate(false, true)
@@ -125,7 +125,7 @@ func TestTemplateComposer_ComposeTemplate_FullMode(t *testing.T) {
 }
 
 func TestTemplateComposer_ComposeGlobalTemplate(t *testing.T) {
-	composer := NewTemplateComposer()
+	composer := newTemplateComposer()
 
 	template := composer.ComposeGlobalTemplate()
 
@@ -139,7 +139,7 @@ func TestTemplateComposer_ComposeGlobalTemplate(t *testing.T) {
 }
 
 func TestTemplateComposer_ComposeErrorTemplate(t *testing.T) {
-	composer := NewTemplateComposer()
+	composer := newTemplateComposer()
 
 	template := composer.ComposeErrorTemplate()
 
@@ -161,7 +161,7 @@ func TestTemplateComposer_ComposeErrorTemplate(t *testing.T) {
 }
 
 func TestTemplateComposer_ListPartials(t *testing.T) {
-	composer := NewTemplateComposer()
+	composer := newTemplateComposer()
 
 	partials := composer.ListPartials()
 
@@ -187,7 +187,7 @@ func TestTemplateComposer_ListPartials(t *testing.T) {
 }
 
 func TestTemplateComposer_ClearCache(t *testing.T) {
-	composer := NewTemplateComposer()
+	composer := newTemplateComposer()
 
 	// Generate some templates to populate cache
 	composer.ComposeTemplate(false, false)
@@ -209,7 +209,7 @@ func TestTemplateComposer_ClearCache(t *testing.T) {
 }
 
 func TestTemplateComposer_ValidatePartials(t *testing.T) {
-	composer := NewTemplateComposer()
+	composer := newTemplateComposer()
 
 	// Test validation with all required partials present
 	err := composer.ValidatePartials()
@@ -231,7 +231,7 @@ func TestTemplateComposer_ValidatePartials(t *testing.T) {
 }
 
 func TestTemplateComposer_Caching(t *testing.T) {
-	composer := NewTemplateComposer()
+	composer := newTemplateComposer()
 
 	// Compose template first time
 	template1 := composer.ComposeTemplate(false, false)
