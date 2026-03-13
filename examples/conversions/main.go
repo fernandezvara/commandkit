@@ -217,7 +217,7 @@ func testConfigPath() string {
 }
 
 func setupFileConfig() {
-	data := map[string]interface{}{
+	data := map[string]any{
 		"test_string":        "file_string_value",
 		"test_bool":          "false",
 		"test_int64":         "84",

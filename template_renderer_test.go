@@ -35,7 +35,7 @@ func TestGoTemplateRenderer_Render(t *testing.T) {
 	tests := []struct {
 		name      string
 		template  string
-		data      interface{}
+		data      any
 		expected  string
 		shouldErr bool
 	}{
@@ -157,7 +157,7 @@ func TestGoTemplateRenderer_AddFunction(t *testing.T) {
 func TestGoTemplateRenderer_DefaultFunctions(t *testing.T) {
 	renderer := NewGoTemplateRenderer()
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"Text":   "Hello World",
 		"Items":  []string{"apple", "banana", "cherry"},
 		"Number": 42,
@@ -203,8 +203,8 @@ func TestGoTemplateRenderer_DefaultFunctions(t *testing.T) {
 func TestGoTemplateRenderer_ComplexTemplate(t *testing.T) {
 	renderer := NewGoTemplateRenderer()
 
-	data := map[string]interface{}{
-		"Commands": []map[string]interface{}{
+	data := map[string]any{
+		"Commands": []map[string]any{
 			{"Name": "start", "Description": "Start the service"},
 			{"Name": "stop", "Description": "Stop the service"},
 		},
@@ -236,7 +236,7 @@ func TestGoTemplateRenderer_ErrorHandling(t *testing.T) {
 	tests := []struct {
 		name     string
 		template string
-		data     interface{}
+		data     any
 	}{
 		{
 			name:     "Syntax error",

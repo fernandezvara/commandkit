@@ -6,15 +6,15 @@ import (
 	"strings"
 )
 
-// TemplateComposer manages template partials and composition
-type TemplateComposer struct {
+// templateComposer manages template partials and composition
+type templateComposer struct {
 	partials map[string]string
 	cache    map[string]string
 }
 
-// NewTemplateComposer creates a new template composer
-func NewTemplateComposer() *TemplateComposer {
-	tc := &TemplateComposer{
+// newTemplateComposer creates a new template composer
+func newTemplateComposer() *templateComposer {
+	tc := &templateComposer{
 		partials: make(map[string]string),
 		cache:    make(map[string]string),
 	}
@@ -25,23 +25,24 @@ func NewTemplateComposer() *TemplateComposer {
 }
 
 // registerDefaultPartials registers the default template partials
-func (tc *TemplateComposer) registerDefaultPartials() {
+func (tc *templateComposer) registerDefaultPartials() {
 	// Template partials
-	tc.partials["usage"] = `Usage: {{.Command.Name}} [options]`
+	tc.partials["usage"] = `Usage: {{.Command}} [options]`
+	tc.partials["global_usage"] = `Usage: {{.Executable}} <command> [options]`
 	tc.partials["description"] = `{{.Description}}`
 	tc.partials["flags"] = `{{if .Flags}}Flags:
 {{range .Flags}}  {{.DisplayLine}}
 {{if .Description}}        {{.Description}}
 {{end}}{{end}}{{end}}`
-	tc.partials["envvars_basic"] = `{{if .RequiredEnvVars}}Environment Variables:
-{{range .RequiredEnvVars}}  {{.EnvVarDisplay}}
+	tc.partials["envvars_basic"] = `{{if .EnvVars}}Environment Variables:
+{{range .EnvVars}}  {{.EnvVarDisplay}}
         {{.Description}}
 {{end}}{{end}}`
-	tc.partials["envvars_full"] = `{{if .AllEnvVars}}Environment Variables:
-{{range .AllEnvVars}}  {{.EnvVarDisplay}}
+	tc.partials["envvars_full"] = `{{if .EnvVars}}Environment Variables:
+{{range .EnvVars}}  {{.EnvVarDisplay}}
         {{.Description}}
 {{end}}{{end}}`
-	tc.partials["errors"] = `{{if .HasErrors}}Configuration errors:
+	tc.partials["errors"] = `{{if .Errors}}Configuration errors:
 {{range .Errors}}  {{.Display}} -> {{.ErrorDescription}}
 {{end}}{{end}}`
 	tc.partials["subcommands"] = `{{if .Subcommands}}Subcommands:
@@ -59,14 +60,14 @@ Use '{{.Executable}} <command> --help' for command-specific help{{else}}{{if .De
 }
 
 // RegisterPartial adds or updates a template partial
-func (tc *TemplateComposer) RegisterPartial(name, template string) {
+func (tc *templateComposer) RegisterPartial(name, template string) {
 	tc.partials[name] = template
 	// Clear cache when partials change
 	tc.cache = make(map[string]string)
 }
 
 // ComposeTemplate builds a complete template from partials based on context
-func (tc *TemplateComposer) ComposeTemplate(hasErrors, isFull bool) string {
+func (tc *templateComposer) ComposeTemplate(hasErrors, isFull bool) string {
 	cacheKey := fmt.Sprintf("cmd_%t_%t", hasErrors, isFull)
 
 	if cached, exists := tc.cache[cacheKey]; exists {
@@ -108,18 +109,18 @@ func (tc *TemplateComposer) ComposeTemplate(hasErrors, isFull bool) string {
 }
 
 // ComposeGlobalTemplate builds the global help template
-func (tc *TemplateComposer) ComposeGlobalTemplate() string {
+func (tc *templateComposer) ComposeGlobalTemplate() string {
 	if cached, exists := tc.cache["global"]; exists {
 		return cached
 	}
 
-	template := tc.partials["usage"] + "\n\n" + tc.partials["global_commands"]
+	template := tc.partials["global_usage"] + "\n\n" + tc.partials["global_commands"]
 	tc.cache["global"] = template
 	return template
 }
 
 // ComposeErrorTemplate builds a template for error-only display
-func (tc *TemplateComposer) ComposeErrorTemplate() string {
+func (tc *templateComposer) ComposeErrorTemplate() string {
 	if cached, exists := tc.cache["error"]; exists {
 		return cached
 	}
@@ -153,7 +154,7 @@ func (tc *TemplateComposer) ComposeErrorTemplate() string {
 }
 
 // GetPartial returns a specific template partial
-func (tc *TemplateComposer) GetPartial(name string) (string, error) {
+func (tc *templateComposer) GetPartial(name string) (string, error) {
 	if partial, exists := tc.partials[name]; exists {
 		return partial, nil
 	}
@@ -161,7 +162,7 @@ func (tc *TemplateComposer) GetPartial(name string) (string, error) {
 }
 
 // ListPartials returns a list of all registered partial names
-func (tc *TemplateComposer) ListPartials() []string {
+func (tc *templateComposer) ListPartials() []string {
 	names := make([]string, 0, len(tc.partials))
 	for name := range tc.partials {
 		names = append(names, name)
@@ -170,13 +171,13 @@ func (tc *TemplateComposer) ListPartials() []string {
 }
 
 // ClearCache clears the template composition cache
-func (tc *TemplateComposer) ClearCache() {
+func (tc *templateComposer) ClearCache() {
 	tc.cache = make(map[string]string)
 }
 
 // ValidatePartials checks if all required partials are present
-func (tc *TemplateComposer) ValidatePartials() error {
-	required := []string{"usage", "description", "flags", "envvars_basic", "envvars_full", "errors", "subcommands", "global_commands"}
+func (tc *templateComposer) ValidatePartials() error {
+	required := []string{"usage", "global_usage", "description", "flags", "envvars_basic", "envvars_full", "errors", "subcommands", "global_commands"}
 
 	for _, name := range required {
 		if _, exists := tc.partials[name]; !exists {

@@ -6,7 +6,7 @@ import (
 )
 
 func TestNewUnifiedExtractor(t *testing.T) {
-	extractor := NewUnifiedExtractor()
+	extractor := newUnifiedExtractor()
 
 	if extractor == nil {
 		t.Fatal("Expected non-nil extractor")
@@ -14,9 +14,9 @@ func TestNewUnifiedExtractor(t *testing.T) {
 }
 
 func TestUnifiedExtractor_ExtractHelpData_NilCommand(t *testing.T) {
-	extractor := NewUnifiedExtractor()
+	extractor := newUnifiedExtractor()
 
-	helpData := extractor.ExtractHelpData(nil, HelpModeEssential, []GetError{})
+	helpData := extractor.ExtractHelpData(nil, helpModeEssential, []GetError{})
 
 	if helpData == nil {
 		t.Fatal("Expected non-nil help data")
@@ -32,7 +32,7 @@ func TestUnifiedExtractor_ExtractHelpData_NilCommand(t *testing.T) {
 }
 
 func TestUnifiedExtractor_ExtractHelpData_WithCommand(t *testing.T) {
-	extractor := NewUnifiedExtractor()
+	extractor := newUnifiedExtractor()
 
 	// Create a test command
 	cmd := &Command{
@@ -71,7 +71,7 @@ func TestUnifiedExtractor_ExtractHelpData_WithCommand(t *testing.T) {
 		},
 	}
 
-	helpData := extractor.ExtractHelpData(cmd, HelpModeEssential, errors)
+	helpData := extractor.ExtractHelpData(cmd, helpModeEssential, errors)
 
 	if helpData == nil {
 		t.Fatal("Expected non-nil help data")
@@ -111,7 +111,7 @@ func TestUnifiedExtractor_ExtractHelpData_WithCommand(t *testing.T) {
 }
 
 func TestUnifiedExtractor_ExtractHelpData_FullMode(t *testing.T) {
-	extractor := NewUnifiedExtractor()
+	extractor := newUnifiedExtractor()
 
 	// Create a test command with environment variables
 	cmd := &Command{
@@ -128,10 +128,10 @@ func TestUnifiedExtractor_ExtractHelpData_FullMode(t *testing.T) {
 		},
 	}
 
-	helpData := extractor.ExtractHelpData(cmd, HelpModeFull, []GetError{})
+	helpData := extractor.ExtractHelpData(cmd, helpModeFull, []GetError{})
 
-	if helpData.Mode != HelpModeFull {
-		t.Error("Expected mode to be HelpModeFull")
+	if helpData.Mode != helpModeFull {
+		t.Error("Expected mode to be helpModeFull")
 	}
 
 	// In full mode, should include all env vars, not just required ones
@@ -141,7 +141,7 @@ func TestUnifiedExtractor_ExtractHelpData_FullMode(t *testing.T) {
 }
 
 func TestUnifiedExtractor_ExtractFlags(t *testing.T) {
-	extractor := NewUnifiedExtractor()
+	extractor := newUnifiedExtractor()
 
 	defs := map[string]*Definition{
 		"flag": {
@@ -167,7 +167,7 @@ func TestUnifiedExtractor_ExtractFlags(t *testing.T) {
 	}
 
 	// Check flag
-	var flagInfo *FlagInfo
+	var flagInfo *flagInfo
 
 	for _, flag := range flags {
 		if flag.Name == "flag" {
@@ -187,16 +187,16 @@ func TestUnifiedExtractor_ExtractFlags(t *testing.T) {
 	}
 
 	// Environment variables should be extracted separately using ExtractEnvVars
-	envVars := extractor.ExtractEnvVars(defs, HelpModeEssential)
+	envVars := extractor.ExtractEnvVars(defs, helpModeEssential)
 	if len(envVars) != 1 {
 		t.Errorf("Expected 1 env var, got %d", len(envVars))
 	}
 }
 
 func TestUnifiedExtractor_FilterEnvVars(t *testing.T) {
-	extractor := NewUnifiedExtractor()
+	extractor := newUnifiedExtractor()
 
-	flags := []FlagInfo{
+	flags := []flagInfo{
 		{
 			Key:      "flag",
 			Name:     "flag",
@@ -221,7 +221,7 @@ func TestUnifiedExtractor_FilterEnvVars(t *testing.T) {
 	}
 
 	// Test essential mode - only required env vars
-	envVars := extractor.FilterEnvVars(flags, HelpModeEssential)
+	envVars := extractor.FilterEnvVars(flags, helpModeEssential)
 
 	if len(envVars) != 1 {
 		t.Errorf("Expected 1 env var in essential mode, got %d", len(envVars))
@@ -232,7 +232,7 @@ func TestUnifiedExtractor_FilterEnvVars(t *testing.T) {
 	}
 
 	// Test full mode - all env vars
-	envVars = extractor.FilterEnvVars(flags, HelpModeFull)
+	envVars = extractor.FilterEnvVars(flags, helpModeFull)
 
 	if len(envVars) != 2 {
 		t.Errorf("Expected 2 env vars in full mode, got %d", len(envVars))
@@ -240,7 +240,7 @@ func TestUnifiedExtractor_FilterEnvVars(t *testing.T) {
 }
 
 func TestUnifiedExtractor_ExtractSubcommands(t *testing.T) {
-	extractor := NewUnifiedExtractor()
+	extractor := newUnifiedExtractor()
 
 	cmd := &Command{
 		SubCommands: map[string]*Command{
@@ -279,7 +279,7 @@ func TestUnifiedExtractor_ExtractSubcommands(t *testing.T) {
 }
 
 func TestUnifiedExtractor_buildUsage(t *testing.T) {
-	extractor := NewUnifiedExtractor()
+	extractor := newUnifiedExtractor()
 
 	// Test with named command
 	cmd := &Command{Name: "test"}
@@ -305,7 +305,7 @@ func TestUnifiedExtractor_buildUsage(t *testing.T) {
 }
 
 func TestUnifiedExtractor_extractValidations(t *testing.T) {
-	extractor := NewUnifiedExtractor()
+	extractor := newUnifiedExtractor()
 
 	// Test with no validations
 	validations := extractor.extractValidations([]Validation{})
@@ -315,17 +315,18 @@ func TestUnifiedExtractor_extractValidations(t *testing.T) {
 
 	// Test with some validations
 	validations = extractor.extractValidations([]Validation{{}, {}})
-	if len(validations) != 1 {
-		t.Errorf("Expected 1 validation for non-empty input, got %d", len(validations))
+	if len(validations) != 2 {
+		t.Errorf("Expected 2 validations for non-empty input, got %d", len(validations))
 	}
 
-	if validations[0] != "validation" {
-		t.Errorf("Expected validation to be 'validation', got '%s'", validations[0])
+	// Empty validation structs will have empty names
+	if validations[0] != "" || validations[1] != "" {
+		t.Errorf("Expected validation names to be empty, got '%s' and '%s'", validations[0], validations[1])
 	}
 }
 
 func TestUnifiedExtractor_ExtractGlobalCommands(t *testing.T) {
-	extractor := NewUnifiedExtractor()
+	extractor := newUnifiedExtractor()
 
 	commands := map[string]*Command{
 		"cmd1": {
@@ -340,7 +341,8 @@ func TestUnifiedExtractor_ExtractGlobalCommands(t *testing.T) {
 		},
 	}
 
-	summaries := extractor.ExtractGlobalCommands(commands)
+	commandsData := extractor.extractCommandsData(commands, "testapp")
+	summaries := commandsData.commands
 
 	if len(summaries) != 2 {
 		t.Errorf("Expected 2 command summaries, got %d", len(summaries))
@@ -363,22 +365,28 @@ func TestUnifiedExtractor_ExtractGlobalCommands(t *testing.T) {
 
 func TestFlagInfo_GetDisplayLine(t *testing.T) {
 	// Test flag (not NoFlag)
-	flag := FlagInfo{
+	flag := flagInfo{
 		NoFlag:      false,
 		DisplayLine: "--flag string",
 	}
 
-	if flag.GetDisplayLine() != "--flag string" {
-		t.Errorf("Expected '--flag string', got '%s'", flag.GetDisplayLine())
+	if flag.DisplayLine != "--flag string" {
+		t.Errorf("Expected '--flag string', got '%s'", flag.DisplayLine)
+	}
+	if flag.NoFlag != false {
+		t.Errorf("Expected NoFlag to be false")
 	}
 
 	// Test environment variable (NoFlag)
-	env := FlagInfo{
+	env := flagInfo{
 		NoFlag:        true,
 		EnvVarDisplay: "ENV_VAR string",
 	}
 
-	if env.GetDisplayLine() != "ENV_VAR string" {
-		t.Errorf("Expected 'ENV_VAR string', got '%s'", env.GetDisplayLine())
+	if env.EnvVarDisplay != "ENV_VAR string" {
+		t.Errorf("Expected 'ENV_VAR string', got '%s'", env.EnvVarDisplay)
+	}
+	if env.NoFlag != true {
+		t.Errorf("Expected NoFlag to be true")
 	}
 }

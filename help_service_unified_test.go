@@ -6,7 +6,7 @@ import (
 )
 
 func TestHelpService_ShowHelpUnified(t *testing.T) {
-	service := NewHelpService()
+	service := newHelpService()
 
 	// Test global help
 	err := service.ShowHelpUnified("", "", false, []GetError{}, nil)
@@ -22,7 +22,7 @@ func TestHelpService_ShowHelpUnified(t *testing.T) {
 }
 
 func TestHelpService_TriggerHelpUnified(t *testing.T) {
-	service := NewHelpService()
+	service := newHelpService()
 
 	// Test with nil context
 	err := service.TriggerHelpUnified(nil, []GetError{})

@@ -168,9 +168,9 @@ Flags:
   {{.Name}} - {{.ShortHelp}}
 {{end}}`
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"Executable": "test",
-		"Commands": []map[string]interface{}{
+		"Commands": []map[string]any{
 			{"Name": "start", "ShortHelp": "Start the service"},
 			{"Name": "stop", "ShortHelp": "Stop the service"},
 			{"Name": "status", "ShortHelp": "Show status"},
@@ -195,9 +195,9 @@ Flags:
   {{.Name}} - {{.ShortHelp}}
 {{end}}`
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"Executable": "test",
-		"Commands": []map[string]interface{}{
+		"Commands": []map[string]any{
 			{"Name": "start", "ShortHelp": "Start the service"},
 			{"Name": "stop", "ShortHelp": "Stop the service"},
 			{"Name": "status", "ShortHelp": "Show status"},

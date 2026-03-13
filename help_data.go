@@ -4,39 +4,32 @@ package commandkit
 import (
 	"fmt"
 	"sort"
+	"strings"
 )
 
-// UnifiedHelpData represents the unified help data structure
+// UnifiedHelpData represents the complete help data for a command
 type UnifiedHelpData struct {
 	Command     *Command
 	Usage       string
 	Description string
-	Flags       []FlagInfo // All flags (unified display format)
-	EnvVars     []FlagInfo // Filtered based on full/basic mode
-	Subcommands []SubcommandInfo
-	Errors      []GetError // Optional error list
-	Mode        HelpMode   // Essential or Full
+	Flags       []flagInfo
+	EnvVars     []flagInfo
+	Subcommands []subcommandInfo
+	Errors      []GetError
+	Mode        helpMode
 	HasErrors   bool
 }
 
-// GetDisplayLine returns the appropriate display line based on flag type
-func (fi *FlagInfo) GetDisplayLine() string {
-	if fi.NoFlag {
-		return fi.EnvVarDisplay // Use new layout for env-only vars
-	}
-	return fi.DisplayLine // Use traditional format for flags
-}
-
-// UnifiedExtractor extracts and processes help data
-type UnifiedExtractor struct{}
+// unifiedExtractor extracts and processes help data
+type unifiedExtractor struct{}
 
 // NewUnifiedExtractor creates a new unified extractor
-func NewUnifiedExtractor() *UnifiedExtractor {
-	return &UnifiedExtractor{}
+func newUnifiedExtractor() *unifiedExtractor {
+	return &unifiedExtractor{}
 }
 
 // ExtractHelpData extracts unified help data for a command
-func (ue *UnifiedExtractor) ExtractHelpData(cmd *Command, mode HelpMode, errors []GetError) *UnifiedHelpData {
+func (ue *unifiedExtractor) ExtractHelpData(cmd *Command, mode helpMode, errors []GetError) *UnifiedHelpData {
 	if cmd == nil {
 		return &UnifiedHelpData{}
 	}
@@ -54,10 +47,16 @@ func (ue *UnifiedExtractor) ExtractHelpData(cmd *Command, mode HelpMode, errors 
 	// Build usage string
 	usage := ue.buildUsage(cmd)
 
+	// Use LongHelp if available, fall back to ShortHelp
+	description := cmd.LongHelp
+	if description == "" {
+		description = cmd.ShortHelp
+	}
+
 	return &UnifiedHelpData{
 		Command:     cmd,
 		Usage:       usage,
-		Description: cmd.LongHelp,
+		Description: description,
 		Flags:       flags,
 		EnvVars:     filteredEnvVars,
 		Subcommands: subcommands,
@@ -68,8 +67,8 @@ func (ue *UnifiedExtractor) ExtractHelpData(cmd *Command, mode HelpMode, errors 
 }
 
 // ExtractFlags extracts flag information from definitions
-func (ue *UnifiedExtractor) ExtractFlags(defs map[string]*Definition) []FlagInfo {
-	var flags []FlagInfo
+func (ue *unifiedExtractor) ExtractFlags(defs map[string]*Definition) []flagInfo {
+	var flags []flagInfo
 
 	// Sort definitions for consistent display
 	keys := make([]string, 0, len(defs))
@@ -86,7 +85,7 @@ func (ue *UnifiedExtractor) ExtractFlags(defs map[string]*Definition) []FlagInfo
 			continue // Skip environment-only variables
 		}
 
-		flag := FlagInfo{
+		flag := flagInfo{
 			Key:         key,
 			Name:        def.flag,
 			Description: def.description,
@@ -107,20 +106,15 @@ func (ue *UnifiedExtractor) ExtractFlags(defs map[string]*Definition) []FlagInfo
 			flag.EnvVarDisplay = buildEnvVarDisplay(def)
 		}
 
-		// Mask secret defaults
-		if def.secret && flag.Default != "" {
-			flag.Default = "[secret]"
-		}
-
 		flags = append(flags, flag)
 	}
 
 	return flags
 }
 
-// ExtractEnvVars extracts environment variables from definitions
-func (ue *UnifiedExtractor) ExtractEnvVars(defs map[string]*Definition, mode HelpMode) []FlagInfo {
-	var envVars []FlagInfo
+// ExtractEnvVars extracts environment variable information from definitions
+func (ue *unifiedExtractor) ExtractEnvVars(defs map[string]*Definition, mode helpMode) []flagInfo {
+	var envVars []flagInfo
 
 	// Sort definitions for consistent display
 	keys := make([]string, 0, len(defs))
@@ -132,12 +126,12 @@ func (ue *UnifiedExtractor) ExtractEnvVars(defs map[string]*Definition, mode Hel
 	for _, key := range keys {
 		def := defs[key]
 
-		// Only include environment variables (those with an env var)
+		// Include environment variables (those with env var name)
 		if def.envVar == "" {
 			continue // Skip non-environment variables
 		}
 
-		envVar := FlagInfo{
+		envVar := flagInfo{
 			Key:         key,
 			Name:        def.flag,
 			Description: def.description,
@@ -152,12 +146,7 @@ func (ue *UnifiedExtractor) ExtractEnvVars(defs map[string]*Definition, mode Hel
 
 		// Set DisplayLine for environment variables
 		envVar.DisplayLine = buildEnvVarDisplay(def)
-		envVar.EnvVarDisplay = buildEnvVarDisplay(def)
-
-		// Mask secret defaults
-		if def.secret && envVar.Default != "" {
-			envVar.Default = "[secret]"
-		}
+		envVar.EnvVarDisplay = envVar.DisplayLine
 
 		envVars = append(envVars, envVar)
 	}
@@ -166,32 +155,35 @@ func (ue *UnifiedExtractor) ExtractEnvVars(defs map[string]*Definition, mode Hel
 }
 
 // FilterEnvVars filters environment variables based on help mode
-func (ue *UnifiedExtractor) FilterEnvVars(flags []FlagInfo, mode HelpMode) []FlagInfo {
-	var envVars []FlagInfo
+func (ue *unifiedExtractor) FilterEnvVars(envVars []flagInfo, mode helpMode) []flagInfo {
+	var result []flagInfo
 
-	for _, flag := range flags {
-		// Only include environment-only variables
-		if flag.NoFlag && flag.EnvVar != "" {
-			// In essential mode, only include required env vars
-			if mode == HelpModeEssential && flag.Required {
-				envVars = append(envVars, flag)
-			} else if mode == HelpModeFull {
-				// In full mode, include all env vars
-				envVars = append(envVars, flag)
+	for _, envVar := range envVars {
+		// Only include items that actually have environment variables
+		if envVar.EnvVar == "" {
+			continue
+		}
+
+		if mode == helpModeFull {
+			// Include all environment variables in full mode
+			result = append(result, envVar)
+		} else {
+			// Only include required environment variables in essential mode
+			if envVar.Required {
+				result = append(result, envVar)
 			}
 		}
 	}
-
-	return envVars
+	return result
 }
 
 // ExtractSubcommands extracts subcommand information
-func (ue *UnifiedExtractor) ExtractSubcommands(cmd *Command) []SubcommandInfo {
+func (ue *unifiedExtractor) ExtractSubcommands(cmd *Command) []subcommandInfo {
 	if cmd == nil || len(cmd.SubCommands) == 0 {
-		return []SubcommandInfo{}
+		return []subcommandInfo{}
 	}
 
-	var subcommands []SubcommandInfo
+	var subcommands []subcommandInfo
 
 	// Sort subcommands for consistent display
 	names := make([]string, 0, len(cmd.SubCommands))
@@ -202,9 +194,14 @@ func (ue *UnifiedExtractor) ExtractSubcommands(cmd *Command) []SubcommandInfo {
 
 	for _, name := range names {
 		subCmd := cmd.SubCommands[name]
-		subcommands = append(subcommands, SubcommandInfo{
+		// Use LongHelp if available, fall back to ShortHelp
+		desc := subCmd.LongHelp
+		if desc == "" {
+			desc = subCmd.ShortHelp
+		}
+		subcommands = append(subcommands, subcommandInfo{
 			Name:        name,
-			Description: subCmd.LongHelp,
+			Description: desc,
 			Aliases:     subCmd.Aliases,
 		})
 	}
@@ -213,7 +210,7 @@ func (ue *UnifiedExtractor) ExtractSubcommands(cmd *Command) []SubcommandInfo {
 }
 
 // buildUsage builds the usage string for a command
-func (ue *UnifiedExtractor) buildUsage(cmd *Command) string {
+func (ue *unifiedExtractor) buildUsage(cmd *Command) string {
 	if cmd == nil {
 		return ""
 	}
@@ -225,39 +222,98 @@ func (ue *UnifiedExtractor) buildUsage(cmd *Command) string {
 	return fmt.Sprintf("Usage: %s [options]", cmd.Name)
 }
 
-// extractValidations extracts validation information
-func (ue *UnifiedExtractor) extractValidations(validations []Validation) []string {
-	var result []string
-
-	// For now, skip complex validation extraction to avoid type issues
-	// This can be enhanced later once the validation types are properly exposed
-	if len(validations) > 0 {
-		// Add generic validation info
-		result = append(result, "validation")
+// extractValidations extracts validation descriptions
+func (ue *unifiedExtractor) extractValidations(validations []Validation) []string {
+	var descriptions []string
+	for _, validation := range validations {
+		descriptions = append(descriptions, validation.Name)
 	}
-
-	return result
+	return descriptions
 }
 
-// ExtractGlobalCommands extracts command summaries for global help
-func (ue *UnifiedExtractor) ExtractGlobalCommands(commands map[string]*Command) []CommandSummary {
-	var summaries []CommandSummary
+// --- Data extraction methods for layer coordinator ---
 
-	// Sort commands for consistent display
-	names := make([]string, 0, len(commands))
-	for name := range commands {
-		names = append(names, name)
+// extractUsageData extracts usage layer data
+func (ue *unifiedExtractor) extractUsageData(command, subcommand, executable string) *usageData {
+	return &usageData{
+		command:    command,
+		subcommand: subcommand,
+		executable: executable,
 	}
-	sort.Strings(names)
+}
 
-	for _, name := range names {
-		cmd := commands[name]
-		summaries = append(summaries, CommandSummary{
-			Name:        name,
-			Description: cmd.LongHelp,
-			Aliases:     cmd.Aliases,
-		})
+// extractCommandsData extracts commands layer data
+func (ue *unifiedExtractor) extractCommandsData(commands map[string]*Command, executable string) *commandsData {
+	var commandSummaries []commandSummary
+	for name, cmd := range commands {
+		if name != "" { // Skip empty string command
+			// Use LongHelp if available, fall back to ShortHelp
+			description := cmd.LongHelp
+			if description == "" {
+				description = cmd.ShortHelp
+			}
+			// Get first line for summary
+			lines := strings.Split(description, "\n")
+			if len(lines) > 0 {
+				description = lines[0]
+			}
+
+			commandSummaries = append(commandSummaries, commandSummary{
+				Name:        name,
+				Description: description,
+				Aliases:     cmd.Aliases,
+			})
+		}
 	}
 
-	return summaries
+	return &commandsData{
+		commands:   commandSummaries,
+		executable: executable,
+	}
+}
+
+// extractFlagsData extracts flags layer data
+func (ue *unifiedExtractor) extractFlagsData(cmd *Command) *flagsData {
+	if cmd == nil {
+		return &flagsData{}
+	}
+
+	flags := ue.ExtractFlags(cmd.Definitions)
+	return &flagsData{
+		flags: flags,
+	}
+}
+
+// extractEnvVarsData extracts environment variables layer data
+func (ue *unifiedExtractor) extractEnvVarsData(cmd *Command, mode helpMode) *envVarsData {
+	if cmd == nil {
+		return &envVarsData{}
+	}
+
+	envVars := ue.ExtractEnvVars(cmd.Definitions, mode)
+	filteredEnvVars := ue.FilterEnvVars(envVars, mode)
+
+	return &envVarsData{
+		envVars: filteredEnvVars,
+		mode:    mode,
+	}
+}
+
+// extractSubcommandsData extracts subcommands layer data
+func (ue *unifiedExtractor) extractSubcommandsData(cmd *Command) *subcommandsData {
+	if cmd == nil {
+		return &subcommandsData{}
+	}
+
+	subcommands := ue.ExtractSubcommands(cmd)
+	return &subcommandsData{
+		subcommands: subcommands,
+	}
+}
+
+// extractErrorsData extracts errors layer data
+func (ue *unifiedExtractor) extractErrorsData(errors []GetError) *errorsData {
+	return &errorsData{
+		errors: errors,
+	}
 }

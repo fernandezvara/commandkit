@@ -7,7 +7,7 @@ import (
 )
 
 func TestNewHelpCoordinator(t *testing.T) {
-	coordinator := NewHelpCoordinator()
+	coordinator := newHelpCoordinator()
 
 	if coordinator == nil {
 		t.Fatal("Expected non-nil coordinator")
@@ -27,9 +27,9 @@ func TestNewHelpCoordinator(t *testing.T) {
 }
 
 func TestHelpCoordinator_SetOutput(t *testing.T) {
-	coordinator := NewHelpCoordinator()
+	coordinator := newHelpCoordinator()
 
-	stringOutput := &StringHelpOutputInterface{}
+	stringOutput := &StringHelpOutput{}
 	coordinator.SetOutput(stringOutput)
 
 	if coordinator.output != stringOutput {
@@ -37,9 +37,7 @@ func TestHelpCoordinator_SetOutput(t *testing.T) {
 	}
 }
 
-func TestHelpCoordinator_detectHelpMode(t *testing.T) {
-	coordinator := NewHelpCoordinator()
-
+func TestArgsContainFullHelp(t *testing.T) {
 	tests := []struct {
 		args     []string
 		expected bool
@@ -53,26 +51,24 @@ func TestHelpCoordinator_detectHelpMode(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result := coordinator.detectHelpMode(test.args)
+		result := argsContainFullHelp(test.args)
 		if result != test.expected {
-			t.Errorf("detectHelpMode(%v) = %v, expected %v", test.args, result, test.expected)
+			t.Errorf("argsContainFullHelp(%v) = %v, expected %v", test.args, result, test.expected)
 		}
 	}
 }
 
 func TestHelpCoordinator_getExecutableName(t *testing.T) {
-	coordinator := NewHelpCoordinator()
-
 	// This test depends on os.Args, so we just verify it returns a non-empty string
-	name := coordinator.getExecutableName()
+	name := getExecutableName()
 	if name == "" {
 		t.Error("Expected non-empty executable name")
 	}
 }
 
 func TestHelpCoordinator_ShowHelp_Global(t *testing.T) {
-	coordinator := NewHelpCoordinator()
-	stringOutput := &StringHelpOutputInterface{}
+	coordinator := newHelpCoordinator()
+	stringOutput := &StringHelpOutput{}
 	coordinator.SetOutput(stringOutput)
 
 	err := coordinator.ShowHelp("", "", false, []GetError{})
@@ -80,7 +76,7 @@ func TestHelpCoordinator_ShowHelp_Global(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	output := stringOutput.GetString()
+	output := stringOutput.Get()
 	if !strings.Contains(output, "Usage:") {
 		t.Error("Expected output to contain usage information")
 	}
@@ -92,8 +88,8 @@ func TestHelpCoordinator_ShowHelp_Global(t *testing.T) {
 }
 
 func TestHelpCoordinator_ShowHelp_WithCommand(t *testing.T) {
-	coordinator := NewHelpCoordinator()
-	stringOutput := &StringHelpOutputInterface{}
+	coordinator := newHelpCoordinator()
+	stringOutput := &StringHelpOutput{}
 	coordinator.SetOutput(stringOutput)
 
 	// Test with a non-existent command should return simple help (no commands map provided)
@@ -102,15 +98,15 @@ func TestHelpCoordinator_ShowHelp_WithCommand(t *testing.T) {
 		t.Errorf("Unexpected error for non-existent command: %v", err)
 	}
 
-	output := stringOutput.GetString()
+	output := stringOutput.Get()
 	if !strings.Contains(output, "Usage: nonexistent [options]") {
 		t.Error("Expected simple help output for non-existent command")
 	}
 }
 
 func TestHelpCoordinator_TriggerHelp(t *testing.T) {
-	coordinator := NewHelpCoordinator()
-	stringOutput := &StringHelpOutputInterface{}
+	coordinator := newHelpCoordinator()
+	stringOutput := &StringHelpOutput{}
 	coordinator.SetOutput(stringOutput)
 
 	// Test with nil context
@@ -132,14 +128,14 @@ func TestHelpCoordinator_TriggerHelp(t *testing.T) {
 		t.Errorf("Unexpected error with valid context: %v", err)
 	}
 
-	output := stringOutput.GetString()
+	output := stringOutput.Get()
 	if !strings.Contains(output, "Usage:") {
 		t.Error("Expected output to contain usage information")
 	}
 }
 
-func TestDefaultHelpOutput_Print(t *testing.T) {
-	output := &DefaultHelpOutput{}
+func TestConsoleHelpOutput_Print(t *testing.T) {
+	output := &ConsoleHelpOutput{}
 
 	err := output.Print("test output")
 	if err != nil {
@@ -147,8 +143,8 @@ func TestDefaultHelpOutput_Print(t *testing.T) {
 	}
 }
 
-func TestStringHelpOutputInterface(t *testing.T) {
-	output := &StringHelpOutputInterface{}
+func TestStringHelpOutput(t *testing.T) {
+	output := &StringHelpOutput{}
 
 	// Test Print
 	err := output.Print("test output")
@@ -156,8 +152,8 @@ func TestStringHelpOutputInterface(t *testing.T) {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
-	// Test GetString
-	result := output.GetString()
+	// Test Get
+	result := output.Get()
 	if result != "test output" {
 		t.Errorf("Expected 'test output', got '%s'", result)
 	}
@@ -168,7 +164,7 @@ func TestStringHelpOutputInterface(t *testing.T) {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
-	result = output.GetString()
+	result = output.Get()
 	if result != "test output more" {
 		t.Errorf("Expected 'test output more', got '%s'", result)
 	}

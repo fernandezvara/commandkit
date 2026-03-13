@@ -34,28 +34,12 @@ func (cr *commandRouter) RouteCommand(args []string, config *Config) (*Command, 
 		return nil, nil, fmt.Errorf("config cannot be nil")
 	}
 
-	// Check for help requests first using the new help system
-	// Pass args without program name to help system
-	var helpArgs []string
-	if len(args) > 0 {
-		helpArgs = args[1:] // Skip program name
-	}
-
+	// Check for help requests first (last arg must be a help flag)
+	helpArgs := args[1:] // Skip program name (safe: len >= 0 slice)
 	helpService := config.getHelpService()
-	if helpService.IsHelpRequested(helpArgs) {
+	if lastArgIsHelpFlag(helpArgs) {
 		err := helpService.ShowHelp(helpArgs, config.commands)
 		return nil, nil, err // Help shown, no command to execute
-	}
-
-	// Additional check: if we have an empty string command and any arg is a help flag
-	if len(args) > 1 {
-		for _, arg := range args[1:] {
-			if arg == "--help" || arg == "-h" || arg == "help" || arg == "--full-help" {
-				isFull := arg == "--full-help"
-				err := helpService.ShowHelpUnified("", "", isFull, []GetError{}, config.commands)
-				return nil, nil, err // Help shown, no command to execute
-			}
-		}
 	}
 
 	// Handle no command case - check for empty string default command
@@ -164,9 +148,15 @@ func (cr *commandRouter) RouteWithHelpHandling(args []string, config *Config) (*
 	remainingArgs := args[2:]
 
 	// Check if the command name is actually a help flag
-	if commandName == "--help" || commandName == "-h" || commandName == "help" || commandName == "--full-help" {
-		isFull := commandName == "--full-help"
-		err := config.getHelpService().ShowHelpUnified("", "", isFull, []GetError{}, config.commands)
+	if isHelpFlag(commandName) {
+		isFull := isFullHelpFlag(commandName)
+		// If there are remaining args, the first one is the command to show help for
+		// e.g. "app help deploy" or "app --help deploy"
+		helpCmd := ""
+		if len(remainingArgs) > 0 {
+			helpCmd = remainingArgs[0]
+		}
+		err := config.getHelpService().ShowHelpUnified(helpCmd, "", isFull, []GetError{}, config.commands)
 		return nil, nil, err // Help shown, no command to execute
 	}
 
@@ -202,37 +192,14 @@ func (cr *commandRouter) RouteWithHelpHandling(args []string, config *Config) (*
 		return nil, nil, err
 	}
 
-	// Build command path for help detection
-	var commandPath []string
-	commandPath = append(commandPath, commandName)
-	if finalCtx.SubCommand != "" {
-		commandPath = append(commandPath, finalCtx.SubCommand)
-	}
-
-	// Check for help requests using unified system
-	helpService := config.getHelpService()
-
-	// Detect help mode from args
-	full := false
-	for _, arg := range finalCtx.Args {
-		if arg == "--full-help" {
-			full = true
-			break
+	// Check for help requests using centralized detection
+	if lastArgIsHelpFlag(finalCtx.Args) {
+		full := argsContainFullHelp(finalCtx.Args)
+		err := config.getHelpService().ShowHelpUnified(finalCtx.Command, finalCtx.SubCommand, full, []GetError{}, config.commands)
+		if err != nil {
+			return nil, nil, err
 		}
-	}
-
-	// Check if help is requested
-	if len(finalCtx.Args) > 0 {
-		lastArg := finalCtx.Args[len(finalCtx.Args)-1]
-		if lastArg == "--help" || lastArg == "-h" || lastArg == "help" || lastArg == "--full-help" {
-			// Show subcommand help using unified system
-			err := helpService.ShowHelpUnified(finalCtx.Command, finalCtx.SubCommand, full, []GetError{}, config.commands)
-			if err != nil {
-				return nil, nil, err
-			}
-			// Help was shown successfully, return nil to prevent command execution
-			return nil, nil, nil
-		}
+		return nil, nil, nil
 	}
 
 	return finalCmd, finalCtx, nil

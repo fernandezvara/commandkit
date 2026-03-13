@@ -47,11 +47,5 @@ func (ctx *CommandContext) GetData(key string) (any, bool) {
 // IsHelpRequested checks if help is being requested in the current context
 // This is context-specific (no args parameter) and used by config processing to skip validation when help is shown
 func (ctx *CommandContext) IsHelpRequested() bool {
-	// Use the proper help detector to check for help flags
-	if ctx.GlobalConfig != nil {
-		helpService := ctx.GlobalConfig.getHelpService()
-		return helpService.IsHelpRequested(ctx.Args)
-	}
-
-	return false
+	return argsContainHelpFlag(ctx.Args)
 }

@@ -55,7 +55,7 @@ func (ce *commandExecutor) validateCommand(cmd *Command, ctx *CommandContext) *C
 	// Check if command has no function but has subcommands
 	if cmd.Func == nil && len(cmd.SubCommands) > 0 {
 		// Use the new help system to show subcommand help
-		helpService := NewHelpService()
+		helpService := newHelpService()
 
 		// Get commands from the context's global config
 		var commands map[string]*Command

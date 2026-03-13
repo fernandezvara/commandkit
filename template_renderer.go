@@ -12,10 +12,10 @@ import (
 
 // TemplateRenderer renders templates with data
 type TemplateRenderer interface {
-	Render(templateStr string, data interface{}) (string, error)
+	Render(templateStr string, data any) (string, error)
 	SetFuncMap(funcMap template.FuncMap)
 	GetFuncMap() template.FuncMap
-	AddFunction(name string, fn interface{})
+	AddFunction(name string, fn any)
 }
 
 // GoTemplateRenderer implements TemplateRenderer using Go's text/template
@@ -70,7 +70,7 @@ func NewCachedTemplateRenderer() TemplateRenderer {
 	return &CachedTemplateRenderer{
 		GoTemplateRenderer: base,
 		builderPool: sync.Pool{
-			New: func() interface{} {
+			New: func() any {
 				return &strings.Builder{}
 			},
 		},
@@ -78,7 +78,7 @@ func NewCachedTemplateRenderer() TemplateRenderer {
 }
 
 // Render renders a template with the given data
-func (r *GoTemplateRenderer) Render(templateStr string, data interface{}) (string, error) {
+func (r *GoTemplateRenderer) Render(templateStr string, data any) (string, error) {
 	tmpl, err := template.New("help").Funcs(r.funcMap).Parse(templateStr)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse template: %w", err)
@@ -93,7 +93,7 @@ func (r *GoTemplateRenderer) Render(templateStr string, data interface{}) (strin
 }
 
 // Render renders a template with caching and string builder pool optimization
-func (r *CachedTemplateRenderer) Render(templateStr string, data interface{}) (string, error) {
+func (r *CachedTemplateRenderer) Render(templateStr string, data any) (string, error) {
 	// Create cache key from template string
 	cacheKey := fmt.Sprintf("%x", sha256.Sum256([]byte(templateStr)))
 
@@ -114,7 +114,7 @@ func (r *CachedTemplateRenderer) Render(templateStr string, data interface{}) (s
 }
 
 // executeTemplate executes a template using the string builder pool
-func (r *CachedTemplateRenderer) executeTemplate(tmpl *template.Template, data interface{}) (string, error) {
+func (r *CachedTemplateRenderer) executeTemplate(tmpl *template.Template, data any) (string, error) {
 	// Get builder from pool
 	builder := r.builderPool.Get().(*strings.Builder)
 	defer func() {
@@ -153,7 +153,7 @@ func (r *CachedTemplateRenderer) GetFuncMap() template.FuncMap {
 }
 
 // AddFunction adds a custom function to the function map
-func (r *GoTemplateRenderer) AddFunction(name string, fn interface{}) {
+func (r *GoTemplateRenderer) AddFunction(name string, fn any) {
 	if r.funcMap == nil {
 		r.funcMap = make(template.FuncMap)
 	}
@@ -161,7 +161,7 @@ func (r *GoTemplateRenderer) AddFunction(name string, fn interface{}) {
 }
 
 // AddFunction adds a custom function to the function map and clears cache
-func (r *CachedTemplateRenderer) AddFunction(name string, fn interface{}) {
+func (r *CachedTemplateRenderer) AddFunction(name string, fn any) {
 	r.GoTemplateRenderer.AddFunction(name, fn)
 	// Clear cache when function map changes
 	r.templateCache = sync.Map{}

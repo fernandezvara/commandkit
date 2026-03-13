@@ -113,14 +113,14 @@ func TestTemplateComposer_ComposeTemplate_FullMode(t *testing.T) {
 	// Test template composition in full mode
 	template := composer.ComposeTemplate(false, true)
 
-	// Should contain full environment variables template
-	if !strings.Contains(template, "{{if .AllEnvVars}}") {
-		t.Error("Expected template to contain full environment variables section in full mode")
+	// Should contain environment variables template (same for both modes now)
+	if !strings.Contains(template, "{{if .EnvVars}}") {
+		t.Error("Expected template to contain environment variables section in full mode")
 	}
 
-	// Should not contain essential environment variables template
+	// Should not contain old essential environment variables template
 	if strings.Contains(template, "{{if .RequiredEnvVars}}") {
-		t.Error("Expected template to not contain essential environment variables section in full mode")
+		t.Error("Expected template to not contain old essential environment variables section in full mode")
 	}
 }
 

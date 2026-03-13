@@ -151,6 +151,13 @@ func main() {
 				fmt.Printf("   JWT Key: not configured\n")
 			}
 
+			baseUrl, err := commandkit.Get[string](ctx, "BASE_URL")
+			if err == nil {
+				fmt.Printf("   Base URL: %s\n", baseUrl)
+			} else {
+				fmt.Printf("   Base URL: not configured\n")
+			}
+
 			fmt.Printf("\n✅ Configuration loaded successfully!\n")
 			fmt.Printf("🌐 Web server ready to start!\n")
 

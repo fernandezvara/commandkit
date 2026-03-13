@@ -21,7 +21,7 @@ type Config struct {
 	globalMiddleware []CommandMiddleware
 	overrideWarnings *OverrideWarnings
 	processed        bool
-	helpService      HelpService
+	helpService      *helpService
 	defaultPriority  SourcePriority // Fallback priority for definitions without explicit priority
 }
 
@@ -252,11 +252,16 @@ func (c *Config) GenerateHelp() string {
 }
 
 // getHelpService returns the help service instance, creating it if needed
-func (c *Config) getHelpService() HelpService {
+func (c *Config) getHelpService() *helpService {
 	if c.helpService == nil {
-		c.helpService = NewHelpService()
+		c.helpService = newHelpService()
 	}
 	return c.helpService
+}
+
+// getCommands returns the commands map for help system
+func (c *Config) getCommands() map[string]*Command {
+	return c.commands
 }
 
 // createServices creates a new CommandServices instance for internal use

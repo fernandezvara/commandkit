@@ -155,57 +155,6 @@ func TestNormalExecutionWithCustomValidation(t *testing.T) {
 	}
 }
 
-// func TestNormalExecutionWithInvalidCustomValidation(t *testing.T) {
-// 	// Test that normal execution fails with invalid custom validation
-
-// 	// Set environment variable with invalid value for custom validator
-// 	// os.Setenv("TEST_PORT", "invalid_port")
-// 	// defer os.Unsetenv("TEST_PORT")
-
-// 	cfg := New()
-
-// 	// Define a custom validator that expects int64
-// 	// portValidator := func(value any) error {
-// 	// 	if port, ok := value.(int64); ok {
-// 	// 		if port < 1 || port > 65535 {
-// 	// 			return fmt.Errorf("port must be between 1 and 65535, got %d", port)
-// 	// 		}
-// 	// 		return nil
-// 	// 	}
-// 	// 	return fmt.Errorf("port must be an integer, got %T", value)
-// 	// }
-
-// 	// Define configuration with custom validation
-// 	cfg.Define("PORT").
-// 		Int64().
-// 		// Env("TEST_PORT").
-// 		Flag("port").
-// 		Default(8080).
-// 		Range(1, 65535)
-// 	// Custom("port_range", portValidator).
-// 	// Description("Server port")
-
-// 	// Add a simple command
-// 	cfg.Command("test").
-// 		Func(func(ctx *CommandContext) error {
-// 			a, e := Get[int64](ctx, "PORT")
-
-// 			fmt.Printf("PORT: %d, error: %v\n", a, e)
-// 			t.Logf("Command executed successfully! PORT: %d, error: %v", a, e)
-// 			return nil
-// 		}).
-// 		ShortHelp("Test command")
-
-// 	// Test normal execution - should fail with invalid environment variable
-// 	args := []string{"cmd", "test"}
-// 	err := cfg.Execute(args)
-
-// 	// Should fail due to validation error
-// 	if err == nil {
-// 		t.Error("Normal execution should fail with invalid environment variable and custom validation")
-// 	}
-// }
-
 func TestHelpWithDifferentTypesAndCustomValidation(t *testing.T) {
 	// Test help with various types and custom validators
 

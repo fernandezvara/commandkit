@@ -134,7 +134,7 @@ func TestCommandHelp(t *testing.T) {
 		})
 
 	// Use new help system to get command help
-	helpService := NewHelpService()
+	helpService := newHelpService()
 	help, err := helpService.GenerateHelp([]string{"app", "start", "--help"}, cfg.commands)
 	if err != nil {
 		t.Fatalf("Failed to generate help: %v", err)
@@ -663,7 +663,7 @@ func TestGetSubcommandHelp(t *testing.T) {
 	}
 
 	// Use new help system to get subcommand help
-	helpService := NewHelpService()
+	helpService := newHelpService()
 	commands := map[string]*Command{"user": cmd}
 	help, err := helpService.GenerateHelp([]string{"user", "--help"}, commands)
 	if err != nil {

@@ -8,48 +8,26 @@ import (
 func TestHelpType(t *testing.T) {
 	tests := []struct {
 		name     string
-		helpType HelpType
+		helpType helpType
 		expected int
 	}{
-		{"HelpTypeNone", HelpTypeNone, 0},
-		{"HelpTypeGlobal", HelpTypeGlobal, 1},
-		{"HelpTypeCommand", HelpTypeCommand, 2},
-		{"HelpTypeSubcommand", HelpTypeSubcommand, 3},
+		{"helpTypeNone", helpTypeNone, 0},
+		{"helpTypeGlobal", helpTypeGlobal, 1},
+		{"helpTypeCommand", helpTypeCommand, 2},
+		{"helpTypeSubcommand", helpTypeSubcommand, 3},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if int(tt.helpType) != tt.expected {
-				t.Errorf("HelpType %s = %d, expected %d", tt.name, int(tt.helpType), tt.expected)
+				t.Errorf("helpType %s = %d, expected %d", tt.name, int(tt.helpType), tt.expected)
 			}
 		})
 	}
 }
 
-func TestGlobalHelp(t *testing.T) {
-	help := &GlobalHelp{
-		Executable: "testapp",
-		Commands: []CommandSummary{
-			{Name: "start", Description: "Start the service"},
-			{Name: "stop", Description: "Stop the service"},
-		},
-	}
-
-	if help.Executable != "testapp" {
-		t.Errorf("Expected executable 'testapp', got '%s'", help.Executable)
-	}
-
-	if len(help.Commands) != 2 {
-		t.Errorf("Expected 2 commands, got %d", len(help.Commands))
-	}
-
-	if help.Commands[0].Name != "start" {
-		t.Errorf("Expected first command 'start', got '%s'", help.Commands[0].Name)
-	}
-}
-
 func TestCommandSummary(t *testing.T) {
-	summary := CommandSummary{
+	summary := commandSummary{
 		Name:    "deploy",
 		Aliases: []string{"dep", "deploy-app"},
 	}
@@ -67,29 +45,8 @@ func TestCommandSummary(t *testing.T) {
 	}
 }
 
-func TestCommandHelpModel(t *testing.T) {
-	cmd := &Command{
-		Name:      "start",
-		ShortHelp: "Start the service",
-		LongHelp:  "Start the service with all components",
-	}
-
-	help := &CommandHelp{
-		Command: cmd,
-		Usage:   "testapp start [options]",
-	}
-
-	if help.Command.Name != "start" {
-		t.Errorf("Expected command name 'start', got '%s'", help.Command.Name)
-	}
-
-	if help.Usage != "testapp start [options]" {
-		t.Errorf("Expected usage 'testapp start [options]', got '%s'", help.Usage)
-	}
-}
-
 func TestFlagInfo(t *testing.T) {
-	flag := FlagInfo{
+	flag := flagInfo{
 		Name:     "port",
 		Required: true,
 		Default:  8080,
@@ -109,31 +66,11 @@ func TestFlagInfo(t *testing.T) {
 }
 
 func TestSubcommandInfo(t *testing.T) {
-	info := SubcommandInfo{
+	info := subcommandInfo{
 		Name: "server",
 	}
 
 	if info.Name != "server" {
 		t.Errorf("Expected subcommand name 'server', got '%s'", info.Name)
-	}
-}
-
-func TestHelpRequest(t *testing.T) {
-	request := &HelpRequest{
-		Type:    HelpTypeCommand,
-		Command: "start",
-		Args:    []string{"start", "--help"},
-	}
-
-	if request.Type != HelpTypeCommand {
-		t.Errorf("Expected HelpTypeCommand, got %v", request.Type)
-	}
-
-	if request.Command != "start" {
-		t.Errorf("Expected command 'start', got '%s'", request.Command)
-	}
-
-	if len(request.Args) != 2 {
-		t.Errorf("Expected 2 args, got %d", len(request.Args))
 	}
 }

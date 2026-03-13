@@ -135,14 +135,14 @@ func (ctx *ExecutionContext) synthesizeCommand(errs []GetError) *Command {
 	}
 }
 
-func (ctx *ExecutionContext) renderErrorsWithCommand(cmd *Command, helpService HelpService) (string, error) {
+func (ctx *ExecutionContext) renderErrorsWithCommand(cmd *Command, helpService *helpService) (string, error) {
 	errs := ctx.GetErrors()
 	if len(errs) == 0 {
 		return "", nil
 	}
 
 	if helpService == nil {
-		helpService = NewHelpService()
+		helpService = newHelpService()
 	}
 
 	if cmd == nil {

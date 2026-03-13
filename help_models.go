@@ -1,99 +1,124 @@
 // commandkit/help_models.go
 package commandkit
 
-// HelpType represents the type of help request
-type HelpType int
+import "slices"
+
+// helpType represents the type of help request
+type helpType int
 
 const (
-	HelpTypeNone HelpType = iota
-	HelpTypeGlobal
-	HelpTypeCommand
-	HelpTypeSubcommand
+	helpTypeNone helpType = iota
+	helpTypeGlobal
+	helpTypeCommand
+	helpTypeSubcommand
 )
 
-// HelpMode represents the help mode (essential vs full)
-type HelpMode int
+// helpMode represents the help mode (currently essential vs full)
+type helpMode int
 
 const (
-	HelpModeEssential HelpMode = iota
-	HelpModeFull
+	helpModeEssential helpMode = iota
+	helpModeFull
 )
 
-// GlobalHelp represents help for all commands
-type GlobalHelp struct {
-	Executable string
-	Commands   []CommandSummary
-	Template   string
-}
-
-// CommandSummary represents a brief command summary for global help
-type CommandSummary struct {
+// commandSummary represents a command summary for global help
+type commandSummary struct {
 	Name        string
 	Description string
 	Aliases     []string
 }
 
-// CommandHelp represents detailed help for a specific command
-type CommandHelp struct {
-	Command         *Command
-	Usage           string
-	Description     string
-	Flags           []FlagInfo // All flags (including those with env vars)
-	RequiredEnvVars []FlagInfo // Only required env-only vars (essential mode)
-	AllEnvVars      []FlagInfo // All env-only vars (full mode)
-	Subcommands     []SubcommandInfo
-	Template        string
-	// NEW: Error information
-	Errors    []GetError
-	HasErrors bool
-}
-
-// FlagInfo represents information about a configuration flag
-type FlagInfo struct {
+// flagInfo represents flag information for help display
+type flagInfo struct {
 	Key           string
 	Name          string
-	DisplayLine   string // For flags: "--flag type (default: value)"
-	EnvVarDisplay string // For env-only vars: "ENV_VAR type (attributes)"
 	Description   string
 	Type          string
 	Required      bool
-	Default       interface{}
+	Default       any
 	EnvVar        string
 	Validations   []string
 	Secret        bool
-	NoFlag        bool // Environment-only configuration
-	// NEW: Error information
-	HasError bool
-	ErrorMsg string
+	NoFlag        bool
+	DisplayLine   string
+	EnvVarDisplay string
 }
 
-// SubcommandInfo represents information about a subcommand
-type SubcommandInfo struct {
+// subcommandInfo represents subcommand information for help display
+type subcommandInfo struct {
 	Name        string
 	Description string
 	Aliases     []string
 }
 
-// SubcommandHelp represents help for subcommands of a command
-type SubcommandHelp struct {
-	Parent      string
-	Subcommands []SubcommandInfo
-	Template    string
+// --- Centralized help flag detection functions ---
+
+// isHelpFlag returns true if the given argument is any help flag
+func isHelpFlag(arg string) bool {
+	return arg == "--help" || arg == "-h" || arg == "help" || arg == "--full-help"
 }
 
-// FlagHelp represents help for flags/definitions
-type FlagHelp struct {
-	Command  string
-	Flags    []FlagInfo
-	Template string
+// isFullHelpFlag returns true if the given argument requests full/extended help
+func isFullHelpFlag(arg string) bool {
+	return arg == "--full-help"
 }
 
-// HelpRequest represents a parsed help request
-type HelpRequest struct {
-	Type       HelpType
-	Mode       HelpMode
-	Command    string
-	Subcommand string
-	Args       []string
-	Original   []string
+// argsContainHelpFlag returns true if any argument in the slice is a help flag
+func argsContainHelpFlag(args []string) bool {
+	return slices.ContainsFunc(args, isHelpFlag)
+}
+
+// argsContainFullHelp returns true if any argument requests full help
+func argsContainFullHelp(args []string) bool {
+	return slices.ContainsFunc(args, isFullHelpFlag)
+}
+
+// lastArgIsHelpFlag returns true if the last argument is a help flag
+func lastArgIsHelpFlag(args []string) bool {
+	if len(args) == 0 {
+		return false
+	}
+	return isHelpFlag(args[len(args)-1])
+}
+
+// helpModeFromArgs returns helpModeFull if --full-help is present, otherwise helpModeEssential
+func helpModeFromArgs(args []string) helpMode {
+	if argsContainFullHelp(args) {
+		return helpModeFull
+	}
+	return helpModeEssential
+}
+
+// usageData represents data for usage layer rendering
+type usageData struct {
+	command    string
+	subcommand string
+	executable string
+}
+
+// commandsData represents data for commands layer rendering
+type commandsData struct {
+	commands   []commandSummary
+	executable string
+}
+
+// flagsData represents data for flags layer rendering
+type flagsData struct {
+	flags []flagInfo
+}
+
+// envVarsData represents data for environment variables layer rendering
+type envVarsData struct {
+	envVars []flagInfo
+	mode    helpMode // essential vs full
+}
+
+// subcommandsData represents data for subcommands layer rendering
+type subcommandsData struct {
+	subcommands []subcommandInfo
+}
+
+// errorsData represents data for errors layer rendering
+type errorsData struct {
+	errors []GetError
 }
